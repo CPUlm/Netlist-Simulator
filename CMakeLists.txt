@@ -2,7 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 
 project(netlist)
 
-add_executable(netlist src/main.cpp)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_executable(netlist src/main.cpp
+        src/lexer.hpp
+        src/token.hpp)
 
 enable_testing()
 add_subdirectory(unittest)
