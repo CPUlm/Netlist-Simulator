@@ -15,6 +15,8 @@ add_library(netlistlib
         src/identifier_table.cpp
         src/graph.cpp
         src/graph.hpp
+        src/parser.hpp
+        src/parser.cpp
 )
 
 add_executable(netlist
