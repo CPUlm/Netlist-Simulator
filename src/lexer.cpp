@@ -28,10 +28,12 @@ void Lexer::tokenize(Token &token) {
       return;
 
     case '=':
+      ++m_cursor;
       token.kind = TokenKind::EQUAL;
       return;
 
     case ',':
+      ++m_cursor;
       token.kind = TokenKind::COMMA;
       return;
 
