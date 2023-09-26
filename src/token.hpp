@@ -18,7 +18,7 @@ enum class TokenKind {
 };
 
 struct Token {
-  TokenKind kind;
+  TokenKind kind=TokenKind::EOI;
 };
 
 #endif // NETLIST_TOKEN_HPP
