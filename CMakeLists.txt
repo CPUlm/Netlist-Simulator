@@ -13,6 +13,8 @@ add_library(netlistlib
         src/identifier_table.hpp
         src/bump_allocator.hpp
         src/identifier_table.cpp
+        src/graph.cpp
+        src/graph.hpp
 )
 
 add_executable(netlist
