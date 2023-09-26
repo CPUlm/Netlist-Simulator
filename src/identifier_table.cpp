@@ -1,5 +1,7 @@
 #include "identifier_table.hpp"
 
+#include <cstring>
+
 IdentifierInfo::IdentifierInfo(std::string_view spelling) {
   m_spelling_len = spelling.size();
   memcpy(m_spelling, spelling.data(), spelling.size());
