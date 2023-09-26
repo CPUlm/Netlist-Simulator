@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(
         netlist_test
         identifier_table_test.cpp
+        lexer_test.cpp
 )
 
 target_link_libraries(
