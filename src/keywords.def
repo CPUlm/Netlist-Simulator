@@ -1,0 +1,24 @@
+#ifndef KEYWORD
+#error You must defined KEYWORD(spelling) before including this file.
+#endif
+
+// Main keywords
+KEYWORD(OUTPUT)
+KEYWORD(INPUT)
+KEYWORD(VAR)
+KEYWORD(IN)
+
+// Operator keywords
+KEYWORD(NOT)
+KEYWORD(AND)
+KEYWORD(NAND)
+KEYWORD(OR)
+KEYWORD(MUX)
+KEYWORD(REG)
+KEYWORD(CONCAT)
+KEYWORD(SELECT)
+KEYWORD(SLICE)
+KEYWORD(ROM)
+KEYWORD(RAM)
+
+#undef KEYWORD
