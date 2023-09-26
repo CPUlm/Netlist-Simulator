@@ -1,7 +1,8 @@
 #include "lexer.hpp"
 
-Lexer::Lexer(IdentifierTable &identifier_table, const char *m_input)
-    : m_identifier_table(identifier_table), m_cursor(m_input) {}
+#include "keywords.hpp"
+
+Lexer::Lexer(const char *input) : m_input(input), m_cursor(input) {}
 
 /// Returns true if the given ASCII character is a valid first character for
 /// an identifier.
@@ -25,16 +26,22 @@ void Lexer::tokenize(Token &token) {
     switch (*m_cursor) {
     case '\0': // End-Of-Input reached !
       token.kind = TokenKind::EOI;
+      token.spelling = {};
+      token.position = std::distance(m_input, m_cursor);
       return;
 
     case '=':
-      ++m_cursor;
       token.kind = TokenKind::EQUAL;
+      token.spelling = std::string_view(m_cursor, /* count= */ 1);
+      token.position = std::distance(m_input, m_cursor);
+      ++m_cursor; // eat the character
       return;
 
     case ',':
-      ++m_cursor;
       token.kind = TokenKind::COMMA;
+      token.spelling = std::string_view(m_cursor, /* count= */ 1);
+      token.position = std::distance(m_input, m_cursor);
+      ++m_cursor; // eat the character
       return;
 
     default:
@@ -85,7 +92,14 @@ void Lexer::tokenize_identifier(Token &token) {
 
   const char *end = m_cursor;
 
-  auto spelling = std::string_view(begin, std::distance(begin, end));
-  auto &identifier_info = m_identifier_table.get(spelling);
-  token.kind = identifier_info.get_token_kind();
+  token.spelling = std::string_view(begin, std::distance(begin, end));
+  auto *keyword_info =
+      KeywordHashTable::lookup(token.spelling.data(), token.spelling.size());
+  if (keyword_info != nullptr) {
+    token.kind = keyword_info->token_kind;
+  } else {
+    token.kind = TokenKind::IDENTIFIER;
+  }
+
+  token.position = std::distance(m_input, begin);
 }

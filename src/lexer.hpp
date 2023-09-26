@@ -1,21 +1,31 @@
 #ifndef NETLIST_LEXER_HPP
 #define NETLIST_LEXER_HPP
 
-#include "identifier_table.hpp"
 #include "token.hpp"
 
+/// The (super-simple) lexical analyser of the netlist language.
+///
+/// This class converts a sequence of bytes (representing the source code in
+/// the ASCII or UTF-8 encoding) into a stream of Tokens.
 class Lexer {
 public:
-  explicit Lexer(IdentifierTable &identifier_table, const char *m_input);
+  explicit Lexer(const char *input);
 
+  /// Returns the next scanned token in the source code and advances the
+  /// internal position of the lexer.
+  /// When the end of input is reached then a EOI (End-Of-Input) token is
+  /// generated, and all further calls will do the same.
   void tokenize(Token &token);
 
 private:
+  /// Just skip eagerly any whitespace found at the current position.
   void skip_whitespace();
+  /// Tokenizes an IDENTIFIER. This function should only be called when the
+  /// lexer is located at the first valid character of an identifier.
   void tokenize_identifier(Token &token);
 
 private:
-  IdentifierTable &m_identifier_table;
+  const char *m_input = nullptr;
   const char *m_cursor = nullptr;
 };
 

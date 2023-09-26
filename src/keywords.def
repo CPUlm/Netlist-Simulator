@@ -1,24 +1,31 @@
-#ifndef KEYWORD
-#error You must defined KEYWORD(spelling) before including this file.
-#endif
+%language=C++
+%struct-type
+%define class-name KeywordHashTable
+%define lookup-function-name lookup
+%compare-strncmp
+%readonly-tables
+%enum
+%includes
 
-// Main keywords
-KEYWORD(OUTPUT)
-KEYWORD(INPUT)
-KEYWORD(VAR)
-KEYWORD(IN)
+%{
+#include "token.hpp"
+%}
 
-// Operator keywords
-KEYWORD(NOT)
-KEYWORD(AND)
-KEYWORD(NAND)
-KEYWORD(OR)
-KEYWORD(MUX)
-KEYWORD(REG)
-KEYWORD(CONCAT)
-KEYWORD(SELECT)
-KEYWORD(SLICE)
-KEYWORD(ROM)
-KEYWORD(RAM)
-
-#undef KEYWORD
+struct KeywordInfo { const char* name; TokenKind token_kind; };
+%%
+OUTPUT,  TokenKind::KEY_OUTPUT
+INPUT,   TokenKind::KEY_INPUT
+VAR,     TokenKind::KEY_VAR
+IN,      TokenKind::KEY_IN
+NOT,     TokenKind::KEY_NOT
+AND,     TokenKind::KEY_AND
+NAND,    TokenKind::KEY_NAND
+OR,      TokenKind::KEY_OR
+MUX,     TokenKind::KEY_MUX
+REG,     TokenKind::KEY_REG
+CONCAT,  TokenKind::KEY_CONCAT
+SELECT,  TokenKind::KEY_SELECT
+SLICE,   TokenKind::KEY_SLICE
+ROM,     TokenKind::KEY_ROM
+RAM,     TokenKind::KEY_RAM
+%%
