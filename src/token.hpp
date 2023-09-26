@@ -12,13 +12,13 @@ enum class TokenKind {
   /// A comma `,`.
   COMMA,
 
-  // Keywords
+// Keywords
 #define KEYWORD(spelling) KEY_##spelling,
 #include "keywords.def"
 };
 
 struct Token {
-  TokenKind kind=TokenKind::EOI;
+  TokenKind kind = TokenKind::EOI;
 };
 
 #endif // NETLIST_TOKEN_HPP

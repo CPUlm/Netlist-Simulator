@@ -38,7 +38,7 @@ public:
   template <class T> [[nodiscard]] T *alloc_object(size_t p_n = 1) {
     return static_cast<T *>(alloc(sizeof(T) * p_n, alignof(T)));
   }
-  
+
   template <class T, class... Args>
   [[nodiscard]] T *new_object(Args &&...p_args) {
     auto *ptr = alloc_object<T>();

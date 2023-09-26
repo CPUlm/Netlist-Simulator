@@ -6,9 +6,7 @@ class LexerTest : public ::testing::Test {
 public:
   IdentifierTable identifier_table;
 
-  void SetUp() override {
-    identifier_table.register_keywords();
-  }
+  void SetUp() override { identifier_table.register_keywords(); }
 };
 
 TEST_F(LexerTest, punctuation) {

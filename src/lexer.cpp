@@ -86,6 +86,6 @@ void Lexer::tokenize_identifier(Token &token) {
   const char *end = m_cursor;
 
   auto spelling = std::string_view(begin, std::distance(begin, end));
-  auto& identifier_info = m_identifier_table.get(spelling);
+  auto &identifier_info = m_identifier_table.get(spelling);
   token.kind = identifier_info.get_token_kind();
 }
