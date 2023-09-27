@@ -12,6 +12,8 @@ enum class TokenKind {
   EQUAL,
   /// A comma `,`.
   COMMA,
+  /// A colon `:`.
+  COLON,
   /// The keyword `OUTPUT`.
   KEY_OUTPUT,
   /// The keyword `INPUT`.
@@ -28,6 +30,8 @@ enum class TokenKind {
   KEY_NAND,
   /// The keyword `OR`.
   KEY_OR,
+  /// The keyword `XOR`.
+  KEY_XOR,
   /// The keyword `MUX`.
   KEY_MUX,
   /// The keyword `REG`.

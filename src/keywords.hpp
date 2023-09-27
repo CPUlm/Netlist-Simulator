@@ -35,7 +35,7 @@
 #line 14 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
 struct KeywordInfo { const char* name; TokenKind token_kind; };
 #include <string.h>
-/* maximum key range = 22, duplicates = 0 */
+/* maximum key range = 35, duplicates = 0 */
 
 class KeywordHashTable
 {
@@ -50,32 +50,32 @@ KeywordHashTable::hash (const char *str, size_t len)
 {
   static const unsigned char asso_values[] =
     {
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 10, 24,  5, 24,  9,
-      24, 24, 24,  0, 24, 24,  0, 14,  5,  0,
-      24, 24,  0,  0, 24,  0, 10, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-      24, 24, 24, 24, 24, 24
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 10, 37, 10, 37, 30,
+      37, 37, 37,  0, 37, 37,  0,  8,  5,  0,
+      37, 37,  0,  0, 37,  0, 15, 37, 20, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
+      37, 37, 37, 37, 37, 37
     };
   return len + asso_values[static_cast<unsigned char>(str[1])] + asso_values[static_cast<unsigned char>(str[0])];
 }
@@ -85,11 +85,11 @@ KeywordHashTable::lookup (const char *str, size_t len)
 {
   enum
     {
-      TOTAL_KEYWORDS = 15,
+      TOTAL_KEYWORDS = 16,
       MIN_WORD_LENGTH = 2,
       MAX_WORD_LENGTH = 6,
       MIN_HASH_VALUE = 2,
-      MAX_HASH_VALUE = 23
+      MAX_HASH_VALUE = 36
     };
 
   static const struct KeywordInfo wordlist[] =
@@ -97,10 +97,10 @@ KeywordHashTable::lookup (const char *str, size_t len)
       {""}, {""},
 #line 23 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
       {"OR",      TokenKind::KEY_OR},
-#line 29 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 30 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
       {"ROM",     TokenKind::KEY_ROM},
       {""},
-#line 28 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 29 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
       {"SLICE",   TokenKind::KEY_SLICE},
 #line 16 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
       {"OUTPUT",  TokenKind::KEY_OUTPUT},
@@ -111,25 +111,31 @@ KeywordHashTable::lookup (const char *str, size_t len)
       {""},
 #line 17 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
       {"INPUT",   TokenKind::KEY_INPUT},
-#line 26 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
-      {"CONCAT",  TokenKind::KEY_CONCAT},
 #line 25 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
-      {"REG",     TokenKind::KEY_REG},
-#line 30 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
-      {"RAM",     TokenKind::KEY_RAM},
-      {""},
-#line 27 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
-      {"SELECT",  TokenKind::KEY_SELECT},
-      {""},
-#line 24 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
       {"MUX",     TokenKind::KEY_MUX},
+      {""},
+#line 31 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+      {"RAM",     TokenKind::KEY_RAM},
+      {""}, {""},
+#line 27 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+      {"CONCAT",  TokenKind::KEY_CONCAT},
+      {""},
 #line 21 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
       {"AND",     TokenKind::KEY_AND},
 #line 22 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
       {"NAND",    TokenKind::KEY_NAND},
       {""}, {""}, {""},
+#line 24 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+      {"XOR",     TokenKind::KEY_XOR},
+      {""}, {""}, {""}, {""},
 #line 18 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
-      {"VAR",     TokenKind::KEY_VAR}
+      {"VAR",     TokenKind::KEY_VAR},
+      {""}, {""}, {""}, {""},
+#line 26 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+      {"REG",     TokenKind::KEY_REG},
+      {""}, {""},
+#line 28 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+      {"SELECT",  TokenKind::KEY_SELECT}
     };
 
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
@@ -146,5 +152,5 @@ KeywordHashTable::lookup (const char *str, size_t len)
     }
   return 0;
 }
-#line 31 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 32 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
 

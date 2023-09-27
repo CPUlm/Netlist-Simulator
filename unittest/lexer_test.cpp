@@ -3,7 +3,7 @@
 #include "lexer.hpp"
 
 TEST(LexerTest, punctuation) {
-  Lexer lexer("= ,");
+  Lexer lexer("= , :");
   Token token;
 
   lexer.tokenize(token);
@@ -17,9 +17,14 @@ TEST(LexerTest, punctuation) {
   EXPECT_EQ(token.position, 2);
 
   lexer.tokenize(token);
+  EXPECT_EQ(token.kind, TokenKind::COLON);
+  EXPECT_EQ(token.spelling, ":");
+  EXPECT_EQ(token.position, 4);
+
+  lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::EOI);
   EXPECT_EQ(token.spelling, "");
-  EXPECT_EQ(token.position, 3);
+  EXPECT_EQ(token.position, 5);
 }
 
 TEST(LexerTest, identifiers) {

@@ -13,15 +13,16 @@ Lexer::Lexer(const char *input) : m_input(input), m_cursor(input) {}
 /// Returns true if the given ASCII character is a valid middle character for
 /// an identifier.
 [[nodiscard]] bool is_cont_ident(char ch) {
-  return is_start_ident(ch) || (ch >= '0' && ch <= '9');
+  return is_start_ident(ch) || (ch >= '0' && ch <= '9') || ch == '\'';
 }
 
 void Lexer::tokenize(Token &token) {
   skip_whitespace();
 
   // We use an infinite loop here to continue lexing when encountering an
-  // unknown character (which we just ignore after emitting an error). Each
-  // successfully token is directly returned inside the loop.
+  // unknown character (which we just ignore after emitting an error) or to
+  // skip comments. Each successfully token is directly returned inside the
+  // loop.
   while (true) {
     switch (*m_cursor) {
     case '\0': // End-Of-Input reached !
@@ -39,6 +40,13 @@ void Lexer::tokenize(Token &token) {
 
     case ',':
       token.kind = TokenKind::COMMA;
+      token.spelling = std::string_view(m_cursor, /* count= */ 1);
+      token.position = std::distance(m_input, m_cursor);
+      ++m_cursor; // eat the character
+      return;
+
+    case ':':
+      token.kind = TokenKind::COLON;
       token.spelling = std::string_view(m_cursor, /* count= */ 1);
       token.position = std::distance(m_input, m_cursor);
       ++m_cursor; // eat the character
