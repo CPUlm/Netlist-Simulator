@@ -26,6 +26,8 @@ private:
   /// Tokenizes an IDENTIFIER. This function should only be called when the
   /// lexer is located at the first valid character of an identifier.
   void tokenize_identifier(Token &token);
+  /// Tokenizes an INTEGER. This function should only be called when the
+  /// lexer is located at the first valid character of an integer.
   void tokenize_integer(Token &token);
 
 private:
