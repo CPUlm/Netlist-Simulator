@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 
 #include "graph.hpp"
 
@@ -18,6 +19,8 @@ Graph<int> make(const std::vector<std::vector<int>> &graph) {
       add_edge(g, i, graph[i][j]);
     }
   }
+
+  return g;
 }
 
 bool check_topo_order(Graph<int> &g) {
