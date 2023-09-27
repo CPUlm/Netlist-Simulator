@@ -1,5 +1,5 @@
 /* C++ code produced by gperf version 3.1 */
-/* Command-line: 'C:\\dev\\vcpkg\\installed\\x64-windows\\tools\\gperf\\gperf.exe' -t --output-file=C:/Users/gruni/CLionProjects/netlist/src/keywords.hpp C:/Users/gruni/CLionProjects/netlist/src/keywords.def  */
+/* Command-line: /usr/bin/gperf -t --output-file=src/keywords.hpp src/keywords.def  */
 /* Computed positions: -k'1-2' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \
@@ -29,10 +29,10 @@
 #error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gperf@gnu.org>."
 #endif
 
-#line 10 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 10 "src/keywords.def"
 
 #include "token.hpp"
-#line 14 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 14 "src/keywords.def"
 struct KeywordInfo { const char* name; TokenKind token_kind; };
 #include <string.h>
 /* maximum key range = 35, duplicates = 0 */
@@ -95,46 +95,46 @@ KeywordHashTable::lookup (const char *str, size_t len)
   static const struct KeywordInfo wordlist[] =
     {
       {""}, {""},
-#line 23 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 23 "src/keywords.def"
       {"OR",      TokenKind::KEY_OR},
-#line 30 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 30 "src/keywords.def"
       {"ROM",     TokenKind::KEY_ROM},
       {""},
-#line 29 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 29 "src/keywords.def"
       {"SLICE",   TokenKind::KEY_SLICE},
-#line 16 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 16 "src/keywords.def"
       {"OUTPUT",  TokenKind::KEY_OUTPUT},
-#line 19 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 19 "src/keywords.def"
       {"IN",      TokenKind::KEY_IN},
-#line 20 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 20 "src/keywords.def"
       {"NOT",     TokenKind::KEY_NOT},
       {""},
-#line 17 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 17 "src/keywords.def"
       {"INPUT",   TokenKind::KEY_INPUT},
-#line 25 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 25 "src/keywords.def"
       {"MUX",     TokenKind::KEY_MUX},
       {""},
-#line 31 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 31 "src/keywords.def"
       {"RAM",     TokenKind::KEY_RAM},
       {""}, {""},
-#line 27 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 27 "src/keywords.def"
       {"CONCAT",  TokenKind::KEY_CONCAT},
       {""},
-#line 21 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 21 "src/keywords.def"
       {"AND",     TokenKind::KEY_AND},
-#line 22 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 22 "src/keywords.def"
       {"NAND",    TokenKind::KEY_NAND},
       {""}, {""}, {""},
-#line 24 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 24 "src/keywords.def"
       {"XOR",     TokenKind::KEY_XOR},
       {""}, {""}, {""}, {""},
-#line 18 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 18 "src/keywords.def"
       {"VAR",     TokenKind::KEY_VAR},
       {""}, {""}, {""}, {""},
-#line 26 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 26 "src/keywords.def"
       {"REG",     TokenKind::KEY_REG},
       {""}, {""},
-#line 28 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 28 "src/keywords.def"
       {"SELECT",  TokenKind::KEY_SELECT}
     };
 
@@ -152,5 +152,5 @@ KeywordHashTable::lookup (const char *str, size_t len)
     }
   return 0;
 }
-#line 32 "C:/Users/gruni/CLionProjects/netlist/src/keywords.def"
+#line 32 "src/keywords.def"
 
