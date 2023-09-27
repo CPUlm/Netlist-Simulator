@@ -6,16 +6,35 @@
 
 Lexer::Lexer(const char *input) : m_input(input), m_cursor(input) {}
 
+/// Returns true if the given ASCII character is a whitespace.
+/// Our definition of whitespace is limited to ' ', '\t', '\n' and '\r'.
+[[nodiscard]] static inline bool is_whitespace(char ch) {
+  switch (ch) {
+  case ' ':
+  case '\t':
+  case '\n':
+  case '\r':
+    return true;
+  default:
+    return false;
+  }
+}
+
+/// Returns true if the given ASCII character is a decimal digit.
+[[nodiscard]] static inline bool is_digit(char ch) {
+  return (ch >= '0' && ch <= '9');
+}
+
 /// Returns true if the given ASCII character is a valid first character for
 /// an identifier.
-[[nodiscard]] bool is_start_ident(char ch) {
+[[nodiscard]] static inline bool is_start_ident(char ch) {
   return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch == '_');
 }
 
 /// Returns true if the given ASCII character is a valid middle character for
 /// an identifier.
-[[nodiscard]] bool is_cont_ident(char ch) {
-  return is_start_ident(ch) || (ch >= '0' && ch <= '9') || ch == '\'';
+[[nodiscard]] static inline bool is_cont_ident(char ch) {
+  return is_start_ident(ch) || is_digit(ch) || ch == '\'';
 }
 
 void Lexer::tokenize(Token &token) {
@@ -62,25 +81,14 @@ void Lexer::tokenize(Token &token) {
       if (is_start_ident(*m_cursor)) {
         tokenize_identifier(token);
         return;
+      } else if (is_digit(*m_cursor)) {
+        tokenize_integer(token);
+        return;
       }
 
       // Bad, we reached an unknown character.
       // FIXME: we should emit an error, for now we just ignore it
     }
-  }
-}
-
-/// Returns true if the given ASCII character is a whitespace.
-/// Our definition of whitespace is limited to ' ', '\t', '\n' and '\r'.
-[[nodiscard]] static bool is_whitespace(char ch) {
-  switch (ch) {
-  case ' ':
-  case '\t':
-  case '\n':
-  case '\r':
-    return true;
-  default:
-    return false;
   }
 }
 
@@ -129,5 +137,26 @@ void Lexer::tokenize_identifier(Token &token) {
     token.kind = TokenKind::IDENTIFIER;
   }
 
+  token.position = std::distance(m_input, begin);
+}
+
+void Lexer::tokenize_integer(Token &token) {
+  assert(is_digit(*m_cursor));
+
+  const char *begin = m_cursor;
+
+  ++m_cursor; // eat the first character
+
+  // This never read past the end of the input because each input buffer is
+  // guaranteed to be terminated by the NUL character and is_digit() returns
+  // false for such a character.
+  while (is_digit(*m_cursor)) {
+    ++m_cursor;
+  }
+
+  const char *end = m_cursor;
+
+  token.kind = TokenKind::INTEGER;
+  token.spelling = std::string_view(begin, std::distance(begin, end));
   token.position = std::distance(m_input, begin);
 }

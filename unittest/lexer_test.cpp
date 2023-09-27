@@ -72,6 +72,26 @@ TEST(LexerTest, keywords) {
   EXPECT_EQ(token.position, 10);
 }
 
+TEST(LexerTest, integers) {
+  Lexer lexer("0 42");
+  Token token;
+
+  lexer.tokenize(token);
+  EXPECT_EQ(token.kind, TokenKind::INTEGER);
+  EXPECT_EQ(token.spelling, "0");
+  EXPECT_EQ(token.position, 0);
+
+  lexer.tokenize(token);
+  EXPECT_EQ(token.kind, TokenKind::INTEGER);
+  EXPECT_EQ(token.spelling, "42");
+  EXPECT_EQ(token.position, 2);
+
+  lexer.tokenize(token);
+  EXPECT_EQ(token.kind, TokenKind::EOI);
+  EXPECT_EQ(token.spelling, "");
+  EXPECT_EQ(token.position, 4);
+}
+
 TEST(LexerTest, comments) {
   Lexer lexer("# =\n=\n# EOI");
   Token token;

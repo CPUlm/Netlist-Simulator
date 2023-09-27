@@ -26,6 +26,7 @@ private:
   /// Tokenizes an IDENTIFIER. This function should only be called when the
   /// lexer is located at the first valid character of an identifier.
   void tokenize_identifier(Token &token);
+  void tokenize_integer(Token &token);
 
 private:
   const char *m_input = nullptr;

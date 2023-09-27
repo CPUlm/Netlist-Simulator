@@ -8,6 +8,8 @@ enum class TokenKind {
   EOI,
   /// An identifier such as `x` or `t_1`.
   IDENTIFIER,
+  /// An integer such as `42`.
+  INTEGER,
   /// An equal sign `=`.
   EQUAL,
   /// A comma `,`.
