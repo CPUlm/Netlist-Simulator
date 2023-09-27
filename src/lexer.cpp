@@ -44,7 +44,6 @@ void Lexer::tokenize(Token &token) {
   // loop.
   while (true) {
     skip_whitespace();
-
     switch (*m_cursor) {
     case '\0': // End-Of-Input reached !
       token.kind = TokenKind::EOI;
