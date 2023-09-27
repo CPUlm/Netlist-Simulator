@@ -20,6 +20,9 @@ public:
 private:
   /// Just skip eagerly any whitespace found at the current position.
   void skip_whitespace();
+  /// Just skip until the end of the line. This function should only be
+  /// called when the lexer is located at the start of a comment.
+  void skip_comment();
   /// Tokenizes an IDENTIFIER. This function should only be called when the
   /// lexer is located at the first valid character of an identifier.
   void tokenize_identifier(Token &token);

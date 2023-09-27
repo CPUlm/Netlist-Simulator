@@ -2,6 +2,8 @@
 
 #include "keywords.hpp"
 
+#include <cassert>
+
 Lexer::Lexer(const char *input) : m_input(input), m_cursor(input) {}
 
 /// Returns true if the given ASCII character is a valid first character for
@@ -17,13 +19,13 @@ Lexer::Lexer(const char *input) : m_input(input), m_cursor(input) {}
 }
 
 void Lexer::tokenize(Token &token) {
-  skip_whitespace();
-
   // We use an infinite loop here to continue lexing when encountering an
   // unknown character (which we just ignore after emitting an error) or to
   // skip comments. Each successfully token is directly returned inside the
   // loop.
   while (true) {
+    skip_whitespace();
+
     switch (*m_cursor) {
     case '\0': // End-Of-Input reached !
       token.kind = TokenKind::EOI;
@@ -51,6 +53,10 @@ void Lexer::tokenize(Token &token) {
       token.position = std::distance(m_input, m_cursor);
       ++m_cursor; // eat the character
       return;
+
+    case '#':
+      skip_comment();
+      continue; // get the next valid token
 
     default:
       if (is_start_ident(*m_cursor)) {
@@ -86,7 +92,21 @@ void Lexer::skip_whitespace() {
     ++m_cursor;
 }
 
+void Lexer::skip_comment() {
+  assert(*m_cursor == '#');
+
+  ++m_cursor; // eat `#`
+
+  // CR-LF line endings are also correctly recognized because of the second
+  // byte LF.
+  while (*m_cursor != '\0' && *m_cursor != '\n') {
+    ++m_cursor;
+  }
+}
+
 void Lexer::tokenize_identifier(Token &token) {
+  assert(is_start_ident(*m_cursor));
+
   const char *begin = m_cursor;
 
   ++m_cursor; // eat the first character

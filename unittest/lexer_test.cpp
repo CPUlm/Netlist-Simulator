@@ -71,3 +71,18 @@ TEST(LexerTest, keywords) {
   EXPECT_EQ(token.spelling, "");
   EXPECT_EQ(token.position, 10);
 }
+
+TEST(LexerTest, comments) {
+  Lexer lexer("# =\n=\n# EOI");
+  Token token;
+
+  lexer.tokenize(token);
+  EXPECT_EQ(token.kind, TokenKind::EQUAL);
+  EXPECT_EQ(token.spelling, "=");
+  EXPECT_EQ(token.position, 4);
+
+  lexer.tokenize(token);
+  EXPECT_EQ(token.kind, TokenKind::EOI);
+  EXPECT_EQ(token.spelling, "");
+  EXPECT_EQ(token.position, 11);
+}
