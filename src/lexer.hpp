@@ -3,7 +3,7 @@
 
 #include "token.hpp"
 
-/// The (super-simple) lexical analyser of the netlist language.
+/// The (super-simple) lexical analyser for the netlist language.
 ///
 /// This class converts a sequence of bytes (representing the source code in
 /// the ASCII or UTF-8 encoding) into a stream of Tokens.
