@@ -25,7 +25,7 @@ target_include_directories(netlistlib PUBLIC src/)
 
 # gperf (GNU perfect hash function generator)
 # It is only required if the keywords.def file is modified.
-find_program(GPERF_PROGRAM gperf REQUIRED)
+find_program(GPERF_PROGRAM gperf)
 if (GPERF_PROGRAM)
   add_custom_command(
           OUTPUT src/keywords.hpp
