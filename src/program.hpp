@@ -35,6 +35,7 @@ public:
     return get_kind() == Kind::EQUATION;
   }
 
+  /// Returns true if this value is named, that is its name is non empty.
   [[nodiscard]] bool is_named() const { return !m_name.empty(); }
   /// Returns the name either of the input or the equation. If the value
   /// is a constant then it doesn't have any name and therefore an empty
@@ -169,6 +170,25 @@ private:
 
 class Program {
 public:
+  /// Returns the name of all registered inputs.
+  [[nodiscard]] std::vector<std::string_view> get_input_names() const;
+  /// Returns the name of all registered outputs.
+  [[nodiscard]] std::vector<std::string_view> get_output_names() const;
+
+  /// Returns all the values of the program, including the inputs,
+  /// the constants and the equations (which also include the outputs).
+  [[nodiscard]] const std::vector<std::unique_ptr<Value>> &get_values() const {
+    return m_values;
+  }
+
+  /// Returns the program's equations.
+  [[nodiscard]] const std::vector<Equation *> &get_equations() const {
+    return m_equations;
+  }
+
+  // The different factory functions to build the parts of the program.
+  // They are mainly called by the parser.
+
   [[nodiscard]] Constant *create_constant(size_t value);
   [[nodiscard]] Input *create_input(std::string_view name);
   [[nodiscard]] Equation *create_output(std::string_view name);
@@ -179,7 +199,6 @@ public:
                                                      Value *rhs);
 
 private:
-  friend class ProgramPrinter;
   std::vector<std::unique_ptr<Value>> m_values;
   std::vector<std::unique_ptr<Expression>> m_expressions;
   std::vector<Input *> m_inputs;

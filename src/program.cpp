@@ -1,5 +1,24 @@
 #include "program.hpp"
 
+std::vector<std::string_view> Program::get_input_names() const {
+  std::vector<std::string_view> names;
+  for (auto *input : m_inputs) {
+    names.push_back(input->get_name());
+  }
+
+  return names;
+}
+
+std::vector<std::string_view> Program::get_output_names() const {
+  std::vector<std::string_view> names;
+  for (auto *equation : m_equations) {
+    if (equation->is_output())
+      names.push_back(equation->get_name());
+  }
+
+  return names;
+}
+
 Constant *Program::create_constant(size_t value) {
   auto *ptr = new Constant(value);
   m_values.emplace_back(ptr);

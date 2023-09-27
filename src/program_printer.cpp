@@ -2,39 +2,32 @@
 
 #include <iostream>
 
-void ProgramPrinter::print_program(const Program &program) {
-  std::cout << "INPUT ";
-  bool is_first_input = true;
-  for (const auto *input : program.m_inputs) {
-    if (!is_first_input) {
+static void
+print_comma_separated_list(const std::vector<std::string_view> &list) {
+  bool is_first = true;
+  for (const auto &item : list) {
+    if (!is_first) {
       std::cout << ", ";
     } else {
-      is_first_input = false;
+      is_first = false;
     }
 
-    std::cout << input->get_name();
+    std::cout << item;
   }
+}
+
+void ProgramPrinter::print_program(const Program &program) {
+  std::cout << "INPUT ";
+  print_comma_separated_list(program.get_input_names());
   std::cout << "\n";
 
   std::cout << "OUTPUT ";
-  bool is_first_output = true;
-  for (const auto *equation : program.m_equations) {
-    if (!equation->is_output())
-      continue;
-
-    if (!is_first_output) {
-      std::cout << ", ";
-    } else {
-      is_first_output = false;
-    }
-
-    std::cout << equation->get_name();
-  }
+  print_comma_separated_list(program.get_output_names());
   std::cout << "\n";
 
   std::cout << "VAR ";
   bool is_first_var = true;
-  for (const auto &value : program.m_values) {
+  for (const auto &value : program.get_values()) {
     if (!value->is_named())
       continue;
 
@@ -49,7 +42,7 @@ void ProgramPrinter::print_program(const Program &program) {
   std::cout << "\n";
 
   std::cout << "IN\n";
-  print_equations(program.m_equations);
+  print_equations(program.get_equations());
 }
 
 void ProgramPrinter::visit_value(Value *value) {
