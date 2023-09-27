@@ -14,6 +14,10 @@ add_library(netlistlib
         src/graph.hpp
         src/parser.hpp
         src/parser.cpp
+        src/program.hpp
+        src/program.cpp
+        src/program_printer.hpp
+        src/program_printer.cpp
 )
 
 add_executable(netlist

@@ -12,6 +12,7 @@ add_executable(
         netlist_test
         lexer_test.cpp
         graph_test.cpp
+        parser_test.cpp
 )
 
 target_link_libraries(
