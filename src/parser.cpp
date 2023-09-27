@@ -9,28 +9,10 @@ Parser::Parser(Lexer &lexer) : m_lexer(lexer) {
   m_lexer.tokenize(m_token);
 }
 
-std::ostream &operator<<(std::ostream &out,
-                         const std::vector<std::string_view> &terms) {
-  out << "[";
-
-  for (size_t i = 0; i < terms.size(); ++i) {
-    if (i > 0)
-      out << ", ";
-    out << terms[i];
-  }
-
-  out << "]";
-  return out;
-}
-
 Program Parser::parse_program() {
   auto inputs = parse_inputs();
   auto outputs = parse_outputs();
   auto variables = parse_variables();
-
-  std::cout << inputs << std::endl;
-  std::cout << outputs << std::endl;
-  std::cout << variables << std::endl;
 
   create_named_values(inputs, outputs, variables);
 
