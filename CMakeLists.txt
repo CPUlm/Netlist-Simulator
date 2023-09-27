@@ -11,7 +11,6 @@ add_library(netlistlib
         src/token.hpp
         src/lexer.cpp
         src/keywords.hpp
-        src/graph.cpp
         src/graph.hpp
         src/parser.hpp
         src/parser.cpp
