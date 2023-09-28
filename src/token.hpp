@@ -63,7 +63,7 @@ struct Token {
   /// lexer.
   std::string_view spelling;
   /// The byte index into the input buffer of this token.
-  size_t position = 0;
+  SourceLocation position = 0;
 };
 
 #endif // NETLIST_TOKEN_HPP
