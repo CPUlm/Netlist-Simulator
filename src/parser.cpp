@@ -1,10 +1,13 @@
 #include "parser.hpp"
 
 #include <cassert>
+#include <format>
 #include <iostream>
 #include <vector>
 
 Parser::Parser(Lexer &lexer) : m_lexer(lexer) {
+Parser::Parser(DiagnosticContext &diagnostic_ctx, Lexer &lexer)
+    : m_diagnostic_ctx(diagnostic_ctx), m_lexer(lexer) {
   // Gets the first token
   m_lexer.tokenize(m_token);
 }
@@ -45,10 +48,11 @@ std::vector<std::string_view> Parser::parse_variables() {
 
   consume(); // eat `VAR`
 
-  return parse_variable_list();
+  return parse_variable_list(/* accept_size_specifiers= */ true);
 }
 
-std::vector<std::string_view> Parser::parse_variable_list() {
+std::vector<std::string_view>
+Parser::parse_variable_list(bool accept_size_specifiers) {
   if (m_token.kind != TokenKind::IDENTIFIER)
     return {};
 
@@ -56,7 +60,6 @@ std::vector<std::string_view> Parser::parse_variable_list() {
 
   do {
     if (!expect(TokenKind::IDENTIFIER)) {
-      // FIXME(hgruniaux): emit an error, unexpected token
       return variables;
     }
 
