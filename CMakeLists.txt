@@ -18,6 +18,10 @@ add_library(netlistlib
         src/program.cpp
         src/program_printer.hpp
         src/program_printer.cpp
+        src/diagnostic_context.hpp
+        src/diagnostic_context.cpp
+        src/line_map.hpp
+        src/line_map.cpp
 )
 
 add_executable(netlist

@@ -3,6 +3,9 @@
 
 #include <string_view>
 
+using SourceLocation = size_t;
+static constexpr SourceLocation INVALID_LOCATION = SIZE_MAX;
+
 enum class TokenKind {
   /// End-Of-Input, the last token returned by the lexer.
   EOI,

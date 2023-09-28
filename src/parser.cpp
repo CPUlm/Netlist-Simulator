@@ -60,8 +60,25 @@ std::vector<std::string_view> Parser::parse_variable_list() {
       return variables;
     }
 
-    variables.push_back(m_token.spelling);
+    VariableInfo variable_info = {};
+    variable_info.spelling = m_token.spelling;
+    variable_info.source_location = m_token.position;
+    variables.push_back(variable_info.spelling);
     consume(); // consume the identifier
+
+    // Parse the optional size specifier for variables.
+    if (accept_size_specifiers && m_token.kind == TokenKind::COLON) {
+      consume(); // eat `:`
+
+      if (m_token.kind == TokenKind::INTEGER) {
+        variable_info.size_in_bits = parse_integer_literal(m_token.spelling);
+        consume(); // eat the integer literal
+      } else {
+        m_diagnostic_ctx.error_at(
+            m_token.position,
+            "missing size in bits of the variable after the `:'");
+      }
+    }
 
     if (m_token.kind == TokenKind::COMMA) {
       consume(); // eat `,`
@@ -99,7 +116,14 @@ void Parser::create_named_values(
       named_value = m_program.create_equation(variable);
     }
 
-    // TODO: check if a variable is both declared as input and output
+    // TODO: is really an error to be both input and output?
+    if (is_input && is_output) {
+      // TODO: give source location to the error message
+      m_diagnostic_ctx.error_at(INVALID_LOCATION,
+                                std::format("the variable `{}' is declared as "
+                                            "input and output at the same time",
+                                            variable));
+    }
 
     const auto it = m_named_values.find(variable);
     if (it == m_named_values.end()) {
@@ -107,15 +131,19 @@ void Parser::create_named_values(
       continue;
     }
 
-    // FIXME(hgruniaux): emit an error, the variable was declared more than once
+    // TODO: give source location to the error message
+    m_diagnostic_ctx.error_at(INVALID_LOCATION,
+                              std::format("the variable `{}' is declared more "
+                                          "than once in the `VAR' statement",
+                                          variable));
   }
 
   // Check if all inputs were declared in the `VAR` statement
   for (const auto input : inputs) {
     const auto it = m_named_values.find(input);
     if (it == m_named_values.end()) {
-      // FIXME(hgruniaux): emit an error, input variable not declared in the
-      //                   `VAR` statement
+      // TODO: give source location to the error message
+      emit_unknown_variable_error(INVALID_LOCATION, input);
     }
   }
 
@@ -123,8 +151,8 @@ void Parser::create_named_values(
   for (const auto output : outputs) {
     const auto it = m_named_values.find(output);
     if (it == m_named_values.end()) {
-      // FIXME(hgruniaux): emit an error, output variable not declared in the
-      //                   `VAR` statement
+      // TODO: give source location to the error message
+      emit_unknown_variable_error(INVALID_LOCATION, output);
     }
   }
 }
@@ -146,19 +174,22 @@ Equation *Parser::parse_equation() {
     return nullptr;
   }
 
+  const auto name_location = m_token.position;
   const auto name = m_token.spelling;
   consume(); // eat the identifier
 
   Equation *equation = nullptr;
   const auto it = m_named_values.find(name);
   if (it == m_named_values.end()) {
-    // FIXME(hgruniaux): emit an error, variable not found
+    emit_unknown_variable_error(name_location, name);
   } else {
     Value *value = it->second;
     if (!value->is_input()) {
       equation = static_cast<Equation *>(value);
     } else {
-      // FIXME(hgruniaux): emit an error, cannot assign an equation to an input
+      m_diagnostic_ctx.error_at(
+          name_location,
+          std::format("cannot assign an equation to an input variable", name));
     }
   }
 
@@ -186,7 +217,9 @@ Value *Parser::parse_argument() {
   case TokenKind::INTEGER:
     return parse_constant();
   default:
-    // FIXME(hgruniaux): emit an error, unexpected token
+    m_diagnostic_ctx.error_at(
+        m_token.position,
+        "unexpected token, expected either an identifier or a constant");
     return nullptr;
   }
 }
@@ -194,6 +227,7 @@ Value *Parser::parse_argument() {
 Value *Parser::parse_variable() {
   assert(m_token.kind == TokenKind::IDENTIFIER);
 
+  const auto name_location = m_token.position;
   const auto name = m_token.spelling;
   consume();
 
@@ -202,7 +236,7 @@ Value *Parser::parse_variable() {
     return it->second;
   }
 
-  // FIXME(hgruniaux): emit an error, variable not found
+  emit_unknown_variable_error(name_location, name);
   return nullptr;
 }
 
@@ -226,7 +260,9 @@ Expression *Parser::parse_expression() {
   case TokenKind::KEY_XOR:
     return parse_binary_expression();
   default:
-    // FIXME(hgruniaux): emit an error, unexpected token
+    m_diagnostic_ctx.error_at(
+        m_token.position,
+        "invalid expression, expected an operator or a constant");
     return nullptr;
   }
 }
@@ -237,9 +273,6 @@ NotExpression *Parser::parse_not_expression() {
   consume(); // eat `NOT`
 
   Value *value = parse_argument();
-  if (value == nullptr)
-    return nullptr;
-
   return m_program.create_not_expr(value);
 }
 
@@ -267,9 +300,6 @@ BinaryExpression *Parser::parse_binary_expression() {
 
   Value *lhs = parse_argument();
   Value *rhs = parse_argument();
-  if (lhs == nullptr || rhs == nullptr)
-    return nullptr;
-
   return m_program.create_binary_expr(binop, lhs, rhs);
 }
 
@@ -281,4 +311,14 @@ bool Parser::expect(TokenKind token_kind) const {
 
   // FIXME(hgruniaux): emit an error
   return false;
+}
+
+void Parser::emit_unknown_variable_error(SourceLocation location,
+                                         std::string_view variable_name) {
+
+  m_diagnostic_ctx.error_at(
+      location,
+      std::format(
+          "the variable `{}' is used but not declared in the `VAR' statement",
+          variable_name));
 }
