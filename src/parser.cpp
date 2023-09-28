@@ -6,6 +6,7 @@
 #include <vector>
 
 Parser::Parser(Lexer &lexer) : m_lexer(lexer) {
+
 Parser::Parser(DiagnosticContext &diagnostic_ctx, Lexer &lexer)
     : m_diagnostic_ctx(diagnostic_ctx), m_lexer(lexer) {
   // Gets the first token
