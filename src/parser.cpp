@@ -2,10 +2,17 @@
 
 #include <cassert>
 #include <format>
-#include <iostream>
 #include <vector>
 
-Parser::Parser(Lexer &lexer) : m_lexer(lexer) {
+[[nodiscard]] static size_t parse_integer_literal(std::string_view literal) {
+  size_t value = 0;
+  for (char ch : literal) {
+    value *= 10;
+    value += ch - '0';
+  }
+
+  return value;
+}
 
 Parser::Parser(DiagnosticContext &diagnostic_ctx, Lexer &lexer)
     : m_diagnostic_ctx(diagnostic_ctx), m_lexer(lexer) {
@@ -247,8 +254,7 @@ Value *Parser::parse_variable() {
 Constant *Parser::parse_constant() {
   assert(m_token.kind == TokenKind::INTEGER);
 
-  // TODO: parse integer constant
-  const size_t value = 0;
+  const size_t value = parse_integer_literal(m_token.spelling);
   consume();
 
   return m_program.create_constant(value);
