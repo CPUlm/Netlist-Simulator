@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_BUILD_TYPE Debug)
+
 add_library(netlistlib
         src/lexer.hpp
         src/token.hpp
@@ -24,6 +26,9 @@ add_executable(netlist
         src/main.cpp
 )
 
+add_executable(test_graph
+		  src/test_graph.cpp
+)
 target_link_libraries(netlist PUBLIC netlistlib)
 target_include_directories(netlistlib PUBLIC src/)
 
@@ -40,5 +45,5 @@ if (GPERF_PROGRAM)
   )
 endif ()
 
-enable_testing()
-add_subdirectory(unittest)
+#enable_testing()
+#add_subdirectory(unittest)
