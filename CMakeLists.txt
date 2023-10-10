@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
+add_subdirectory(fmt)
 project(netlist)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -23,6 +24,9 @@ add_library(netlistlib
         src/line_map.hpp
         src/line_map.cpp
 )
+
+target_include_directories(netlistlib PUBLIC fmt/include/)
+target_link_libraries(netlistlib PUBLIC fmt)
 
 add_executable(netlist
         src/main.cpp

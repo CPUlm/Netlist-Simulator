@@ -1,7 +1,8 @@
 #include "parser.hpp"
 
 #include <cassert>
-#include <format>
+#include <algorithm>
+#include "fmt/format.h"
 #include <vector>
 
 [[nodiscard]] static size_t parse_integer_literal(std::string_view literal) {
@@ -131,7 +132,7 @@ void Parser::create_named_values(
     if (is_input && is_output) {
       // TODO: give source location to the error message
       m_diagnostic_ctx.error_at(INVALID_LOCATION,
-                                std::format("the variable `{}' is declared as "
+                                fmt::format("the variable `{}' is declared as "
                                             "input and output at the same time",
                                             variable));
     }
@@ -144,7 +145,7 @@ void Parser::create_named_values(
 
     // TODO: give source location to the error message
     m_diagnostic_ctx.error_at(INVALID_LOCATION,
-                              std::format("the variable `{}' is declared more "
+                              fmt::format("the variable `{}' is declared more "
                                           "than once in the `VAR' statement",
                                           variable));
   }
@@ -196,11 +197,11 @@ Equation *Parser::parse_equation() {
   } else {
     Value *value = it->second;
     if (!value->is_input()) {
-      equation = static_cast<Equation *>(value);
+      equation = dynamic_cast<Equation *>(value);
     } else {
       m_diagnostic_ctx.error_at(
           name_location,
-          std::format("cannot assign an equation to an input variable", name));
+          fmt::format("cannot assign an equation to an input variable", name));
     }
   }
 
@@ -303,7 +304,6 @@ BinaryExpression *Parser::parse_binary_expression() {
     break;
   default:
     assert(false && "expected a binary operator");
-    return nullptr;
   }
 
   consume(); // eat the binary operator
@@ -328,7 +328,7 @@ void Parser::emit_unknown_variable_error(SourceLocation location,
 
   m_diagnostic_ctx.error_at(
       location,
-      std::format(
+      fmt::format(
           "the variable `{}' is used but not declared in the `VAR' statement",
           variable_name));
 }
