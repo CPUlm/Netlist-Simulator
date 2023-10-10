@@ -3,8 +3,24 @@
 
 #include <string_view>
 
-using SourceLocation = size_t;
-static constexpr SourceLocation INVALID_LOCATION = SIZE_MAX;
+struct SourceLocation {
+  uint32_t offset;
+
+  [[nodiscard]] bool is_invalid() const {
+    return offset == UINT32_MAX;
+  }
+
+  [[nodiscard]] static SourceLocation from_offset(uint32_t offset) {
+    return { offset };
+  }
+};
+
+struct SourceRange {
+  SourceLocation location;
+  uint32_t length;
+};
+
+static constexpr SourceLocation INVALID_LOCATION = { UINT32_MAX };
 
 enum class TokenKind {
   /// End-Of-Input, the last token returned by the lexer.

@@ -14,6 +14,7 @@ add_executable(
         graph_test.cpp
         parser_test.cpp
         line_map_test.cpp
+        report_test.cpp
 )
 
 target_link_libraries(

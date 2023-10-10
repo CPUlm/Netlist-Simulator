@@ -79,3 +79,17 @@ TEST(LineMapTest, prefill)
   EXPECT_EQ(lm.get_line_number(6), 2);
   EXPECT_EQ(lm.get_line_number(11), 3);
 }
+
+TEST(LineMapTest, clear) {
+  LineMap lm;
+
+  lm.add_newline(50);
+
+  EXPECT_EQ(lm.get_line_number(50), 2);
+  EXPECT_EQ(lm.get_column_number(50), 1);
+
+  lm.clear();
+
+  EXPECT_EQ(lm.get_line_number(50), 1);
+  EXPECT_EQ(lm.get_column_number(50), 51);
+}

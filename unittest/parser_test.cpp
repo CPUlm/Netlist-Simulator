@@ -3,7 +3,7 @@
 #include "parser.hpp"
 
 TEST(ParserTest, basic_program) {
-  DiagnosticContext ctx;
+  ReportManager ctx;
   Lexer lexer("INPUT a\nOUTPUT b\nVAR a, b\nIN\nb=NOT a");
   Parser parser(ctx, lexer);
   Program program = parser.parse_program();
@@ -32,7 +32,7 @@ TEST(ParserTest, basic_program) {
 }
 
 TEST(ParserTest, multiple_inputs) {
-  DiagnosticContext ctx;
+  ReportManager ctx;
   Lexer lexer("INPUT a, b, c\nOUTPUT z\nVAR a, b, c, z\nIN\nz=NOT a");
   Parser parser(ctx, lexer);
   Program program = parser.parse_program();
@@ -43,7 +43,7 @@ TEST(ParserTest, multiple_inputs) {
 }
 
 TEST(ParserTest, multiple_outputs) {
-  DiagnosticContext ctx;
+  ReportManager ctx;
   Lexer lexer("INPUT a\nOUTPUT b, c, d\nVAR a, b, c, d\nIN\nb=NOT a");
   Parser parser(ctx, lexer);
   Program program = parser.parse_program();
@@ -54,7 +54,7 @@ TEST(ParserTest, multiple_outputs) {
 }
 
 TEST(ParserTest, not_expr) {
-  DiagnosticContext ctx;
+  ReportManager ctx;
   Lexer lexer("INPUT a\nOUTPUT out\nVAR a, out\nIN\nout=NOT a");
   Parser parser(ctx, lexer);
   Program program = parser.parse_program();
@@ -74,7 +74,7 @@ TEST(ParserTest, not_expr) {
 }
 
 void binary_expr_test(BinaryOp binop, const char *binop_spelling) {
-  DiagnosticContext ctx;
+  ReportManager ctx;
   const auto input = std::string("INPUT a, b\nOUTPUT out\nVAR a, b, out\nIN\nout=") + binop_spelling + " a b";
   Lexer lexer(input.c_str());
   Parser parser(ctx, lexer);

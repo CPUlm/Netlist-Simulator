@@ -80,3 +80,7 @@ void LineMap::prefill(std::string_view buffer) {
     }
   }
 }
+
+void LineMap::clear() {
+  m_positions.clear();
+}
