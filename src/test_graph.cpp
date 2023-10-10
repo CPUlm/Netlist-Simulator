@@ -91,4 +91,17 @@ int main(int argc, const char *argv[]) {
 	test(cycleDetected);
 
 
+	Graph<int> U = mk_graph<int>();
+	add_node(U,0);
+	add_node(U,1);
+	add_node(U,2);
+	add_edge(U,0,1);
+	add_edge(U,1,1);
+	add_edge(U,2,1);
+	cycleDetected = false;
+	try	{topological(K);}	catch (const char* e) {if (e == "HasCycle") cycleDetected = true;}
+	test(cycleDetected);
+
+
+
 }

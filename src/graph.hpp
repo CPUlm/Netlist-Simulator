@@ -96,7 +96,7 @@ template <class T> bool has_cycle(Graph<T> &graph) {
 // tests)
 template <class T> void dfsPostfix(Node<T> &node,std::vector<T> &postfix)	{
 	if (node.mark == Visited)	return;
-	if (node.mark == InProgress)	throw "HasCycle";;
+	if (node.mark == InProgress)	throw HasCycle();
 	
 	// NotVisited :
 	node.mark = InProgress;
