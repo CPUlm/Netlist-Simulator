@@ -3,8 +3,9 @@
 #include "parser.hpp"
 
 TEST(ParserTest, basic_program) {
+  ReportManager ctx;
   Lexer lexer("INPUT a\nOUTPUT b\nVAR a, b\nIN\nb=NOT a");
-  Parser parser(lexer);
+  Parser parser(ctx, lexer);
   Program program = parser.parse_program();
 
   EXPECT_EQ(program.get_input_names(), std::vector({std::string_view("a")}));
@@ -31,8 +32,9 @@ TEST(ParserTest, basic_program) {
 }
 
 TEST(ParserTest, multiple_inputs) {
+  ReportManager ctx;
   Lexer lexer("INPUT a, b, c\nOUTPUT z\nVAR a, b, c, z\nIN\nz=NOT a");
-  Parser parser(lexer);
+  Parser parser(ctx, lexer);
   Program program = parser.parse_program();
 
   EXPECT_EQ(program.get_input_names(),
@@ -41,8 +43,9 @@ TEST(ParserTest, multiple_inputs) {
 }
 
 TEST(ParserTest, multiple_outputs) {
+  ReportManager ctx;
   Lexer lexer("INPUT a\nOUTPUT b, c, d\nVAR a, b, c, d\nIN\nb=NOT a");
-  Parser parser(lexer);
+  Parser parser(ctx, lexer);
   Program program = parser.parse_program();
 
   EXPECT_EQ(program.get_output_names(),
@@ -51,8 +54,9 @@ TEST(ParserTest, multiple_outputs) {
 }
 
 TEST(ParserTest, not_expr) {
+  ReportManager ctx;
   Lexer lexer("INPUT a\nOUTPUT out\nVAR a, out\nIN\nout=NOT a");
-  Parser parser(lexer);
+  Parser parser(ctx, lexer);
   Program program = parser.parse_program();
 
   const auto &values = program.get_values();
@@ -70,9 +74,10 @@ TEST(ParserTest, not_expr) {
 }
 
 void binary_expr_test(BinaryOp binop, const char *binop_spelling) {
+  ReportManager ctx;
   const auto input = std::string("INPUT a, b\nOUTPUT out\nVAR a, b, out\nIN\nout=") + binop_spelling + " a b";
   Lexer lexer(input.c_str());
-  Parser parser(lexer);
+  Parser parser(ctx, lexer);
   Program program = parser.parse_program();
 
   const auto &values = program.get_values();

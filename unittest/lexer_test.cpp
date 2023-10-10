@@ -9,22 +9,22 @@ TEST(LexerTest, punctuation) {
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::EQUAL);
   EXPECT_EQ(token.spelling, "=");
-  EXPECT_EQ(token.position, 0);
+  EXPECT_EQ(token.position.offset, 0);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::COMMA);
   EXPECT_EQ(token.spelling, ",");
-  EXPECT_EQ(token.position, 2);
+  EXPECT_EQ(token.position.offset, 2);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::COLON);
   EXPECT_EQ(token.spelling, ":");
-  EXPECT_EQ(token.position, 4);
+  EXPECT_EQ(token.position.offset, 4);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::EOI);
   EXPECT_EQ(token.spelling, "");
-  EXPECT_EQ(token.position, 5);
+  EXPECT_EQ(token.position.offset, 5);
 }
 
 TEST(LexerTest, identifiers) {
@@ -34,22 +34,22 @@ TEST(LexerTest, identifiers) {
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::IDENTIFIER);
   EXPECT_EQ(token.spelling, "a");
-  EXPECT_EQ(token.position, 0);
+  EXPECT_EQ(token.position.offset, 0);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::IDENTIFIER);
   EXPECT_EQ(token.spelling, "c_out");
-  EXPECT_EQ(token.position, 2);
+  EXPECT_EQ(token.position.offset, 2);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::IDENTIFIER);
   EXPECT_EQ(token.spelling, "_l_2");
-  EXPECT_EQ(token.position, 8);
+  EXPECT_EQ(token.position.offset, 8);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::EOI);
   EXPECT_EQ(token.spelling, "");
-  EXPECT_EQ(token.position, 12);
+  EXPECT_EQ(token.position.offset, 12);
 }
 
 TEST(LexerTest, keywords) {
@@ -59,17 +59,17 @@ TEST(LexerTest, keywords) {
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::KEY_OUTPUT);
   EXPECT_EQ(token.spelling, "OUTPUT");
-  EXPECT_EQ(token.position, 0);
+  EXPECT_EQ(token.position.offset, 0);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::KEY_VAR);
   EXPECT_EQ(token.spelling, "VAR");
-  EXPECT_EQ(token.position, 7);
+  EXPECT_EQ(token.position.offset, 7);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::EOI);
   EXPECT_EQ(token.spelling, "");
-  EXPECT_EQ(token.position, 10);
+  EXPECT_EQ(token.position.offset, 10);
 }
 
 TEST(LexerTest, integers) {
@@ -79,17 +79,17 @@ TEST(LexerTest, integers) {
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::INTEGER);
   EXPECT_EQ(token.spelling, "0");
-  EXPECT_EQ(token.position, 0);
+  EXPECT_EQ(token.position.offset, 0);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::INTEGER);
   EXPECT_EQ(token.spelling, "42");
-  EXPECT_EQ(token.position, 2);
+  EXPECT_EQ(token.position.offset, 2);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::EOI);
   EXPECT_EQ(token.spelling, "");
-  EXPECT_EQ(token.position, 4);
+  EXPECT_EQ(token.position.offset, 4);
 }
 
 TEST(LexerTest, comments) {
@@ -99,10 +99,10 @@ TEST(LexerTest, comments) {
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::EQUAL);
   EXPECT_EQ(token.spelling, "=");
-  EXPECT_EQ(token.position, 4);
+  EXPECT_EQ(token.position.offset, 4);
 
   lexer.tokenize(token);
   EXPECT_EQ(token.kind, TokenKind::EOI);
   EXPECT_EQ(token.spelling, "");
-  EXPECT_EQ(token.position, 11);
+  EXPECT_EQ(token.position.offset, 11);
 }
