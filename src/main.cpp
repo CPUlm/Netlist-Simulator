@@ -122,9 +122,12 @@ std::optional<std::string> read_file(std::string_view path) {
   return content;
 }
 
-void compile_file(const std::string &file_content) {
-  Lexer lexer(file_content.c_str());
-  Parser parser(lexer);
+void compile_file(std::string_view file_name, std::string_view file_content) {
+  ReportManager ctx;
+  ctx.register_file_info(file_name, file_content);
+
+  Lexer lexer(file_content.data());
+  Parser parser(ctx, lexer);
   Program program = parser.parse_program();
   ProgramPrinter printer;
   printer.print_program(program);
@@ -144,7 +147,7 @@ int main(int argc, const char *argv[]) {
       continue;
     }
 
-    compile_file(*file_content);
+    compile_file(input_file, *file_content);
   }
 
   return EXIT_SUCCESS;
