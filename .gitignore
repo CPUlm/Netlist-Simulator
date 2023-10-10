@@ -73,3 +73,10 @@ _deps
 
 .history
 .ionide
+
+
+
+### vim ###
+**/*~
+**/*.swp
+**/*.swo

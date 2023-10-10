@@ -25,12 +25,17 @@ add_library(netlistlib
 add_executable(netlist
         src/main.cpp
 )
-
 add_executable(test_graph
 		  src/test_graph.cpp
 )
+add_executable(scheduler
+		  src/scheduler.cpp
+)
+
 target_link_libraries(netlist PUBLIC netlistlib)
 target_include_directories(netlistlib PUBLIC src/)
+
+target_link_libraries(scheduler PUBLIC netlistlib)
 
 # gperf (GNU perfect hash function generator)
 # It is only required if the keywords.def file is modified.
@@ -45,5 +50,5 @@ if (GPERF_PROGRAM)
   )
 endif ()
 
-#enable_testing()
-#add_subdirectory(unittest)
+enable_testing()
+add_subdirectory(unittest)
