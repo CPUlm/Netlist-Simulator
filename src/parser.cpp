@@ -15,8 +15,8 @@
   return value;
 }
 
-Parser::Parser(DiagnosticContext &diagnostic_ctx, Lexer &lexer)
-    : m_diagnostic_ctx(diagnostic_ctx), m_lexer(lexer) {
+Parser::Parser(ReportManager &report_manager, Lexer &lexer)
+    : m_report_manager(report_manager), m_lexer(lexer) {
   // Gets the first token
   m_lexer.tokenize(m_token);
 }
@@ -86,9 +86,11 @@ Parser::parse_variable_list(bool accept_size_specifiers) {
         variable_info.size_in_bits = parse_integer_literal(m_token.spelling);
         consume(); // eat the integer literal
       } else {
-        m_diagnostic_ctx.error_at(
-            m_token.position,
-            "missing size in bits of the variable after the `:'");
+        m_report_manager.report(ReportSeverity::ERROR)
+            .with_location(m_token.position)
+            .with_message("missing size in bits of the variable after the `:'")
+            .finish()
+            .print();
       }
     }
 
@@ -131,10 +133,12 @@ void Parser::create_named_values(
     // TODO: is really an error to be both input and output?
     if (is_input && is_output) {
       // TODO: give source location to the error message
-      m_diagnostic_ctx.error_at(INVALID_LOCATION,
-                                fmt::format("the variable `{}' is declared as "
-                                            "input and output at the same time",
-                                            variable));
+      m_report_manager.report(ReportSeverity::ERROR)
+          .with_message("the variable `{}' is declared as "
+                        "input and output at the same time",
+                        variable)
+          .finish()
+          .print();
     }
 
     const auto it = m_named_values.find(variable);
@@ -144,10 +148,12 @@ void Parser::create_named_values(
     }
 
     // TODO: give source location to the error message
-    m_diagnostic_ctx.error_at(INVALID_LOCATION,
-                              fmt::format("the variable `{}' is declared more "
-                                          "than once in the `VAR' statement",
-                                          variable));
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_message("the variable `{}' is declared more "
+                      "than once in the `VAR' statement",
+                      variable)
+        .finish()
+        .print();
   }
 
   // Check if all inputs were declared in the `VAR` statement
@@ -197,11 +203,15 @@ Equation *Parser::parse_equation() {
   } else {
     Value *value = it->second;
     if (!value->is_input()) {
-      equation = dynamic_cast<Equation *>(value);
+      equation = static_cast<Equation *>(value);
     } else {
-      m_diagnostic_ctx.error_at(
-          name_location,
-          fmt::format("cannot assign an equation to an input variable", name));
+
+      m_report_manager.report(ReportSeverity::ERROR)
+          .with_location(name_location)
+          .with_message(
+              "cannot assign an equation to an input variable", name)
+          .finish()
+          .print();
     }
   }
 
@@ -229,9 +239,12 @@ Value *Parser::parse_argument() {
   case TokenKind::INTEGER:
     return parse_constant();
   default:
-    m_diagnostic_ctx.error_at(
-        m_token.position,
-        "unexpected token, expected either an identifier or a constant");
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message(
+            "unexpected token, expected either an identifier or a constant")
+        .finish()
+        .print();
     return nullptr;
   }
 }
@@ -271,9 +284,11 @@ Expression *Parser::parse_expression() {
   case TokenKind::KEY_XOR:
     return parse_binary_expression();
   default:
-    m_diagnostic_ctx.error_at(
-        m_token.position,
-        "invalid expression, expected an operator or a constant");
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("invalid expression, expected an operator or a constant")
+        .finish()
+        .print();
     return nullptr;
   }
 }
@@ -326,9 +341,11 @@ bool Parser::expect(TokenKind token_kind) const {
 void Parser::emit_unknown_variable_error(SourceLocation location,
                                          std::string_view variable_name) {
 
-  m_diagnostic_ctx.error_at(
-      location,
-      fmt::format(
+  m_report_manager.report(ReportSeverity::ERROR)
+      .with_location(location)
+      .with_message(
           "the variable `{}' is used but not declared in the `VAR' statement",
-          variable_name));
+          variable_name)
+      .finish()
+      .print();
 }

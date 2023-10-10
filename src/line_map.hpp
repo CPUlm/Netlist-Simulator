@@ -37,6 +37,9 @@ public:
   /// The LF, CR and CR-LF line endings are recognized.
   void prefill(std::string_view buffer);
 
+  /// Clears the line map.
+  void clear();
+
 private:
   /// Does a binary search on the positions.
   [[nodiscard]] uint32_t search_rightmost(uint32_t position) const;

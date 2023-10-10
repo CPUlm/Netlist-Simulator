@@ -19,10 +19,10 @@ add_library(netlistlib
         src/program.cpp
         src/program_printer.hpp
         src/program_printer.cpp
-        src/diagnostic_context.hpp
-        src/diagnostic_context.cpp
         src/line_map.hpp
         src/line_map.cpp
+        src/report.hpp
+        src/report.cpp
 )
 
 target_include_directories(netlistlib PUBLIC fmt/include/)

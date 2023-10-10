@@ -3,14 +3,14 @@
 
 #include "lexer.hpp"
 #include "program.hpp"
-#include "diagnostic_context.hpp"
+#include "report.hpp"
 
 #include <unordered_map>
 #include <unordered_set>
 
 class Parser {
 public:
-  explicit Parser(DiagnosticContext& diagnostic_ctx, Lexer &lexer);
+  explicit Parser(ReportManager& report_manager, Lexer &lexer);
 
   [[nodiscard]] Program parse_program();
 
@@ -46,7 +46,7 @@ private:
   void emit_unknown_variable_error(SourceLocation location, std::string_view variable_name);
 
 private:
-  DiagnosticContext& m_diagnostic_ctx;
+  ReportManager& m_report_manager;
   Lexer &m_lexer;
   Token m_token;
   // Mapping between the name and the values. Named values include

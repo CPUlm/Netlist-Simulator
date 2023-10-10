@@ -123,8 +123,8 @@ std::optional<std::string> read_file(std::string_view path) {
 }
 
 void compile_file(std::string_view file_name, std::string_view file_content) {
-  DiagnosticContext ctx;
-  ctx.set_file_info(file_name, file_content);
+  ReportManager ctx;
+  ctx.register_file_info(file_name, file_content);
 
   Lexer lexer(file_content.data());
   Parser parser(ctx, lexer);
