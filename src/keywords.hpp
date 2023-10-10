@@ -1,5 +1,5 @@
 /* C++ code produced by gperf version 3.1 */
-/* Command-line: /usr/bin/gperf -t --output-file=src/keywords.hpp src/keywords.def  */
+/* Command-line: 'C:\\dev\\vcpkg\\installed\\x64-windows\\tools\\gperf\\gperf.exe' -t --output-file=src/keywords.hpp src/keywords.def  */
 /* Computed positions: -k'1-2' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \

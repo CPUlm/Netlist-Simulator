@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-#include "fmt/format.h"
+#include <fmt/format.h>
 
 enum class ReportColor {
   NONE,
@@ -74,10 +74,9 @@ public:
   ///
   /// The message is formatted using std::format() and therefore the syntax and
   /// arguments supported by std::format() are also by this function.
-  template<typename... Args>
-  ReportBuilder &with_message(std::string_view message, Args &&...args) {
-    m_report.message = fmt::vformat(
-        message, fmt::make_format_args(std::forward<Args>(args)...));
+  template <typename... T>
+  ReportBuilder &with_message(fmt::format_string<T...> format, T &&...args) {
+    m_report.message = fmt::vformat(format, fmt::make_format_args(args...));
     return *this;
   }
 
@@ -102,10 +101,9 @@ public:
   ///   1 │ foi
   ///     ╰─ note: did you mean 'foo'
   /// ```
-  template<typename... Args>
-  ReportBuilder &with_note(std::string_view message, Args &&...args) {
-    m_report.note = fmt::vformat(
-        message, fmt::make_format_args(std::forward<Args>(args)...));
+  template <typename... T>
+  ReportBuilder &with_note(fmt::format_string<T...> format, T &&...args) {
+    m_report.note = fmt::vformat(format, fmt::make_format_args(args...));
     return *this;
   }
 
@@ -174,12 +172,11 @@ public:
   ///     ·   ╰─ did you mean 'foo'
   ///     ╰─
   /// ```
-  template<typename... Args>
-  ReportBuilder &with_span(SourceRange span, std::string_view label,
-                           Args &&...args) {
+  template <typename... T>
+  ReportBuilder &with_span(SourceRange span, fmt::format_string<T...> format,
+                           T &&...args) {
     LabelledSpan labelled_span;
-    labelled_span.label =
-        fmt::vformat(label, fmt::make_format_args(std::forward<Args>(args)...));
+    labelled_span.label = fmt::vformat(format, fmt::make_format_args(args...));
     labelled_span.span = span;
     labelled_span.color = m_color_generator.next_color();
     m_report.spans.push_back(labelled_span);
