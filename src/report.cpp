@@ -268,8 +268,8 @@ private:
                      Args &&...args) {
     if (m_use_colors)
       m_out << "\x1b[" << ansi_color << "m";
-    m_out << std::vformat(message,
-                          std::make_format_args(std::forward<Args>(args)...));
+    m_out << fmt::vformat(message,
+                          fmt::make_format_args(std::forward<Args>(args)...));
     if (m_use_colors)
       m_out << "\x1b[0m";
   }
@@ -305,7 +305,7 @@ private:
   bool m_use_colors = false;
 };
 
-void Report::print(std::ostream &out) {
+void Report::print(std::ostream &out) const {
   ReportConsolePrinter printer(out);
   printer.print(*this);
 }

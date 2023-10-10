@@ -5,11 +5,12 @@
 #include "token.hpp"
 
 #include <cstdint>
-#include <format>
 #include <iostream>
 #include <optional>
 #include <string_view>
 #include <vector>
+
+#include "fmt/format.h"
 
 enum class ReportColor {
   NONE,
@@ -35,7 +36,7 @@ private:
 
 struct LabelledSpan {
   std::string label;
-  SourceRange span;
+  SourceRange span = {};
   ReportColor color = ReportColor::NONE;
 };
 
@@ -54,7 +55,7 @@ struct Report {
 
   explicit Report(ReportManager &manager) : manager(manager) {}
 
-  void print(std::ostream &out = std::cerr);
+  void print(std::ostream &out = std::cerr) const;
 };
 
 class ReportBuilder {
@@ -73,10 +74,10 @@ public:
   ///
   /// The message is formatted using std::format() and therefore the syntax and
   /// arguments supported by std::format() are also by this function.
-  template <typename... Args>
+  template<typename... Args>
   ReportBuilder &with_message(std::string_view message, Args &&...args) {
-    m_report.message = std::vformat(
-        message, std::make_format_args(std::forward<Args>(args)...));
+    m_report.message = fmt::vformat(
+        message, fmt::make_format_args(std::forward<Args>(args)...));
     return *this;
   }
 
@@ -101,10 +102,10 @@ public:
   ///   1 │ foi
   ///     ╰─ note: did you mean 'foo'
   /// ```
-  template <typename... Args>
+  template<typename... Args>
   ReportBuilder &with_note(std::string_view message, Args &&...args) {
-    m_report.note = std::vformat(
-        message, std::make_format_args(std::forward<Args>(args)...));
+    m_report.note = fmt::vformat(
+        message, fmt::make_format_args(std::forward<Args>(args)...));
     return *this;
   }
 
@@ -173,12 +174,12 @@ public:
   ///     ·   ╰─ did you mean 'foo'
   ///     ╰─
   /// ```
-  template <typename... Args>
+  template<typename... Args>
   ReportBuilder &with_span(SourceRange span, std::string_view label,
                            Args &&...args) {
     LabelledSpan labelled_span;
     labelled_span.label =
-        std::vformat(label, std::make_format_args(std::forward<Args>(args)...));
+        fmt::vformat(label, fmt::make_format_args(std::forward<Args>(args)...));
     labelled_span.span = span;
     labelled_span.color = m_color_generator.next_color();
     m_report.spans.push_back(labelled_span);
