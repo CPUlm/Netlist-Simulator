@@ -1,72 +1,37 @@
 #ifndef NETLIST_REPORT_HPP
 #define NETLIST_REPORT_HPP
 
-#include "line_map.hpp"
 #include "token.hpp"
 
-#include <cstdint>
 #include <iostream>
 #include <optional>
 #include <string_view>
-#include <vector>
 
 #include <fmt/format.h>
 
-enum class ReportColor {
-  NONE,
-  RED,
-  GREEN,
-  YELLOW,
-  BLUE,
-  MAGENTA,
-  CYAN,
-};
-
-/// Utility class to generate different colors for the spans of a report.
-class ReportColorGenerator {
-public:
-  /// Returns the next unused color. Once all colors were used at least once,
-  /// the generator loop on itself and previous used colors may be returned
-  /// again.
-  ReportColor next_color();
-
-private:
-  uint32_t m_current_idx = 0;
-};
-
-struct LabelledSpan {
-  std::string label;
-  SourceRange span = {};
-  ReportColor color = ReportColor::NONE;
-};
+class ReportContext;
 
 enum class ReportSeverity { WARNING, ERROR };
 
-class ReportManager;
-
 struct Report {
-  ReportManager &manager;
-  ReportSeverity severity = ReportSeverity::ERROR;
-  std::optional<SourceLocation> location;
+  ReportContext &context;
+  ReportSeverity severity;
+  std::optional<SourcePosition> position;
   std::optional<std::uint32_t> code;
   std::string message;
   std::string note;
-  std::vector<LabelledSpan> spans;
 
-  explicit Report(ReportManager &manager) : manager(manager) {}
+  explicit Report(ReportSeverity severity, ReportContext &context) noexcept: context(context), severity(severity) {}
 
   void print(std::ostream &out = std::cerr) const;
 };
 
 class ReportBuilder {
 public:
-  explicit ReportBuilder(ReportSeverity severity, ReportManager &m_manager)
-      : m_report(m_manager) {
-    m_report.severity = severity;
-  }
+  explicit ReportBuilder(ReportSeverity severity, ReportContext &context) : m_report(severity, context) {}
 
-  ReportBuilder &with_location(SourceLocation location) {
-    m_report.location = location;
+  ReportBuilder &with_location(SourcePosition position) {
+    m_report.position = position;
     return *this;
   }
 
@@ -74,7 +39,7 @@ public:
   ///
   /// The message is formatted using std::format() and therefore the syntax and
   /// arguments supported by std::format() are also by this function.
-  template <typename... T>
+  template<typename... T>
   ReportBuilder &with_message(fmt::format_string<T...> format, T &&...args) {
     m_report.message = fmt::vformat(format, fmt::make_format_args(args...));
     return *this;
@@ -85,101 +50,15 @@ public:
   ///
   /// The message is formatted using std::format() and therefore the syntax and
   /// arguments supported by std::format() are also by this function.
-  ///
-  /// Before:
-  /// ```
-  /// error: the variable 'foi' is unknown
-  ///     ╭─[file:1:1]
-  ///   1 │ foi
-  ///     ╰─
-  /// ```
-  ///
-  /// After `with_note("did you mean '{}'", "foo")`:
-  /// ```
-  /// error: the variable 'foi' is unknown
-  ///     ╭─[file:1:1]
-  ///   1 │ foi
-  ///     ╰─ note: did you mean 'foo'
-  /// ```
-  template <typename... T>
+  template<typename... T>
   ReportBuilder &with_note(fmt::format_string<T...> format, T &&...args) {
     m_report.note = fmt::vformat(format, fmt::make_format_args(args...));
     return *this;
   }
 
   /// Sets a code for the error or the warning.
-  ///
-  /// Before:
-  /// ```
-  /// error: the variable 'foi' is unknown
-  /// ```
-  ///
-  /// After `with_code(42)`:
-  /// ```
-  /// error[E0042]: the variable 'foi' is unknown
-  /// ```
   ReportBuilder &with_code(uint32_t code) {
     m_report.code = code;
-    return *this;
-  }
-
-  /// Adds a unlabelled span for the report.
-  ///
-  /// Before:
-  /// ```
-  /// error: the variable 'foi' is unknown
-  ///     ╭─[file:1:1]
-  ///   1 │ foi
-  ///     ╰─
-  /// ```
-  ///
-  /// After `with_span(/* span of the identifier 'foi' */)`:
-  /// ```
-  /// error: the variable 'foi' is unknown
-  ///     ╭─[file:1:1]
-  ///   1 │ foi
-  ///     · ───
-  ///     ╰─
-  /// ```
-  ReportBuilder &with_span(SourceRange span) {
-    LabelledSpan labelled_span;
-    labelled_span.span = span;
-    labelled_span.color = m_color_generator.next_color();
-    m_report.spans.push_back(labelled_span);
-    return *this;
-  }
-
-  /// Adds a labelled span for the report.
-  ///
-  /// The label is formatted using std::format() and therefore the syntax and
-  /// arguments supported by std::format() are also by this function.
-  ///
-  /// Before:
-  /// ```
-  /// error: the variable 'foi' is unknown
-  ///     ╭─[file:1:1]
-  ///   1 │ foi
-  ///     ╰─
-  /// ```
-  ///
-  /// After `with_span(/* span of the identifier 'foi' */, "did you mean '{}'",
-  /// "foo")`:
-  /// ```
-  /// error: the variable 'foi' is unknown
-  ///     ╭─[file:1:1]
-  ///   1 │ foi
-  ///     · ──┬
-  ///     ·   ╰─ did you mean 'foo'
-  ///     ╰─
-  /// ```
-  template <typename... T>
-  ReportBuilder &with_span(SourceRange span, fmt::format_string<T...> format,
-                           T &&...args) {
-    LabelledSpan labelled_span;
-    labelled_span.label = fmt::vformat(format, fmt::make_format_args(args...));
-    labelled_span.span = span;
-    labelled_span.color = m_color_generator.next_color();
-    m_report.spans.push_back(labelled_span);
     return *this;
   }
 
@@ -189,41 +68,27 @@ public:
   Report finish() { return m_report; }
 
 private:
-  ReportColorGenerator m_color_generator;
   Report m_report;
 };
 
-class ReportManager {
+class ReportContext {
 public:
-  void register_file_info(std::string_view file_name,
-                          std::string_view file_content) {
-    m_file_name = file_name;
-    m_file_content = file_content;
-    m_line_map.clear();
-    m_line_map_filled = false;
-  }
+  explicit ReportContext(std::string_view filename, bool colored_output) noexcept
+      : m_file_name(filename), m_colored_output(colored_output) {}
 
   ReportBuilder report(ReportSeverity severity) {
     return ReportBuilder(severity, *this);
   }
 
-  /// Gets the text of the requested line (1-numbered) for the current source
-  /// file.
-  [[nodiscard]] std::string_view get_line_at(uint32_t line_number);
-  /// Maps the given source location into a line number and a column number.
-  void resolve_source_location(SourceLocation location, uint32_t &line_number,
-                               uint32_t &column_number);
   [[nodiscard]] std::string_view get_file_name() const { return m_file_name; }
 
-private:
-  /// Fills the line map if it is not already.
-  void fill_line_map_if_needed();
+  [[nodiscard]] bool colored_output() const {
+    return m_colored_output;
+  }
 
 private:
   std::string_view m_file_name;
-  std::string_view m_file_content;
-  LineMap m_line_map;
-  bool m_line_map_filled;
+  bool m_colored_output;
 };
 
 #endif // NETLIST_REPORT_HPP

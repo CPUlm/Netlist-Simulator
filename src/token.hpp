@@ -3,25 +3,6 @@
 
 #include <string_view>
 
-struct SourceLocation {
-  uint32_t offset;
-
-  [[nodiscard]] bool is_invalid() const {
-    return offset == UINT32_MAX;
-  }
-
-  [[nodiscard]] static SourceLocation from_offset(uint32_t offset) {
-    return { offset };
-  }
-};
-
-struct SourceRange {
-  SourceLocation location;
-  uint32_t length;
-};
-
-static constexpr SourceLocation INVALID_LOCATION = { UINT32_MAX };
-
 enum class TokenKind {
   /// End-Of-Input, the last token returned by the lexer.
   EOI,
@@ -69,6 +50,12 @@ enum class TokenKind {
   KEY_RAM,
 };
 
+struct SourcePosition {
+  uint32_t line;
+  uint32_t begin;
+  uint32_t end;
+};
+
 /// A lexical unit of the source code such as an IDENTIFIER, a CONSTANT, a
 /// COMMA, etc.
 struct Token {
@@ -78,8 +65,8 @@ struct Token {
   /// remains valid until the end of life of the input buffer given to the
   /// lexer.
   std::string_view spelling;
-  /// The byte index into the input buffer of this token.
-  SourceLocation position;
+  /// The position of the token in the buffer.
+  SourcePosition position;
 };
 
 #endif // NETLIST_TOKEN_HPP

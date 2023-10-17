@@ -423,25 +423,12 @@ private:
   const arg_ptr m_arg;
 };
 
-// Very simple hash function over the variable.
-template<>
-struct std::hash<Variable> {
-  std::size_t operator()(const Variable &k) const {
-    return std::hash<ident_t>()(k.get_name());
-  }
-};
+using Equation = std::pair<Variable, std::unique_ptr<Expression>>;
 
-class Program {
-public:
-  [[nodiscard]] const std::vector<Variable> &get_input() const noexcept { return m_input; }
-  [[nodiscard]] const std::vector<Variable> &get_output() const noexcept { return m_output; }
-  [[nodiscard]] const std::unordered_map<Variable, Expression> &get_equations() const noexcept { return m_eq; }
-
-private:
-  friend Parser;
-  std::vector<Variable> m_input;
-  std::vector<Variable> m_output;
-  std::unordered_map<Variable, Expression> m_eq;
+struct Program {
+  const std::vector<Variable> input;
+  const std::vector<std::reference_wrapper<Variable>> output;
+  const std::vector<Equation> equations;
 };
 
 //template<typename Derived> class Visitor {

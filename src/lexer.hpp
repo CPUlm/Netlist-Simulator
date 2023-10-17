@@ -3,6 +3,28 @@
 
 #include "token.hpp"
 
+class DataBuffer {
+public:
+  explicit DataBuffer(const char *beginning) noexcept: line(0), col(0), current(beginning) {}
+
+  void next_char();
+
+  [[nodiscard]] char current_char() const { return *current; }
+
+  [[nodiscard]] const char *current_pos() const { return current; }
+
+  [[nodiscard]] uint32_t current_line() const { return line; }
+
+  [[nodiscard]] uint32_t current_column() const { return col; }
+
+  [[nodiscard]] bool is_eof() const { return *current == '\0'; }
+
+private:
+  uint32_t line;
+  uint32_t col;
+  const char *current;
+};
+
 /// The (super-simple) lexical analyser for the netlist language.
 ///
 /// This class converts a sequence of bytes (representing the source code in
@@ -31,8 +53,7 @@ private:
   void tokenize_integer(Token &token);
 
 private:
-  const char *m_input = nullptr;
-  const char *m_cursor = nullptr;
+  DataBuffer buf;
 };
 
 #endif // NETLIST_LEXER_HPP
