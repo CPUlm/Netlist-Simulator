@@ -32,13 +32,11 @@ public:
     print_colored(report.context, m_colors.locus, report.context.get_file_name());
 
     if (report.position.has_value()) {
-      print_colored(report.context, m_colors.locus, ":{}", report.position->line);
-      print_colored(report.context, m_colors.text, ", from characters ");
-      print_colored(report.context, m_colors.locus, "{}:{}", report.position->begin, report.position->end);
+      print_colored(report.context, m_colors.locus, ":{}:{}", report.position->line, report.position->begin);
     }
 
     print_colored(report.context, m_colors.text, ":\n");
-    
+
     print_message(report.context, report.severity, report.code, report.message);
 
     if (!report.note.empty()) {
@@ -103,4 +101,14 @@ private:
 void Report::print(std::ostream &out) const {
   ReportConsolePrinter printer(out);
   printer.print(*this);
+}
+
+[[noreturn]] void Report::exit(std::ostream &out) const {
+  print(out);
+
+  if (code.has_value()) {
+    ::exit(code.value());
+  } else {
+    ::exit(1);
+  }
 }

@@ -1,58 +1,70 @@
 #ifndef NETLIST_PARSER_HPP
 #define NETLIST_PARSER_HPP
 
-#include "lexer.hpp"
-#include "program.hpp"
-#include "report.hpp"
+#include <memory>
+#include <set>
+#include <charconv>
 
-#include <unordered_map>
-#include <unordered_set>
+#include "program.hpp"
+#include "lexer.hpp"
+#include "report.hpp"
 
 class Parser {
 public:
-  explicit Parser(ReportManager& report_manager, Lexer &lexer);
+  explicit Parser(ReportContext &context, Lexer &lexer);
 
-  [[nodiscard]] Program parse_program();
+  [[nodiscard]] std::unique_ptr<Program> parse_program();
 
 private:
   /// Consumes the current token and gets the next one.
   void consume();
-  bool expect(TokenKind token_kind) const;
 
-  struct VariableInfo {
-    std::string_view spelling;
-    SourceLocation source_location = INVALID_LOCATION;
-    size_t size_in_bits = 1;
-  };
+  /// Check that the current token is in token_set.
+  /// If not, print an error.
+  void assert(const std::set<TokenKind> &token_set) const noexcept;
 
-  [[nodiscard]] std::vector<std::string_view> parse_inputs();
-  [[nodiscard]] std::vector<std::string_view> parse_outputs();
-  [[nodiscard]] std::vector<std::string_view> parse_variables();
-  [[nodiscard]] std::vector<std::string_view> parse_variable_list(bool accept_size_specifiers = false);
-
-  void create_named_values(const std::vector<std::string_view> &inputs,
-                           const std::vector<std::string_view> &outputs,
-                           const std::vector<std::string_view> &variables);
-
-  void parse_equations();
-  Equation *parse_equation();
-  [[nodiscard]] Value *parse_argument();
-  [[nodiscard]] Value *parse_variable();
-  [[nodiscard]] Constant *parse_constant();
-  [[nodiscard]] Expression *parse_expression();
-  [[nodiscard]] NotExpression *parse_not_expression();
-  [[nodiscard]] BinaryExpression *parse_binary_expression();
-
-  void emit_unknown_variable_error(SourceLocation location, std::string_view variable_name);
+  /// Check that the current token is token.
+  /// If not, print an error.
+  void assert(TokenKind token) const noexcept;
 
 private:
-  ReportManager& m_report_manager;
+  ReportContext &m_context;
   Lexer &m_lexer;
   Token m_token;
-  // Mapping between the name and the values. Named values include
-  // inputs and equations (which may also be outputs).
-  std::unordered_map<std::string_view, Value *> m_named_values;
-  Program m_program;
+
+  struct VariableDeclaration {
+    std::string_view spelling;
+    SourcePosition position;
+    bus_size_t size;
+  };
+
+  struct VariableReference {
+    std::string_view spelling;
+    SourcePosition position;
+  };
+
+  template<class T>
+  [[nodiscard]] T parse_integer() noexcept {
+    assert(TokenKind::INTEGER);
+    T v;
+
+    auto res = std::from_chars(m_token.spelling.begin(), m_token.spelling.end(), v);
+    if (res.ec != std::errc()) {
+      m_context.report(ReportSeverity::ERROR)
+          .with_location(m_token.position)
+          .with_message("Integer '{}' is too big to fit in a {}. Max value authorised : '{}'",
+                        m_token.spelling, typeid(T).name(), std::numeric_limits<T>::max())
+          .build()
+          .exit();
+    }
+
+    consume(); // eat the integer
+    return v;
+  }
+
+  std::vector<VariableReference> parse_inputs() noexcept;
+  std::vector<VariableReference> parse_outputs() noexcept;
+  std::vector<Parser::VariableDeclaration> parse_var_decl() noexcept;
 };
 
 #endif // NETLIST_PARSER_HPP

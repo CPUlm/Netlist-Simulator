@@ -8,7 +8,7 @@ std::string &&str_toupper(std::string &&s) {
   return std::move(s);
 }
 
-void DataBuffer::next_char() {
+void Lexer::DataBuffer::next_char() {
   if (*m_cur == '\n') {
     // We pass a new line
     m_line++;
@@ -40,6 +40,11 @@ Lexer::Lexer(ReportContext &context, const char *input) : m_buf(input), m_contex
   return (ch >= '0' && ch <= '9');
 }
 
+/// Returns true if the given ASCII character is a non zero decimal digit.
+[[nodiscard]] static inline bool is_non_zero_digit(char ch) {
+  return (ch >= '1' && ch <= '9');
+}
+
 /// Returns true if the given ASCII character is a valid first character for
 /// an identifier.
 [[nodiscard]] static inline bool is_start_ident(char ch) {
@@ -64,27 +69,27 @@ void Lexer::tokenize(Token &token) {
     case '\0': // End-Of-Input reached !
       token.kind = TokenKind::EOI;
       token.spelling = {};
-      token.position = {m_buf.current_line(), m_buf.current_column(), 0};
+      token.position = {m_buf.current_line(), m_buf.current_column()};
       return;
 
     case '=': // Equal Token Found
       token.kind = TokenKind::EQUAL;
-      token.spelling = std::string_view(m_buf.current_pos(), /* count= */ 1);
-      token.position = {m_buf.current_line(), m_buf.current_column(), 1};
+      token.spelling = std::string_view(m_buf.current_pos(), 1);
+      token.position = {m_buf.current_line(), m_buf.current_column()};
       m_buf.next_char(); // eat the character
       return;
 
     case ',': // Comma Token Found
       token.kind = TokenKind::COMMA;
-      token.spelling = std::string_view(m_buf.current_pos(), /* count= */ 1);
-      token.position = {m_buf.current_line(), m_buf.current_column(), 1};
+      token.spelling = std::string_view(m_buf.current_pos(), 1);
+      token.position = {m_buf.current_line(), m_buf.current_column()};
       m_buf.next_char(); // eat the character
       return;
 
     case ':': // Colon Token Found
       token.kind = TokenKind::COLON;
-      token.spelling = std::string_view(m_buf.current_pos(), /* count= */ 1);
-      token.position = {m_buf.current_line(), m_buf.current_column(), 1};
+      token.spelling = std::string_view(m_buf.current_pos(), 1);
+      token.position = {m_buf.current_line(), m_buf.current_column()};
       m_buf.next_char(); // eat the character
       return;
 
@@ -96,19 +101,15 @@ void Lexer::tokenize(Token &token) {
       if (is_start_ident(m_buf.current_char())) {
         tokenize_identifier(token);
         return;
-      } else if (is_digit(m_buf.current_char())) {
+      } else if (is_non_zero_digit(m_buf.current_char())) {
         tokenize_integer(token);
         return;
       }
       // Bad, we reached an unknown character.
       m_context.report(ReportSeverity::WARNING)
-          .with_message("Unknown character found : '{}' (code : {:#x}).",
-                        m_buf.current_char(),
-                        m_buf.current_char())
-          .with_location({m_buf.current_line(),
-                          m_buf.current_column(),
-                          1})
-          .with_note("Ignoring character.").finish().print();
+          .with_message("Unknown character found : '{}' (code : {:#x}).", m_buf.current_char(), m_buf.current_char())
+          .with_location({m_buf.current_line(), m_buf.current_column()})
+          .with_note("Ignoring character.").build().print();
     }
   }
 }
@@ -168,9 +169,8 @@ void Lexer::tokenize_identifier(Token &token) {
   }
 
   const char *end = m_buf.current_pos();
-  const uint32_t token_length = std::distance(begin, end);
 
-  token.spelling = std::string_view(begin, token_length);
+  token.spelling = std::string_view(begin, std::distance(begin, end));
   const std::string uppercase_keyword = str_toupper(std::move(std::string(token.spelling)));
 
   if (spelling2keyword.contains(uppercase_keyword)) {
@@ -179,14 +179,16 @@ void Lexer::tokenize_identifier(Token &token) {
     token.kind = TokenKind::IDENTIFIER;
   }
 
-  token.position = {m_buf.current_line(), column_begin, token_length};
+  token.position = {m_buf.current_line(), column_begin};
 }
 
 void Lexer::tokenize_integer(Token &token) {
-  assert(is_digit(m_buf.current_char()));
+  assert(is_non_zero_digit(m_buf.current_char()));
 
   const char *begin = m_buf.current_pos();
   const uint32_t column_begin = m_buf.current_column();
+
+  m_buf.next_char(); // eat the first character
 
   // This never read past the end of the input because each input buffer is
   // guaranteed to be terminated by the NUL character and is_digit() returns
@@ -196,9 +198,8 @@ void Lexer::tokenize_integer(Token &token) {
   }
 
   const char *end = m_buf.current_pos();
-  const uint32_t token_length = std::distance(begin, end);
 
   token.kind = TokenKind::INTEGER;
-  token.spelling = std::string_view(begin, token_length);
-  token.position = {m_buf.current_line(), column_begin, token_length};
+  token.spelling = std::string_view(begin, std::distance(begin, end));
+  token.position = {m_buf.current_line(), column_begin};
 }

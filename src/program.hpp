@@ -25,6 +25,8 @@ typedef int bus_size_t;
 typedef std::uint_least64_t value_t;
 typedef std::string_view ident_t;
 
+constexpr bus_size_t max_bus_size = sizeof(value_t) * 8;
+
 class Bus {
 public:
   /// Returns the size of the underlying bus.
@@ -37,7 +39,7 @@ protected:
       throw std::invalid_argument("Cannot have a negative or null bus size.");
     }
 
-    if (size > sizeof(value_t) * 8) {
+    if (size > max_bus_size) {
       throw std::invalid_argument("Bus size too large to be represented.");
     }
   }
@@ -425,10 +427,22 @@ private:
 
 using Equation = std::pair<Variable, std::unique_ptr<Expression>>;
 
-struct Program {
-  const std::vector<Variable> input;
-  const std::vector<std::reference_wrapper<Variable>> output;
-  const std::vector<Equation> equations;
+class Parser;
+
+class Program {
+public:
+  [[nodiscard]] const std::vector<Variable> &get_inputs() const noexcept { return m_input; };
+  [[nodiscard]] const std::vector<std::reference_wrapper<Variable>> &get_oupouts() const noexcept { return m_output; };
+  [[nodiscard]] const std::vector<Equation> &get_equations() const noexcept { return m_eq; };
+
+  delete_copy_ctr(Program);
+
+private:
+  friend Parser;
+  std::vector<Variable> m_input = {};
+  std::vector<std::reference_wrapper<Variable>> m_output = {};
+  std::vector<Equation> m_eq = {};
+  Program() = default;
 };
 
 //template<typename Derived> class Visitor {
@@ -439,7 +453,7 @@ struct Program {
 //    assert(value != nullptr);
 //
 //    switch (value->get_kind()) {
-//    case Value::Kind::CONSTANT:return DISPATCH(visit_constant(static_cast<Constant *>(value)));
+//    case Value::Kind::INTEGER:return DISPATCH(visit_constant(static_cast<Constant *>(value)));
 //    case Value::Kind::INPUT:return DISPATCH(visit_input(static_cast<Input *>(value)));
 //    case Value::Kind::EQUATION:return DISPATCH(visit_equation(static_cast<Equation *>(value)));
 //    }

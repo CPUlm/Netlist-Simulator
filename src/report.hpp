@@ -17,13 +17,14 @@ struct Report {
   ReportContext &context;
   ReportSeverity severity;
   std::optional<SourcePosition> position;
-  std::optional<std::uint32_t> code;
+  std::optional<int> code;
   std::string message;
   std::string note;
 
   explicit Report(ReportSeverity severity, ReportContext &context) noexcept: context(context), severity(severity) {}
 
   void print(std::ostream &out = std::cerr) const;
+  [[noreturn]] void exit(std::ostream &out = std::cerr) const;
 };
 
 class ReportBuilder {
@@ -57,7 +58,7 @@ public:
   }
 
   /// Sets a code for the error or the warning.
-  ReportBuilder &with_code(uint32_t code) {
+  ReportBuilder &with_code(int code) {
     m_report.code = code;
     return *this;
   }
@@ -65,7 +66,7 @@ public:
   /// Builds the report with all information previously given to the builder.
   ///
   /// The report is not yet printed, you must call Report::print() for that.
-  Report finish() { return m_report; }
+  Report build() { return m_report; }
 
 private:
   Report m_report;

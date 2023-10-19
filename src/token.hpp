@@ -54,7 +54,6 @@ enum class TokenKind {
 struct SourcePosition {
   uint32_t line;
   uint32_t begin;
-  uint32_t end;
 };
 
 /// A lexical unit of the source code such as an IDENTIFIER, a CONSTANT, a

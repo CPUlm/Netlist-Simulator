@@ -1,351 +1,159 @@
 #include "parser.hpp"
 
-#include <cassert>
-#include <algorithm>
-#include "fmt/format.h"
-#include <vector>
+const std::unordered_map<TokenKind, std::string> token_spelling = {
+    {TokenKind::EOI, "End-Of-File"},
+    {TokenKind::IDENTIFIER, "Identifier (such as '_l_10')"},
+    {TokenKind::INTEGER, "Integer (such as '42')"},
 
-[[nodiscard]] static size_t parse_integer_literal(std::string_view literal) {
-  size_t value = 0;
-  for (char ch : literal) {
-    value *= 10;
-    value += ch - '0';
-  }
+    {TokenKind::EQUAL, "="},
+    {TokenKind::COMMA, ","},
+    {TokenKind::COLON, ":"},
 
-  return value;
-}
+    {TokenKind::KEY_INPUT, "INPUT"},
+    {TokenKind::KEY_OUTPUT, "OUTPUT"},
+    {TokenKind::KEY_VAR, "VAR"},
+    {TokenKind::KEY_IN, "IN"},
 
-Parser::Parser(ReportManager &report_manager, Lexer &lexer)
-    : m_report_manager(report_manager), m_lexer(lexer) {
+    {TokenKind::KEY_NOT, "NOT"},
+    {TokenKind::KEY_AND, "AND"},
+    {TokenKind::KEY_NAND, "NAND"},
+    {TokenKind::KEY_OR, "OR"},
+    {TokenKind::KEY_XOR, "XOR"},
+
+    {TokenKind::KEY_MUX, "MUX"},
+    {TokenKind::KEY_REG, "REG"},
+    {TokenKind::KEY_CONCAT, "CONCAT"},
+    {TokenKind::KEY_SELECT, "SELECT"},
+    {TokenKind::KEY_SLICE, "SLICE"},
+    {TokenKind::KEY_ROM, "ROM"},
+    {TokenKind::KEY_RAM, "RAM"},
+};
+
+Parser::Parser(ReportContext &context, Lexer &lexer) : m_context(context), m_lexer(lexer) {
   // Gets the first token
   m_lexer.tokenize(m_token);
 }
 
-Program Parser::parse_program() {
-  auto inputs = parse_inputs();
-  auto outputs = parse_outputs();
-  auto variables = parse_variables();
+void Parser::consume() { m_lexer.tokenize(m_token); }
 
-  create_named_values(inputs, outputs, variables);
+void Parser::assert(const std::set<TokenKind> &token_set) const noexcept {
+  if (!token_set.contains(m_token.kind)) {
+    std::string tokens = token_spelling.at(*token_set.begin());
 
-  parse_equations();
-
-  return std::move(m_program);
-}
-
-std::vector<std::string_view> Parser::parse_inputs() {
-  if (!expect(TokenKind::KEY_INPUT))
-    return {};
-
-  consume(); // eat `INPUT`
-
-  return parse_variable_list();
-}
-
-std::vector<std::string_view> Parser::parse_outputs() {
-  if (!expect(TokenKind::KEY_OUTPUT))
-    return {};
-
-  consume(); // eat `OUTPUT`
-
-  return parse_variable_list();
-}
-
-std::vector<std::string_view> Parser::parse_variables() {
-  if (!expect(TokenKind::KEY_VAR))
-    return {};
-
-  consume(); // eat `VAR`
-
-  return parse_variable_list(/* accept_size_specifiers= */ true);
-}
-
-std::vector<std::string_view>
-Parser::parse_variable_list(bool accept_size_specifiers) {
-  if (m_token.kind != TokenKind::IDENTIFIER)
-    return {};
-
-  std::vector<std::string_view> variables;
-
-  do {
-    if (!expect(TokenKind::IDENTIFIER)) {
-      return variables;
-    }
-
-    VariableInfo variable_info = {};
-    variable_info.spelling = m_token.spelling;
-    variable_info.source_location = m_token.position;
-    variables.push_back(variable_info.spelling);
-    consume(); // consume the identifier
-
-    // Parse the optional size specifier for variables.
-    if (accept_size_specifiers && m_token.kind == TokenKind::COLON) {
-      consume(); // eat `:`
-
-      if (m_token.kind == TokenKind::INTEGER) {
-        variable_info.size_in_bits = parse_integer_literal(m_token.spelling);
-        consume(); // eat the integer literal
-      } else {
-        m_report_manager.report(ReportSeverity::ERROR)
-            .with_location(m_token.position)
-            .with_message("missing size in bits of the variable after the `:'")
-            .finish()
-            .print();
+    if (token_set.size() > 1) {
+      for (auto it = ++token_set.begin(); it != token_set.end(); it++) {
+        tokens.append("' or '" + token_spelling.at(*it));
       }
     }
 
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("Unexpected token. Found : '{}', expected : '{}'", m_token.spelling, tokens)
+        .build()
+        .exit();
+  }
+}
+
+void Parser::assert(TokenKind token) const noexcept {
+  if (m_token.kind != token) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("Unexpected token. Found : '{}', expected : '{}'", m_token.spelling, token_spelling.at(token))
+        .build()
+        .exit();
+  }
+}
+
+std::unique_ptr<Program> Parser::parse_program() {
+  std::unique_ptr<Program> p(new Program());
+
+  auto inputs_vars = parse_inputs();
+  auto output_vars = parse_outputs();
+  auto var_decls = parse_var_decl();
+  // m_token.kind = TokenKind::KEY_IN
+  
+  return p;
+}
+
+std::vector<Parser::VariableReference> Parser::parse_inputs() noexcept {
+  assert(TokenKind::KEY_INPUT);
+  consume(); // eat 'INPUT'
+
+  std::vector<Parser::VariableReference> var;
+
+  while (m_token.kind != TokenKind::KEY_OUTPUT) {
+    assert(TokenKind::IDENTIFIER);
+    var.emplace_back(m_token.spelling, m_token.position);
+    consume(); // eat 'IDENTIFIER'
+
+    assert({TokenKind::COMMA, TokenKind::KEY_OUTPUT});
+
     if (m_token.kind == TokenKind::COMMA) {
-      consume(); // eat `,`
-      continue;
+      consume(); // eat 'COMMA'
+    }
+  }
+
+  return var;
+}
+
+std::vector<Parser::VariableReference> Parser::parse_outputs() noexcept {
+  assert(TokenKind::KEY_OUTPUT);
+  consume(); // eat 'OUTPUT'
+
+  std::vector<Parser::VariableReference> var;
+
+  while (m_token.kind != TokenKind::KEY_VAR) {
+    assert(TokenKind::IDENTIFIER);
+    var.emplace_back(m_token.spelling, m_token.position);
+    consume(); // eat 'IDENTIFIER'
+
+    assert({TokenKind::COMMA, TokenKind::KEY_VAR});
+
+    if (m_token.kind == TokenKind::COMMA) {
+      consume(); // eat 'COMMA'
+    }
+  }
+
+  return var;
+}
+
+std::vector<Parser::VariableDeclaration> Parser::parse_var_decl() noexcept {
+  assert(TokenKind::KEY_VAR);
+  consume(); // eat 'VAR'
+
+  std::vector<Parser::VariableDeclaration> var;
+
+  while (m_token.kind != TokenKind::KEY_IN) {
+    assert(TokenKind::IDENTIFIER);
+
+    VariableDeclaration v = {};
+    v.spelling = m_token.spelling;
+    v.position = m_token.position;
+    consume(); // eat 'IDENTIFIER'
+
+    if (m_token.kind == TokenKind::COLON) {
+      consume(); // eat ':'
+      assert(TokenKind::INTEGER);
+      auto i = parse_integer<bus_size_t>();
+      if (i > max_bus_size) {
+        m_context.report(ReportSeverity::ERROR)
+            .with_location(m_token.position)
+            .with_message("Integer '{}' is too big to be a bus size. Max bus size authorised : '{}'", i, max_bus_size)
+            .build()
+            .exit();
+      }
+      v.size = i;
     } else {
-      return variables;
+      v.size = 1;
     }
-  } while (true);
-}
+    var.push_back(v);
 
-void Parser::create_named_values(
-    const std::vector<std::string_view> &inputs,
-    const std::vector<std::string_view> &outputs,
-    const std::vector<std::string_view> &variables) {
-  // Algorithm overview:
-  // For each variable in variables:
-  //   If variable is in inputs:
-  //     create an input
-  //   Otherwise:
-  //     create an equation
-  //     mark the created equation as an output if variable is in outputs
+    assert({TokenKind::COMMA, TokenKind::KEY_IN});
 
-  for (const auto variable : variables) {
-    const bool is_input =
-        std::find(inputs.begin(), inputs.end(), variable) != inputs.end();
-    const bool is_output =
-        std::find(outputs.begin(), outputs.end(), variable) != outputs.end();
-
-    Value *named_value = nullptr;
-    if (is_input) {
-      named_value = m_program.create_input(variable);
-    } else if (is_output) {
-      named_value = m_program.create_output(variable);
-    } else {
-      named_value = m_program.create_equation(variable);
-    }
-
-    // TODO: is really an error to be both input and output?
-    if (is_input && is_output) {
-      // TODO: give source location to the error message
-      m_report_manager.report(ReportSeverity::ERROR)
-          .with_message("the variable `{}' is declared as "
-                        "input and output at the same time",
-                        variable)
-          .finish()
-          .print();
-    }
-
-    const auto it = m_named_values.find(variable);
-    if (it == m_named_values.end()) {
-      m_named_values.insert({variable, named_value});
-      continue;
-    }
-
-    // TODO: give source location to the error message
-    m_report_manager.report(ReportSeverity::ERROR)
-        .with_message("the variable `{}' is declared more "
-                      "than once in the `VAR' statement",
-                      variable)
-        .finish()
-        .print();
-  }
-
-  // Check if all inputs were declared in the `VAR` statement
-  for (const auto input : inputs) {
-    const auto it = m_named_values.find(input);
-    if (it == m_named_values.end()) {
-      // TODO: give source location to the error message
-      emit_unknown_variable_error(INVALID_LOCATION, input);
+    if (m_token.kind == TokenKind::COMMA) {
+      consume(); // eat 'COMMA'
     }
   }
 
-  // Check if all outputs were declared in the `VAR` statement
-  for (const auto output : outputs) {
-    const auto it = m_named_values.find(output);
-    if (it == m_named_values.end()) {
-      // TODO: give source location to the error message
-      emit_unknown_variable_error(INVALID_LOCATION, output);
-    }
-  }
-}
-
-void Parser::parse_equations() {
-  // We expect the `IN` keyword, but if it's absent we just pretend it's there.
-  if (expect(TokenKind::KEY_IN))
-    consume(); // eat `IN`
-
-  while (m_token.kind != TokenKind::EOI) {
-    Equation *equation = parse_equation();
-    if (equation == nullptr)
-      return;
-  }
-}
-
-Equation *Parser::parse_equation() {
-  if (!expect(TokenKind::IDENTIFIER)) {
-    return nullptr;
-  }
-
-  const auto name_location = m_token.position;
-  const auto name = m_token.spelling;
-  consume(); // eat the identifier
-
-  Equation *equation = nullptr;
-  const auto it = m_named_values.find(name);
-  if (it == m_named_values.end()) {
-    emit_unknown_variable_error(name_location, name);
-  } else {
-    Value *value = it->second;
-    if (!value->is_input()) {
-      equation = static_cast<Equation *>(value);
-    } else {
-
-      m_report_manager.report(ReportSeverity::ERROR)
-          .with_location(name_location)
-          .with_message(
-              "cannot assign an equation to an input variable", name)
-          .finish()
-          .print();
-    }
-  }
-
-  if (!expect(TokenKind::EQUAL)) {
-    return nullptr;
-  }
-
-  consume(); // eat `=`
-
-  Expression *expression = parse_expression();
-  if (expression == nullptr)
-    return nullptr;
-
-  if (equation != nullptr) {
-    equation->set_expression(expression);
-  }
-
-  return equation;
-}
-
-Value *Parser::parse_argument() {
-  switch (m_token.kind) {
-  case TokenKind::IDENTIFIER:
-    return parse_variable();
-  case TokenKind::INTEGER:
-    return parse_constant();
-  default:
-    m_report_manager.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message(
-            "unexpected token, expected either an identifier or a constant")
-        .finish()
-        .print();
-    return nullptr;
-  }
-}
-
-Value *Parser::parse_variable() {
-  assert(m_token.kind == TokenKind::IDENTIFIER);
-
-  const auto name_location = m_token.position;
-  const auto name = m_token.spelling;
-  consume();
-
-  const auto it = m_named_values.find(name);
-  if (it != m_named_values.end()) {
-    return it->second;
-  }
-
-  emit_unknown_variable_error(name_location, name);
-  return nullptr;
-}
-
-Constant *Parser::parse_constant() {
-  assert(m_token.kind == TokenKind::INTEGER);
-
-  const size_t value = parse_integer_literal(m_token.spelling);
-  consume();
-
-  return m_program.create_constant(value);
-}
-
-Expression *Parser::parse_expression() {
-  switch (m_token.kind) {
-  case TokenKind::KEY_NOT:
-    return parse_not_expression();
-  case TokenKind::KEY_AND:
-  case TokenKind::KEY_OR:
-  case TokenKind::KEY_NAND:
-  case TokenKind::KEY_XOR:
-    return parse_binary_expression();
-  default:
-    m_report_manager.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("invalid expression, expected an operator or a constant")
-        .finish()
-        .print();
-    return nullptr;
-  }
-}
-
-NotExpression *Parser::parse_not_expression() {
-  assert(m_token.kind == TokenKind::KEY_NOT);
-
-  consume(); // eat `NOT`
-
-  Value *value = parse_argument();
-  return m_program.create_not_expr(value);
-}
-
-BinaryExpression *Parser::parse_binary_expression() {
-  BinaryOp binop;
-  switch (m_token.kind) {
-  case TokenKind::KEY_AND:
-    binop = BinaryOp::AND;
-    break;
-  case TokenKind::KEY_OR:
-    binop = BinaryOp::OR;
-    break;
-  case TokenKind::KEY_NAND:
-    binop = BinaryOp::NAND;
-    break;
-  case TokenKind::KEY_XOR:
-    binop = BinaryOp::XOR;
-    break;
-  default:
-    assert(false && "expected a binary operator");
-  }
-
-  consume(); // eat the binary operator
-
-  Value *lhs = parse_argument();
-  Value *rhs = parse_argument();
-  return m_program.create_binary_expr(binop, lhs, rhs);
-}
-
-void Parser::consume() { m_lexer.tokenize(m_token); }
-
-bool Parser::expect(TokenKind token_kind) const {
-  if (m_token.kind == token_kind)
-    return true;
-
-  // FIXME(hgruniaux): emit an error
-  return false;
-}
-
-void Parser::emit_unknown_variable_error(SourceLocation location,
-                                         std::string_view variable_name) {
-
-  m_report_manager.report(ReportSeverity::ERROR)
-      .with_location(location)
-      .with_message(
-          "the variable `{}' is used but not declared in the `VAR' statement",
-          variable_name)
-      .finish()
-      .print();
+  return var;
 }
