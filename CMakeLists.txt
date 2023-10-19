@@ -12,7 +12,6 @@ add_library(netlistlib
         src/lexer.hpp
         src/token.hpp
         src/lexer.cpp
-        src/keywords.hpp
         src/graph.hpp
         src/parser.hpp
         src/parser.cpp
@@ -31,19 +30,6 @@ add_executable(netlist
 
 target_link_libraries(netlist PUBLIC netlistlib)
 target_include_directories(netlistlib PUBLIC src/)
-
-# gperf (GNU perfect hash function generator)
-# It is only required if the keywords.def file is modified.
-find_program(GPERF_PROGRAM gperf)
-if (GPERF_PROGRAM)
-  add_custom_command(
-          OUTPUT src/keywords.hpp
-          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-          COMMAND ${GPERF_PROGRAM} -t --output-file=src/keywords.hpp src/keywords.def
-          COMMENT "Generating the keywords perfect hash function"
-          DEPENDS src/keywords.def
-  )
-endif ()
 
 enable_testing()
 add_subdirectory(unittest)

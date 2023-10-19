@@ -1,23 +1,27 @@
 #include "lexer.hpp"
 
-#include "keywords.hpp"
-
 #include <cassert>
+#include <algorithm>
+
+std::string &&str_toupper(std::string &&s) {
+  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
+  return std::move(s);
+}
 
 void DataBuffer::next_char() {
-  if (*current == '\n') {
+  if (*m_cur == '\n') {
     // We pass a new line
-    line++;
-    col = 0;
+    m_line++;
+    m_col = 0;
   }
 
   if (!is_eof()) { // If EOF do nothing
-    current++;
-    col++;
+    m_cur++;
+    m_col++;
   }
 }
 
-Lexer::Lexer(const char *input) : buf(input) {}
+Lexer::Lexer(ReportContext &context, const char *input) : m_buf(input), m_context(context) {}
 
 /// Returns true if the given ASCII character is a whitespace.
 /// Our definition of whitespace is limited to ' ', '\t', '\n' and '\r'.
@@ -56,32 +60,32 @@ void Lexer::tokenize(Token &token) {
   while (true) {
     skip_whitespace();
 
-    switch (buf.current_char()) {
+    switch (m_buf.current_char()) {
     case '\0': // End-Of-Input reached !
       token.kind = TokenKind::EOI;
       token.spelling = {};
-      token.position = {buf.current_line(), buf.current_column(), 0};
+      token.position = {m_buf.current_line(), m_buf.current_column(), 0};
       return;
 
     case '=': // Equal Token Found
       token.kind = TokenKind::EQUAL;
-      token.spelling = std::string_view(buf.current_pos(), /* count= */ 1);
-      token.position = {buf.current_line(), buf.current_column(), 1};
-      buf.next_char(); // eat the character
+      token.spelling = std::string_view(m_buf.current_pos(), /* count= */ 1);
+      token.position = {m_buf.current_line(), m_buf.current_column(), 1};
+      m_buf.next_char(); // eat the character
       return;
 
     case ',': // Comma Token Found
       token.kind = TokenKind::COMMA;
-      token.spelling = std::string_view(buf.current_pos(), /* count= */ 1);
-      token.position = {buf.current_line(), buf.current_column(), 1};
-      buf.next_char(); // eat the character
+      token.spelling = std::string_view(m_buf.current_pos(), /* count= */ 1);
+      token.position = {m_buf.current_line(), m_buf.current_column(), 1};
+      m_buf.next_char(); // eat the character
       return;
 
     case ':': // Colon Token Found
       token.kind = TokenKind::COLON;
-      token.spelling = std::string_view(buf.current_pos(), /* count= */ 1);
-      token.position = {buf.current_line(), buf.current_column(), 1};
-      buf.next_char(); // eat the character
+      token.spelling = std::string_view(m_buf.current_pos(), /* count= */ 1);
+      token.position = {m_buf.current_line(), m_buf.current_column(), 1};
+      m_buf.next_char(); // eat the character
       return;
 
     case '#': // Comment Beginning Found
@@ -89,16 +93,22 @@ void Lexer::tokenize(Token &token) {
       continue; // get the next valid token
 
     default:
-      if (is_start_ident(buf.current_char())) {
+      if (is_start_ident(m_buf.current_char())) {
         tokenize_identifier(token);
         return;
-      } else if (is_digit(buf.current_char())) {
+      } else if (is_digit(m_buf.current_char())) {
         tokenize_integer(token);
         return;
       }
-
       // Bad, we reached an unknown character.
-      // TODO : Emmit big error
+      m_context.report(ReportSeverity::WARNING)
+          .with_message("Unknown character found : '{}' (code : {:#x}).",
+                        m_buf.current_char(),
+                        m_buf.current_char())
+          .with_location({m_buf.current_line(),
+                          m_buf.current_column(),
+                          1})
+          .with_note("Ignoring character.").finish().print();
     }
   }
 }
@@ -107,68 +117,88 @@ void Lexer::skip_whitespace() {
   // This never read past the end of the input because each input buffer is
   // guaranteed to be terminated by the NUL character and is_whitespace()
   // returns false for such a character.
-  while (is_whitespace(buf.current_char())) {
-    buf.next_char();
+  while (is_whitespace(m_buf.current_char())) {
+    m_buf.next_char();
   }
 }
 
 void Lexer::skip_comment() {
-  assert(buf.current_char() == '#');
+  assert(m_buf.current_char() == '#');
 
   // Eat a whole line after '#'
-  while (!buf.is_eof() && buf.current_char() != '\n') {
-    buf.next_char();
+  while (!m_buf.is_eof() && m_buf.current_char() != '\n') {
+    m_buf.next_char();
   }
 }
 
+const std::unordered_map<std::string_view, TokenKind> spelling2keyword = {
+    {"INPUT", TokenKind::KEY_INPUT},
+    {"OUTPUT", TokenKind::KEY_OUTPUT},
+    {"VAR", TokenKind::KEY_VAR},
+    {"IN", TokenKind::KEY_IN},
+
+    {"NOT", TokenKind::KEY_NOT},
+    {"AND", TokenKind::KEY_AND},
+    {"NAND", TokenKind::KEY_NAND},
+    {"OR", TokenKind::KEY_OR},
+    {"XOR", TokenKind::KEY_XOR},
+
+    {"MUX", TokenKind::KEY_MUX},
+    {"REG", TokenKind::KEY_REG},
+    {"CONCAT", TokenKind::KEY_CONCAT},
+    {"SELECT", TokenKind::KEY_SELECT},
+    {"SLICE", TokenKind::KEY_SLICE},
+    {"ROM", TokenKind::KEY_ROM},
+    {"RAM", TokenKind::KEY_RAM},
+};
+
 void Lexer::tokenize_identifier(Token &token) {
-  assert(is_start_ident(buf.current_char()));
+  assert(is_start_ident(m_buf.current_char()));
 
-  const char *begin = buf.current_pos();
-  const uint32_t column_begin = buf.current_column();
+  const char *begin = m_buf.current_pos();
+  const uint32_t column_begin = m_buf.current_column();
 
-  buf.next_char(); // eat the first character
+  m_buf.next_char(); // eat the first character
 
   // This never read past the end of the input because each input buffer is
   // guaranteed to be terminated by the NUL character and is_cont_ident()
   // returns false for such a character.
-  while (is_cont_ident(buf.current_char())) {
-    buf.next_char();
+  while (is_cont_ident(m_buf.current_char())) {
+    m_buf.next_char();
   }
 
-  const char *end = buf.current_pos();
+  const char *end = m_buf.current_pos();
   const uint32_t token_length = std::distance(begin, end);
 
   token.spelling = std::string_view(begin, token_length);
-  auto *keyword_info =
-      KeywordHashTable::lookup(token.spelling.data(), token.spelling.size());
-  // TODO : Use a regular HashTable (And so dropping gperf)
-  if (keyword_info != nullptr) {
-    token.kind = keyword_info->token_kind;
+  const std::string uppercase_keyword = str_toupper(std::move(std::string(token.spelling)));
+
+  if (spelling2keyword.contains(uppercase_keyword)) {
+    token.kind = spelling2keyword.at(token.spelling);
   } else {
     token.kind = TokenKind::IDENTIFIER;
   }
 
-  token.position = {buf.current_line(), column_begin, token_length};
+  token.position = {m_buf.current_line(), column_begin, token_length};
 }
 
 void Lexer::tokenize_integer(Token &token) {
-  assert(is_digit(buf.current_char()));
+  assert(is_digit(m_buf.current_char()));
 
-  const char *begin = buf.current_pos();
-  const uint32_t column_begin = buf.current_column();
+  const char *begin = m_buf.current_pos();
+  const uint32_t column_begin = m_buf.current_column();
 
   // This never read past the end of the input because each input buffer is
   // guaranteed to be terminated by the NUL character and is_digit() returns
   // false for such a character.
-  while (is_digit(buf.current_char())) {
-    buf.next_char();
+  while (is_digit(m_buf.current_char())) {
+    m_buf.next_char();
   }
 
-  const char *end = buf.current_pos();
+  const char *end = m_buf.current_pos();
   const uint32_t token_length = std::distance(begin, end);
 
   token.kind = TokenKind::INTEGER;
   token.spelling = std::string_view(begin, token_length);
-  token.position = {buf.current_line(), column_begin, token_length};
+  token.position = {m_buf.current_line(), column_begin, token_length};
 }

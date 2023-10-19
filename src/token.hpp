@@ -2,6 +2,7 @@
 #define NETLIST_TOKEN_HPP
 
 #include <string_view>
+#include <unordered_map>
 
 enum class TokenKind {
   /// End-Of-Input, the last token returned by the lexer.
