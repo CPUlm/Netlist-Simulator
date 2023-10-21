@@ -24,6 +24,7 @@ add_library(netlistlib
         src/line_map.cpp
         src/report.hpp
         src/report.cpp
+        src/instruction.cpp
 )
 
 target_link_libraries(netlistlib PUBLIC fmt::fmt)

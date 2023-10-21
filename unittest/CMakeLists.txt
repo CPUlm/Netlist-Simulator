@@ -15,12 +15,15 @@ add_executable(
         parser_test.cpp
         line_map_test.cpp
         report_test.cpp
+        simulator_test.cpp
+        bytecode_writer_test.cpp
 )
 
 target_link_libraries(
         netlist_test
         netlistlib
         GTest::gtest_main
+        GTest::gmock_main
 )
 
 include(GoogleTest)
