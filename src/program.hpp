@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <vector>
 #include <memory>
+#include <cassert>
 #include <unordered_map>
 
 #define delete_copy_ctr(class) class(class &) = delete;\
@@ -165,7 +166,7 @@ public:
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the argument of this expression.
-  [[nodiscard]] const Argument &get_argument() const noexcept { return *m_value; }
+  [[nodiscard]] const Argument::ptr &get_argument() const noexcept { return m_value; }
 
   delete_copy_ctr(ArgExpression)
 
@@ -186,7 +187,7 @@ public:
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the value to to which the operator applies.
-  [[nodiscard]] const Variable &get_variable() const noexcept { return *m_var; }
+  [[nodiscard]] const Variable::ptr &get_variable() const noexcept { return m_var; }
 
   delete_copy_ctr(RegExpression)
 
@@ -204,7 +205,7 @@ public:
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the value to to which the operator applies.
-  [[nodiscard]] const Argument &get_argument() const { return *m_arg; }
+  [[nodiscard]] const Argument::ptr &get_argument() const { return m_arg; }
 
   delete_copy_ctr(NotExpression)
 
@@ -237,10 +238,10 @@ public:
   [[nodiscard]] BinOpKind get_binop_kind() const noexcept { return m_kind; }
 
   /// Returns the left value to to which the operator applies.
-  [[nodiscard]] const Argument &get_lhs_argument() const noexcept { return *m_lhs; }
+  [[nodiscard]] const Argument::ptr &get_lhs_argument() const noexcept { return m_lhs; }
 
   /// Returns the right value to to which the operator applies.
-  [[nodiscard]] const Argument &get_rhs_argument() const noexcept { return *m_rhs; }
+  [[nodiscard]] const Argument::ptr &get_rhs_argument() const noexcept { return m_rhs; }
 
   delete_copy_ctr(BinOpExpression)
 
@@ -268,13 +269,13 @@ public:
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the value used to make a choice.
-  [[nodiscard]] const Argument &get_choice_argument() const noexcept { return *m_choice; }
+  [[nodiscard]] const Argument::ptr &get_choice_argument() const noexcept { return m_choice; }
 
   /// Returns the value used if the choice bit is true.
-  [[nodiscard]] const Argument &get_true_argument() const noexcept { return *m_true; }
+  [[nodiscard]] const Argument::ptr &get_true_argument() const noexcept { return m_true; }
 
   /// Returns the value used if the choice bit is false.
-  [[nodiscard]] const Argument &get_false_argument() const noexcept { return *m_false; }
+  [[nodiscard]] const Argument::ptr &get_false_argument() const noexcept { return m_false; }
 
   delete_copy_ctr(MuxExpression)
 
@@ -300,7 +301,7 @@ public:
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns read address
-  [[nodiscard]] const Argument &get_read_address() const noexcept { return *m_read_addr; }
+  [[nodiscard]] const Argument::ptr &get_read_address() const noexcept { return m_read_addr; }
 
   /// Returns the bus size of the read address
   [[nodiscard]] bus_size_t get_address_size() const noexcept { return m_read_addr->get_bus_size(); }
@@ -338,16 +339,16 @@ public:
   [[nodiscard]] bus_size_t get_address_size() const noexcept { return m_read_addr->get_bus_size(); }
 
   /// Returns read address
-  [[nodiscard]] const Argument &get_read_address() const noexcept { return *m_read_addr; }
+  [[nodiscard]] const Argument::ptr &get_read_address() const noexcept { return m_read_addr; }
 
   /// Returns write enable bit flag
-  [[nodiscard]] const Argument &get_write_enable() const noexcept { return *m_write_enable; }
+  [[nodiscard]] const Argument::ptr &get_write_enable() const noexcept { return m_write_enable; }
 
   /// Returns write address
-  [[nodiscard]] const Argument &get_write_address() const noexcept { return *m_write_addr; }
+  [[nodiscard]] const Argument::ptr &get_write_address() const noexcept { return m_write_addr; }
 
   /// Returns write data argument
-  [[nodiscard]] const Argument &get_write_data() const noexcept { return *m_write_data; }
+  [[nodiscard]] const Argument::ptr &get_write_data() const noexcept { return m_write_data; }
 
   delete_copy_ctr(RamExpression)
 
@@ -374,10 +375,10 @@ public:
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the beginning of the bus.
-  [[nodiscard]] const Variable &get_beginning_part() const noexcept { return *m_beg; }
+  [[nodiscard]] const Variable::ptr &get_beginning_part() const noexcept { return m_beg; }
 
   /// Returns the end of the bus.
-  [[nodiscard]] const Variable &get_last_part() const noexcept { return *m_last; }
+  [[nodiscard]] const Variable::ptr &get_last_part() const noexcept { return m_last; }
 
   delete_copy_ctr(ConcatExpression)
 
@@ -411,7 +412,7 @@ public:
   [[nodiscard]] bus_size_t get_end_index() const noexcept { return m_end; }
 
   /// Returns the argument.
-  [[nodiscard]] const Argument &get_argument() const noexcept { return *m_arg; }
+  [[nodiscard]] const Argument::ptr &get_argument() const noexcept { return m_arg; }
 
   delete_copy_ctr(SliceExpression)
 
@@ -437,10 +438,10 @@ public:
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the index of the bit selected.
-  [[nodiscard]]  bus_size_t get_begin_index() const noexcept { return m_index; }
+  [[nodiscard]]  bus_size_t get_index() const noexcept { return m_index; }
 
   /// Returns the argument.
-  [[nodiscard]] const Argument &get_argument() const noexcept { return *m_arg; }
+  [[nodiscard]] const Argument::ptr &get_argument() const noexcept { return m_arg; }
 
   delete_copy_ctr(SelectExpression)
 
@@ -455,6 +456,8 @@ class Program {
 public:
   typedef std::unique_ptr<Program> ptr;
 
+  [[nodiscard]] const std::vector<Variable::ptr> &get_vars() const noexcept { return m_vars; };
+
   [[nodiscard]] const std::vector<Variable::ptr> &get_inputs() const noexcept { return m_input; };
 
   [[nodiscard]] const std::vector<Variable::ptr> &get_outputs() const noexcept { return m_output; };
@@ -467,6 +470,9 @@ public:
 
 private:
   friend Parser;
+  // All the variables
+  std::vector<Variable::ptr> m_vars = {};
+
   // All the variables categorized as 'input'
   std::vector<Variable::ptr> m_input = {};
 
@@ -477,6 +483,85 @@ private:
   std::unordered_map<Variable::ptr, Expression::ptr> m_eq = {};
 
   Program() = default;
+};
+
+template<typename Derived> class Visitor {
+public:
+#define DISPATCH(call) (static_cast<const Derived *>(this)->call)
+
+  void visit(const Argument::ptr &arg) const {
+    assert(arg != nullptr);
+
+    switch (arg->get_kind()) {
+    case Argument::Kind::CONSTANT:
+      return DISPATCH(visit_constant(*dynamic_cast<const Constant *>(arg.get())));
+    case Argument::Kind::VARIABLE:
+      return DISPATCH(visit_variable(*dynamic_cast<const Variable *>(arg.get())));
+    }
+  }
+
+  virtual void visit_argument(const Argument &arg) const {}
+  virtual void visit_constant(const Constant &cst) const { return DISPATCH(visit_argument(cst)); }
+  virtual void visit_variable(const Variable &var) const { return DISPATCH(visit_argument(var)); }
+
+  void visit(const Expression::ptr &expr) const {
+    assert(expr != nullptr);
+
+    switch (expr->get_kind()) {
+    case Expression::Kind::ARG:
+      return DISPATCH(visit_arg_expr(*dynamic_cast<const ArgExpression *>(expr.get())));
+    case Expression::Kind::REG:
+      return DISPATCH(visit_reg_expr(*dynamic_cast<const RegExpression *>(expr.get())));
+    case Expression::Kind::NOT:
+      return DISPATCH(visit_not_expr(*dynamic_cast<const NotExpression *>(expr.get())));
+    case Expression::Kind::BINOP:
+      return DISPATCH(visit_binop_expr(*dynamic_cast<const BinOpExpression *>(expr.get())));
+    case Expression::Kind::MUX:
+      return DISPATCH(visit_mux_expr(*dynamic_cast<const MuxExpression *>(expr.get())));
+    case Expression::Kind::ROM:
+      return DISPATCH(visit_rom_expr(*dynamic_cast<const RomExpression *>(expr.get())));
+    case Expression::Kind::RAM:
+      return DISPATCH(visit_ram_expr(*dynamic_cast<const RamExpression *>(expr.get())));
+    case Expression::Kind::CONCAT:
+      return DISPATCH(visit_concat_expr(*dynamic_cast<const ConcatExpression *>(expr.get())));
+    case Expression::Kind::SLICE:
+      return DISPATCH(visit_slice_expr(*dynamic_cast<const SliceExpression *>(expr.get())));
+    case Expression::Kind::SELECT:
+      return DISPATCH(visit_select_expr(*dynamic_cast<const SelectExpression *>(expr.get())));
+    }
+  }
+
+  virtual void visit_expr(const Expression &expr) const {}
+  virtual void visit_arg_expr(const ArgExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_reg_expr(const RegExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_not_expr(const NotExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_binop_expr(const BinOpExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_mux_expr(const MuxExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_rom_expr(const RomExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_ram_expr(const RamExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_concat_expr(const ConcatExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_slice_expr(const SliceExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_select_expr(const SelectExpression &expr) const {
+    return DISPATCH(visit_expr(expr));
+  }
 };
 
 #endif // NETLIST_PROGRAM_HPP

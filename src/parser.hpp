@@ -37,19 +37,19 @@ private:
 
   /// Check that the current token is in token_set.
   /// If not, print an error.
-  void assert(const std::set<TokenKind> &token_set) const noexcept;
+  void token_assert(const std::set<TokenKind> &token_set) const noexcept;
 
   /// Check that the current token is token.
   /// If not, print an error.
-  void assert(TokenKind token) const noexcept;
+  void token_assert(TokenKind token) const noexcept;
 
   /// Parse the current token as an integer in the given base. We use a class to process different integer types.
   template<class T>
   [[nodiscard]] T parse_int(int base) noexcept {
-    assert({TokenKind::INTEGER,
-            TokenKind::BINARY_CONSTANT,
-            TokenKind::DECIMAL_CONSTANT,
-            TokenKind::HEXADECIMAL_CONSTANT});
+    token_assert({TokenKind::INTEGER,
+                          TokenKind::BINARY_CONSTANT,
+                          TokenKind::DECIMAL_CONSTANT,
+                          TokenKind::HEXADECIMAL_CONSTANT});
     T v;
 
     auto [ptr, ec] = std::from_chars(m_token.spelling.begin(), m_token.spelling.end(), v, base);
@@ -89,13 +89,12 @@ private:
   /// Parse equations (everything after the 'IN' statement)
   void parse_equations(Program::ptr &p);
 
-  /// Check that the variable 'var' has the size 'size'. Raise an error at the position 'pos'
+  /// Check that the variable 'var' has the size 'size'. Raise an error at the declaration of the variable
   /// if 'var' has the wrong size.
-  void assert_var_size(const Variable::ptr &var, bus_size_t size, const SourcePosition &pos) noexcept;
+  void assert_var_size(const Variable::ptr &var, bus_size_t size) noexcept;
 
-  /// Check that the variable 'var' has a size >= 'size'. If not, raise an error at the position 'pos'
-  void assert_var_size_greater_than(const Variable::ptr &var, bus_size_t minimal_size,
-                                    const SourcePosition &pos) noexcept;
+  /// Check that the variable 'var' has a size >= 'size'. If not, raise an error at the declaration of the variable.
+  void assert_var_size_greater_than(const Variable::ptr &var, bus_size_t minimal_size) noexcept;
 
   /// Parse a bus size.
   [[nodiscard]] bus_size_t parse_bus_size() noexcept;
@@ -125,6 +124,9 @@ private:
 
   /// mapping of var name to the actual variable class.
   std::unordered_map<std::string_view, Variable::ptr> vars;
+
+  /// mapping of var name to its declaration.
+  std::unordered_map<std::string_view, Parser::VariableDeclaration> var_decl;
 };
 
 #endif // NETLIST_PARSER_HPP

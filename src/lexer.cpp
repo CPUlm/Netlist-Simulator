@@ -59,7 +59,7 @@ bool Lexer::is_non_zero_decimal_digit(const Lexer::DataBuffer &b) {
 /// Returns true if the given ASCII character is a valid first character for
 /// an identifier.
 bool Lexer::is_ident_start(const Lexer::DataBuffer &b) {
-  return (b.current_char() >= 'a' && b.current_char() <= 'b')
+  return (b.current_char() >= 'a' && b.current_char() <= 'z')
       || (b.current_char() >= 'A' && b.current_char() <= 'Z')
       || (b.current_char() == '_');
 }
@@ -159,13 +159,12 @@ void Lexer::tokenize(Token &token) {
         return;
       }
       // Bad, we reached an unknown character.
-      m_context.report(ReportSeverity::WARNING)
+      m_context.report(ReportSeverity::ERROR)
           .with_message("Unknown character found : '{}' (code : {:#x}).",
                         m_buf.current_char(), m_buf.current_char())
           .with_location({m_buf.current_line(), m_buf.current_column()})
-          .with_note("Ignoring character.")
           .build()
-          .print();
+          .exit();
     }
   }
 }

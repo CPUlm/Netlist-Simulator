@@ -2,6 +2,7 @@
 #include "parser.hpp"
 #include "program_printer.hpp"
 
+#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -76,11 +77,9 @@ private:
       std::cerr << error << "unknown option `" << option << "'" << std::endl;
       return false;
     }
-
-    return true;
   }
 
-  bool post_validation() {
+  [[nodiscard]] bool post_validation() const {
     if (m_options.input_files.empty()) {
       std::cerr << error << "no input files" << std::endl;
       return false;
@@ -93,7 +92,7 @@ private:
     fprintf(file, "USAGE %s [options...] [files...]\n", m_program_name.data());
   }
 
-  void show_version_message() {
+  static void show_version_message() {
     printf("Netlist compiler/simulation, version 0.1\n");
   }
 
@@ -123,14 +122,12 @@ std::optional<std::string> read_file(std::string_view path) {
 }
 
 void compile_file(std::string_view file_name, std::string_view file_content) {
-  ReportManager ctx;
-  ctx.register_file_info(file_name, file_content);
-
-  Lexer lexer(file_content.data());
+  ReportContext ctx(file_name, true);
+  Lexer lexer(ctx, file_content.data());
   Parser parser(ctx, lexer);
-  Program program = parser.parse_program();
-  ProgramPrinter printer;
-  printer.print_program(program);
+  Program::ptr program = parser.parse_program();
+  ProgramPrinter printer(program, std::cout);
+  printer.print();
 }
 
 int main(int argc, const char *argv[]) {

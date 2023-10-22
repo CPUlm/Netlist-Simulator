@@ -32,15 +32,14 @@ const std::unordered_map<TokenKind, std::string> token_spelling = {
     {TokenKind::KEY_RAM, "RAM"},
 };
 
-Parser::Parser(ReportContext &context, Lexer &lexer)
-    : m_context(context), m_lexer(lexer) {
+Parser::Parser(ReportContext &context, Lexer &lexer) : m_context(context), m_lexer(lexer) {
   // Gets the first token
   m_lexer.tokenize(m_token);
 }
 
 void Parser::consume() { m_lexer.tokenize(m_token); }
 
-void Parser::assert(const std::set<TokenKind> &token_set) const noexcept {
+void Parser::token_assert(const std::set<TokenKind> &token_set) const noexcept {
   if (!token_set.contains(m_token.kind)) {
     std::string tokens = token_spelling.at(*token_set.begin());
 
@@ -59,7 +58,7 @@ void Parser::assert(const std::set<TokenKind> &token_set) const noexcept {
   }
 }
 
-void Parser::assert(TokenKind token) const noexcept {
+void Parser::token_assert(TokenKind token) const noexcept {
   if (m_token.kind != token) {
     m_context.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
@@ -71,7 +70,11 @@ void Parser::assert(TokenKind token) const noexcept {
 }
 
 Program::ptr Parser::parse_program() {
-  vars.clear(); // Remove any existing variable
+  // Remove any existing variable
+  var_decl.clear();
+  vars.clear();
+
+  // Target Program
   Program::ptr p(new Program());
 
   // m_token.kind = TokenKind::KEY_INPUT
@@ -87,18 +90,43 @@ Program::ptr Parser::parse_program() {
   parse_equations(p);
   // m_token.kind = TokenKind::EOI
 
-  // Check that all variables have either an equation or are an input
+  for (auto &decl_pair : vars) {
+    const Variable::ptr &declared_var = decl_pair.second;
+
+    if (in_refs.contains(declared_var->get_name())) {
+      p->m_vars.push_back(declared_var);
+      continue; // 'declared_var' is a input.
+    }
+
+    if (p->m_eq.contains(declared_var)) {
+      p->m_vars.push_back(declared_var);
+      continue; // 'declared_var' has an equation
+    }
+
+    // No equation and no input
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(var_decl.at(declared_var->get_name()).position)
+        .with_message("Declared variable '{}' does not have an associated equation.", declared_var->get_name())
+        .build()
+        .exit();
+
+  }
+
+  // Remove any existing variable
+  var_decl.clear();
+  vars.clear();
+
   return p;
 }
 
 Parser::var_ref_map Parser::parse_inputs_references() noexcept {
-  assert(TokenKind::KEY_INPUT);
+  token_assert(TokenKind::KEY_INPUT);
   consume(); // eat 'INPUT'
 
   var_ref_map var;
 
   while (m_token.kind != TokenKind::KEY_OUTPUT) {
-    assert(TokenKind::IDENTIFIER);
+    token_assert(TokenKind::IDENTIFIER);
 
     if (var.contains(m_token.spelling)) {
       m_context.report(ReportSeverity::ERROR)
@@ -114,7 +142,7 @@ Parser::var_ref_map Parser::parse_inputs_references() noexcept {
     var[m_token.spelling] = {m_token.spelling, m_token.position};
     consume(); // eat 'IDENTIFIER'
 
-    assert({TokenKind::COMMA, TokenKind::KEY_OUTPUT});
+    token_assert({TokenKind::COMMA, TokenKind::KEY_OUTPUT});
 
     if (m_token.kind == TokenKind::COMMA) {
       consume(); // eat 'COMMA'
@@ -125,13 +153,13 @@ Parser::var_ref_map Parser::parse_inputs_references() noexcept {
 }
 
 Parser::var_ref_map Parser::parse_outputs_references() noexcept {
-  assert(TokenKind::KEY_OUTPUT);
+  token_assert(TokenKind::KEY_OUTPUT);
   consume(); // eat 'OUTPUT'
 
   var_ref_map var;
 
   while (m_token.kind != TokenKind::KEY_VAR) {
-    assert(TokenKind::IDENTIFIER);
+    token_assert(TokenKind::IDENTIFIER);
     if (var.contains(m_token.spelling)) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
@@ -146,7 +174,7 @@ Parser::var_ref_map Parser::parse_outputs_references() noexcept {
     var[m_token.spelling] = {m_token.spelling, m_token.position};
     consume(); // eat 'IDENTIFIER'
 
-    assert({TokenKind::COMMA, TokenKind::KEY_VAR});
+    token_assert({TokenKind::COMMA, TokenKind::KEY_VAR});
 
     if (m_token.kind == TokenKind::COMMA) {
       consume(); // eat 'COMMA'
@@ -157,13 +185,11 @@ Parser::var_ref_map Parser::parse_outputs_references() noexcept {
 }
 
 void Parser::parse_variable_declaration() noexcept {
-  assert(TokenKind::KEY_VAR);
+  token_assert(TokenKind::KEY_VAR);
   consume(); // eat 'VAR'
 
-  std::unordered_map<std::string_view, Parser::VariableDeclaration> var_decl;
-
   while (m_token.kind != TokenKind::KEY_IN) {
-    assert(TokenKind::IDENTIFIER);
+    token_assert(TokenKind::IDENTIFIER);
 
     VariableDeclaration v = {};
     v.spelling = m_token.spelling;
@@ -190,17 +216,17 @@ void Parser::parse_variable_declaration() noexcept {
     vars.try_emplace(v.spelling, std::make_shared<Variable>(v.size, v.spelling));
     var_decl[v.spelling] = v;
 
-    assert({TokenKind::COMMA, TokenKind::KEY_IN});
+    token_assert({TokenKind::COMMA, TokenKind::KEY_IN});
 
     if (m_token.kind == TokenKind::COMMA) {
       consume(); // eat 'COMMA'
-      assert(TokenKind::IDENTIFIER);
+      token_assert(TokenKind::IDENTIFIER);
     }
   }
 }
 
 Constant::ptr Parser::parse_bin_const(bus_size_t size) noexcept {
-  assert(TokenKind::BINARY_CONSTANT);
+  token_assert(TokenKind::BINARY_CONSTANT);
   auto value = parse_int<value_t>(2); // We parse in base 2 here
 
   if (value > Bus::max_value(size)) {
@@ -218,7 +244,7 @@ Constant::ptr Parser::parse_bin_const(bus_size_t size) noexcept {
 }
 
 Constant::ptr Parser::parse_dec_const(bus_size_t size) noexcept {
-  assert(TokenKind::DECIMAL_CONSTANT);
+  token_assert(TokenKind::DECIMAL_CONSTANT);
   auto value = parse_int<value_t>(10); // We parse in base 10 here
 
   if (value > Bus::max_value(size)) {
@@ -236,7 +262,7 @@ Constant::ptr Parser::parse_dec_const(bus_size_t size) noexcept {
 }
 
 Constant::ptr Parser::parse_hex_const(bus_size_t size) noexcept {
-  assert(TokenKind::HEXADECIMAL_CONSTANT);
+  token_assert(TokenKind::HEXADECIMAL_CONSTANT);
   auto value = parse_int<value_t>(16); // We parse in base 16 here
 
   if (value > Bus::max_value(size)) {
@@ -254,7 +280,7 @@ Constant::ptr Parser::parse_hex_const(bus_size_t size) noexcept {
 }
 
 Variable::ptr Parser::parse_var() noexcept {
-  assert(TokenKind::IDENTIFIER);
+  token_assert(TokenKind::IDENTIFIER);
 
   if (!vars.contains(m_token.spelling)) {
     m_context.report(ReportSeverity::ERROR)
@@ -264,21 +290,21 @@ Variable::ptr Parser::parse_var() noexcept {
         .exit();
   }
 
+  const Variable::ptr &v = vars.at(m_token.spelling);
   consume();
-  return vars.at(m_token.spelling);
-}
-
-Variable::ptr Parser::parse_var(bus_size_t size) noexcept {
-  const SourcePosition pos = m_token.position;
-  auto v = parse_var();
-  assert_var_size(v, size, pos);
   return v;
 }
 
-void Parser::assert_var_size(const Variable::ptr &var, bus_size_t size, const SourcePosition &pos) noexcept {
+Variable::ptr Parser::parse_var(bus_size_t size) noexcept {
+  auto v = parse_var();
+  assert_var_size(v, size);
+  return v;
+}
+
+void Parser::assert_var_size(const Variable::ptr &var, bus_size_t size) noexcept {
   if (var->get_bus_size() != size) {
     m_context.report(ReportSeverity::ERROR)
-        .with_location(pos)
+        .with_location(var_decl.at(var->get_name()).position)
         .with_message("Variable '{}' (declared bus size : {}) should have a bus size of {}.",
                       var->get_name(), var->get_bus_size(), size)
         .build()
@@ -286,12 +312,10 @@ void Parser::assert_var_size(const Variable::ptr &var, bus_size_t size, const So
   }
 }
 
-void Parser::assert_var_size_greater_than(const Variable::ptr &var,
-                                          bus_size_t minimal_size,
-                                          const SourcePosition &pos) noexcept {
+void Parser::assert_var_size_greater_than(const Variable::ptr &var, bus_size_t minimal_size) noexcept {
   if (var->get_bus_size() < minimal_size) {
     m_context.report(ReportSeverity::ERROR)
-        .with_location(pos)
+        .with_location(var_decl.at(var->get_name()).position)
         .with_message("Variable '{}' (declared bus size : {}) should have a bus size >= {} in this context.",
                       var->get_name(), var->get_bus_size(), minimal_size)
         .build()
@@ -300,8 +324,8 @@ void Parser::assert_var_size_greater_than(const Variable::ptr &var,
 }
 
 Argument::ptr Parser::parse_argument(bus_size_t expected_size) noexcept {
-  assert({TokenKind::IDENTIFIER, TokenKind::BINARY_CONSTANT, TokenKind::DECIMAL_CONSTANT,
-          TokenKind::HEXADECIMAL_CONSTANT, TokenKind::INTEGER});
+  token_assert({TokenKind::IDENTIFIER, TokenKind::BINARY_CONSTANT, TokenKind::DECIMAL_CONSTANT,
+                TokenKind::HEXADECIMAL_CONSTANT, TokenKind::INTEGER});
 
   if (m_token.kind == TokenKind::IDENTIFIER) {
     return parse_var(expected_size);
@@ -321,7 +345,8 @@ Argument::ptr Parser::parse_argument(bus_size_t expected_size) noexcept {
 }
 
 bus_size_t Parser::parse_bus_size() noexcept {
-  assert({TokenKind::INTEGER, TokenKind::BINARY_CONSTANT}); // '10' can will be interpreted as a BinaryConstant here
+  token_assert({TokenKind::INTEGER,
+                TokenKind::BINARY_CONSTANT}); // '10' can will be interpreted as a BinaryConstant here
 
   auto bs = parse_int<bus_size_t>(10); // We parse in base 10 here.
 
@@ -372,11 +397,11 @@ void Parser::build_intput_output_list(Program::ptr &p, const var_ref_map &in_ref
 }
 
 void Parser::parse_equations(Program::ptr &p) {
-  assert(TokenKind::KEY_IN);
+  token_assert(TokenKind::KEY_IN);
   consume(); // eat 'IN'
 
   while (m_token.kind != TokenKind::EOI) {
-    assert(TokenKind::IDENTIFIER);
+    token_assert(TokenKind::IDENTIFIER);
     if (!vars.contains(m_token.spelling)) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
@@ -387,7 +412,7 @@ void Parser::parse_equations(Program::ptr &p) {
     }
     const Variable::ptr &assigment_var = vars.at(m_token.spelling);
     consume(); // eat the variable
-    assert(TokenKind::EQUAL);
+    token_assert(TokenKind::EQUAL);
     consume(); // eat '='
 
     switch (m_token.kind) {
@@ -425,12 +450,14 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_NOT: {
+      consume();
       const Argument::ptr arg = parse_argument(assigment_var->get_bus_size());
       p->m_eq.try_emplace(assigment_var, std::make_unique<NotExpression>(arg));
       break;
     }
 
     case TokenKind::KEY_AND: {
+      consume();
       const Argument::ptr lhs = parse_argument(assigment_var->get_bus_size());
       const Argument::ptr rhs = parse_argument(assigment_var->get_bus_size());
       p->m_eq.try_emplace(assigment_var, std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::AND, lhs, rhs));
@@ -438,6 +465,7 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_NAND: {
+      consume();
       const Argument::ptr lhs = parse_argument(assigment_var->get_bus_size());
       const Argument::ptr rhs = parse_argument(assigment_var->get_bus_size());
       p->m_eq.try_emplace(assigment_var, std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::NAND, lhs, rhs));
@@ -445,6 +473,7 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_OR: {
+      consume();
       const Argument::ptr lhs = parse_argument(assigment_var->get_bus_size());
       const Argument::ptr rhs = parse_argument(assigment_var->get_bus_size());
       p->m_eq.try_emplace(assigment_var, std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::OR, lhs, rhs));
@@ -452,6 +481,7 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_XOR: {
+      consume();
       const Argument::ptr lhs = parse_argument(assigment_var->get_bus_size());
       const Argument::ptr rhs = parse_argument(assigment_var->get_bus_size());
       p->m_eq.try_emplace(assigment_var, std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::XOR, lhs, rhs));
@@ -459,6 +489,7 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_MUX: {
+      consume();
       const Argument::ptr choice = parse_argument(1);
       const Argument::ptr true_branch = parse_argument(assigment_var->get_bus_size());
       const Argument::ptr false_branch = parse_argument(assigment_var->get_bus_size());
@@ -467,18 +498,19 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_REG: {
+      consume();
       const Variable::ptr var = parse_var(assigment_var->get_bus_size());
       p->m_eq.try_emplace(assigment_var, std::make_unique<RegExpression>(var));
       break;
     }
 
     case TokenKind::KEY_CONCAT: {
-      const SourcePosition pos = m_token.position;
+      consume();
       const Variable::ptr var_beg = parse_var();
 
       if (var_beg->get_bus_size() >= assigment_var->get_bus_size()) {
         m_context.report(ReportSeverity::ERROR)
-            .with_location(pos)
+            .with_location(var_decl[var_beg->get_name()].position)
             .with_message("Variable '{}' (declared bus size : {}) should have a bus size lower than {} to make sense"
                           " in this CONCAT expression.",
                           var_beg->get_name(), var_beg->get_bus_size(), assigment_var->get_bus_size())
@@ -493,13 +525,12 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_SELECT: {
+      consume();
       bus_size_t index = parse_bus_size();
 
       if (m_token.kind == TokenKind::IDENTIFIER) { // It's a variable
-        const SourcePosition pos = m_token.position;
         const Variable::ptr var = parse_var();
-
-        assert_var_size_greater_than(var, index + 1, pos);
+        assert_var_size_greater_than(var, index + 1);
 
         p->m_eq.try_emplace(assigment_var, std::make_unique<SelectExpression>(index, var));
       } else { // We expect a constant
@@ -512,14 +543,13 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_SLICE: {
+      consume();
       bus_size_t beg = parse_bus_size();
       bus_size_t end = parse_bus_size();
 
       if (m_token.kind == TokenKind::IDENTIFIER) { // It's a variable
-        const SourcePosition pos = m_token.position;
         const Variable::ptr var = parse_var();
-
-        assert_var_size_greater_than(var, end + 1, pos);
+        assert_var_size_greater_than(var, end + 1);
 
         p->m_eq.try_emplace(assigment_var, std::make_unique<SliceExpression>(beg, end, var));
       } else { // We expect a constant
@@ -532,6 +562,7 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_ROM: {
+      consume();
       const bus_size_t addr_size = parse_bus_size();
 
       const SourcePosition pos = m_token.position;
@@ -554,9 +585,10 @@ void Parser::parse_equations(Program::ptr &p) {
     }
 
     case TokenKind::KEY_RAM: {
+      consume();
       const bus_size_t addr_size = parse_bus_size();
 
-      SourcePosition pos = m_token.position;
+      const SourcePosition pos = m_token.position;
       const bus_size_t word_size = parse_bus_size();
 
       if (word_size != assigment_var->get_bus_size()) {
