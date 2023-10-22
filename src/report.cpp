@@ -3,10 +3,13 @@
 #include <iostream>
 #include <vector>
 
-
-/* --------------------------------------------------------
- * class ReportConsolePrinter
- */
+std::string ReportContext::get_location(std::optional<SourcePosition> pos) const noexcept {
+  if (pos.has_value()) {
+    return fmt::format("{}:{}:{}", get_file_name(), pos->line, pos->begin);
+  } else {
+    return std::string(get_file_name());
+  }
+}
 
 /// Utility class implementing the report's console printer.
 class ReportConsolePrinter {
@@ -29,14 +32,9 @@ public:
   /// Prints the given report to stdout.
   void print(const Report &report) {
     print_colored(report.context, m_colors.text, "In file ");
-    print_colored(report.context, m_colors.locus, report.context.get_file_name());
-
-    if (report.position.has_value()) {
-      print_colored(report.context, m_colors.locus, ":{}:{}", report.position->line, report.position->begin);
-    }
-
+    print_colored(report.context, m_colors.locus,
+                  report.context.get_location(report.position));
     print_colored(report.context, m_colors.text, ":\n");
-
     print_message(report.context, report.severity, report.code, report.message);
 
     if (!report.note.empty()) {
@@ -46,8 +44,7 @@ public:
   }
 
 private:
-  void print_message(ReportContext context,
-                     ReportSeverity severity,
+  void print_message(ReportContext context, ReportSeverity severity,
                      const std::optional<uint32_t> &code,
                      std::string_view message) {
 
@@ -83,11 +80,12 @@ private:
   /// m). If the use of colors is disabled, then the formatted message is
   /// printed verbatim.
   template<typename... Args>
-  void print_colored(ReportContext c, const char *ansi_color, std::string_view message,
-                     Args &&...args) {
+  void print_colored(ReportContext c, const char *ansi_color,
+                     std::string_view message, Args &&...args) {
     if (c.colored_output())
       m_out << "\x1b[" << ansi_color << "m";
-    m_out << fmt::vformat(message, fmt::make_format_args(std::forward<Args>(args)...));
+    m_out << fmt::vformat(message,
+                          fmt::make_format_args(std::forward<Args>(args)...));
     if (c.colored_output())
       m_out << "\x1b[0m";
   }

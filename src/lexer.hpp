@@ -1,10 +1,10 @@
 #ifndef NETLIST_LEXER_HPP
 #define NETLIST_LEXER_HPP
 
-#include "token.hpp"
 #include "report.hpp"
+#include "token.hpp"
 
-/// The (super-simple) lexical analyser for the netlist language.
+/// The lexical analyser for the netlist language.
 ///
 /// This class converts a sequence of bytes (representing the source code in
 /// the ASCII or UTF-8 encoding) into a stream of Tokens.
@@ -38,7 +38,8 @@ private:
 private:
   class DataBuffer {
   public:
-    explicit DataBuffer(const char *beginning) noexcept: m_line(0), m_col(0), m_cur(beginning) {}
+    explicit DataBuffer(const char *beginning) noexcept
+        : m_line(0), m_col(0), m_cur(beginning) {}
 
     void next_char();
 
@@ -57,7 +58,23 @@ private:
     uint32_t m_col;
     const char *m_cur;
   } m_buf;
+
   ReportContext &m_context;
+
+  void tokenize_decimal_constant(Token &Token);
+  void tokenize_hexadecimal_constant(Token &Token);
+  void tokenize_binary_constant(Token &Token);
+
+  [[nodiscard]] static inline bool is_whitespace(const DataBuffer &b);
+  [[nodiscard]] static inline bool is_binary_digit(const DataBuffer &b);
+  [[nodiscard]] static inline bool is_decimal_digit(const DataBuffer &b);
+  [[nodiscard]] static inline bool is_hexadecimal_digit(const DataBuffer &b);
+  [[nodiscard]] static inline bool is_non_zero_decimal_digit(const DataBuffer &b);
+  [[nodiscard]] static inline bool is_ident_start(const Lexer::DataBuffer &b);
+  [[nodiscard]] static inline bool is_ident_body(const Lexer::DataBuffer &b);
+
+  [[nodiscard]] static size_t parse_max_int_length(Lexer::DataBuffer Buffer);
+  [[nodiscard]] static size_t parse_max_bin_length(Lexer::DataBuffer Buffer);
 };
 
 #endif // NETLIST_LEXER_HPP

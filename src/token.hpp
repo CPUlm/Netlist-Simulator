@@ -7,47 +7,53 @@
 enum class TokenKind {
   /// End-Of-Input, the last token returned by the lexer.
   EOI,
-  /// An identifier such as `x` or `t_1`.
+  /// An identifier such as 'x' or 't_1'.
   IDENTIFIER,
-  /// An integer such as `42`.
+  /// An integer such as '42'.
   INTEGER,
-  /// An equal sign `=`.
+  /// A constant such as '01101110011101'.
+  BINARY_CONSTANT,
+  /// A decimal constant '0d01245'.
+  DECIMAL_CONSTANT,
+  /// A hexadecimal constant '0x5fe89'.
+  HEXADECIMAL_CONSTANT,
+  /// An equal sign '='.
   EQUAL,
-  /// A comma `,`.
+  /// A comma ','.
   COMMA,
-  /// A colon `:`.
+  /// A colon ':'.
   COLON,
-  /// The keyword `OUTPUT`.
+  /// The keyword 'OUTPUT'.
   KEY_OUTPUT,
-  /// The keyword `INPUT`.
+  /// The keyword 'INPUT'.
   KEY_INPUT,
-  /// The keyword `VAR`.
+  /// The keyword 'VAR'.
   KEY_VAR,
-  /// The keyword `IN`.
+  /// The keyword 'IN'.
   KEY_IN,
-  /// The keyword `NOT`.
+  /// The keyword 'NOT'.
   KEY_NOT,
-  /// The keyword `AND`.
+  /// The keyword 'AND'.
   KEY_AND,
-  /// The keyword `NAND`.
+  /// The keyword 'NAND'.
   KEY_NAND,
-  /// The keyword `OR`.
+  /// The keyword 'OR'.
   KEY_OR,
-  /// The keyword `XOR`.
+  /// The keyword 'XOR'.
   KEY_XOR,
-  /// The keyword `MUX`.
+  /// The keyword 'MUX'.
   KEY_MUX,
-  /// The keyword `REG`.
+  /// The keyword 'REG'.
   KEY_REG,
-  /// The keyword `CONCAT`.
+  /// The keyword 'CONCAT'.
   KEY_CONCAT,
-  /// The keyword `SELECT`.
+  /// The keyword 'SELECT'.
   KEY_SELECT,
-  /// The keyword `SLICE`.
+  /// The keyword 'SLICE'.
   KEY_SLICE,
-  /// The keyword `ROM`.
+  /// The keyword 'ROM'.
   KEY_ROM,
-  /// The keyword `RAM`.
+  /// The keyword 'RAM'.
   KEY_RAM,
 };
 
