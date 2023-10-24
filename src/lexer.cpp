@@ -48,27 +48,27 @@ void Lexer::tokenize(Token &token) {
     case '\0': // End-Of-Input reached !
       token.kind = TokenKind::EOI;
       token.spelling = {};
-      token.position = std::distance(m_input, m_cursor);
+      token.position = SourceLocation::from_offset(std::distance(m_input, m_cursor));
       return;
 
     case '=':
       token.kind = TokenKind::EQUAL;
       token.spelling = std::string_view(m_cursor, /* count= */ 1);
-      token.position = std::distance(m_input, m_cursor);
+      token.position = SourceLocation::from_offset(std::distance(m_input, m_cursor));
       ++m_cursor; // eat the character
       return;
 
     case ',':
       token.kind = TokenKind::COMMA;
       token.spelling = std::string_view(m_cursor, /* count= */ 1);
-      token.position = std::distance(m_input, m_cursor);
+      token.position = SourceLocation::from_offset(std::distance(m_input, m_cursor));
       ++m_cursor; // eat the character
       return;
 
     case ':':
       token.kind = TokenKind::COLON;
       token.spelling = std::string_view(m_cursor, /* count= */ 1);
-      token.position = std::distance(m_input, m_cursor);
+      token.position = SourceLocation::from_offset(std::distance(m_input, m_cursor));
       ++m_cursor; // eat the character
       return;
 
@@ -136,7 +136,7 @@ void Lexer::tokenize_identifier(Token &token) {
     token.kind = TokenKind::IDENTIFIER;
   }
 
-  token.position = std::distance(m_input, begin);
+  token.position = SourceLocation::from_offset(std::distance(m_input, begin));
 }
 
 void Lexer::tokenize_integer(Token &token) {
@@ -157,5 +157,5 @@ void Lexer::tokenize_integer(Token &token) {
 
   token.kind = TokenKind::INTEGER;
   token.spelling = std::string_view(begin, std::distance(begin, end));
-  token.position = std::distance(m_input, begin);
+  token.position = SourceLocation::from_offset(std::distance(m_input, begin));
 }

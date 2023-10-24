@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_subdirectory(fmt)
+
 add_library(netlistlib
         src/lexer.hpp
         src/token.hpp
@@ -18,7 +20,13 @@ add_library(netlistlib
         src/program.cpp
         src/program_printer.hpp
         src/program_printer.cpp
+        src/line_map.hpp
+        src/line_map.cpp
+        src/report.hpp
+        src/report.cpp
 )
+
+target_link_libraries(netlistlib PUBLIC fmt::fmt)
 
 add_executable(netlist
         src/main.cpp

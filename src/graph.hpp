@@ -15,8 +15,8 @@ enum Mark {
 template <class T> struct Node { // Permet d'avoir un type générique en argument de Node, par ex Node<std::string> ou Node<int>.
   T label;
   Mark mark;
-  std::vector<Node<T>> link_to; 
-  std::vector<Node<T>> linked_by;
+  std::vector<std::reference_wrapper<Node<T>>> link_to;
+  std::vector<std::reference_wrapper<Node<T>>> linked_by;
 };
 
 template <class T> struct Graph {
