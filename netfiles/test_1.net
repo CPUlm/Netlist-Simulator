@@ -1,7 +1,7 @@
 INPUT a
 OUTPUT s
 VAR
-  v
+  v,a,s
 IN
 s = NOT v
 v = NOT a
