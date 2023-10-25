@@ -55,6 +55,8 @@ enum class TokenKind {
   KEY_NOR,
   /// The keyword `XOR`.
   KEY_XOR,
+  /// The keyword `XNOR`.
+  KEY_XNOR,
   /// The keyword `MUX`.
   KEY_MUX,
   /// The keyword `REG`.

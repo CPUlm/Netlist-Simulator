@@ -21,7 +21,9 @@ NOT,     TokenKind::KEY_NOT
 AND,     TokenKind::KEY_AND
 NAND,    TokenKind::KEY_NAND
 OR,      TokenKind::KEY_OR
+NOR,     TokenKind::KEY_NOR
 XOR,     TokenKind::KEY_XOR
+XNOR,    TokenKind::KEY_XNOR
 MUX,     TokenKind::KEY_MUX
 REG,     TokenKind::KEY_REG
 CONCAT,  TokenKind::KEY_CONCAT
