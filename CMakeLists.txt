@@ -9,17 +9,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_subdirectory(fmt)
 
 add_library(netlistlib
-        src/lexer.hpp
         src/token.hpp
+        src/lexer.hpp
         src/lexer.cpp
-        src/graph.hpp
         src/parser.hpp
         src/parser.cpp
         src/program.hpp
+        src/program.cpp
         src/program_printer.hpp
         src/program_printer.cpp
         src/report.hpp
         src/report.cpp
+        src/graph.hpp
 )
 
 target_link_libraries(netlistlib PUBLIC fmt::fmt)

@@ -9,9 +9,9 @@ enum class TokenKind {
   EOI,
   /// An identifier such as 'x' or 't_1'.
   IDENTIFIER,
-  /// An integer such as '42'.
+  /// An integer such as '42' or '01101110011101'.
   INTEGER,
-  /// A constant such as '01101110011101'.
+  /// A constant such as '0b10111101'.
   BINARY_CONSTANT,
   /// A decimal constant '0d01245'.
   DECIMAL_CONSTANT,

@@ -73,3 +73,10 @@ _deps
 
 .history
 .ionide
+
+### LatexCompilations ###
+**/*.aux
+**/*.fdb_latexmk
+**/*.fls
+**/*.log
+**/*.syntex.gz

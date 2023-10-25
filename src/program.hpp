@@ -11,15 +11,6 @@
 #define delete_copy_ctr(class) class(class &) = delete;\
 class(const class &) = delete;
 
-#define same_bus_size(bus1, bus2) ((bus1)->get_bus_size() == (bus2)->get_bus_size()) ? (bus1)->get_bus_size() : \
-throw std::invalid_argument("Bus size mismatch")
-
-#define check_bus_size_equal(bus, size) ((bus)->get_bus_size() == (size)) ? (bus) : \
-throw std::invalid_argument("Wrong bus size")
-
-#define check_bus_size_at_least(bus, size) ((bus)->get_bus_size() >= (size)) ? (bus) : \
-throw std::invalid_argument("Bus size too small")
-
 typedef int bus_size_t;
 typedef std::uint_least64_t value_t;
 typedef std::string_view ident_t;
@@ -37,15 +28,7 @@ public:
   delete_copy_ctr(Bus)
 
 protected:
-  explicit Bus(const bus_size_t size) : bus_size(size) {
-    if (size <= 0) {
-      throw std::invalid_argument("Cannot have a negative or null bus size.");
-    }
-
-    if (size > max_bus_size) {
-      throw std::invalid_argument("Bus size too large to be represented.");
-    }
-  }
+  explicit Bus(bus_size_t size);
 
 private:
   const bus_size_t bus_size;
@@ -66,6 +49,9 @@ public:
   /// Kind of the Argument : Constants or Variables
   [[nodiscard]] virtual Kind get_kind() const noexcept = 0;
 
+  /// A representation of the Argument (value for Constant, name for Variables)
+  [[nodiscard]] virtual std::string get_repr() const noexcept = 0;
+
   // Delete copy constructor and added a virtual destructor.
   delete_copy_ctr(Argument)
 
@@ -85,20 +71,17 @@ public:
   /// Constructor of a 'bus constant'
   /// \param size Size of the bus
   /// \param value Value of the constant. Must be in [0, 2^size - 1]
-  explicit Constant(const bus_size_t size, value_t value) :
-      Argument(size), m_value(value < (1 << size) ? value :
-                              throw std::invalid_argument("Constant bus too small for the given value.")) {}
-
-  /// Constructor for a single bit constant : True or False.
-  /// \param value Boolean value of the bit
-  explicit Constant(bool value) :
-      Argument(1), m_value(value ? 1 : 0) {}
+  explicit Constant(bus_size_t size, value_t value);
 
   /// Kind of a Constant (obvious)
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the value of the constant.
   [[nodiscard]] value_t get_value() const noexcept { return m_value; }
+
+  [[nodiscard]] std::string get_repr() const noexcept override {
+    return std::to_string(get_value());
+  }
 
   delete_copy_ctr(Constant)
 
@@ -115,14 +98,17 @@ public:
   /// Constructor of a variable
   /// \param size Bus size of the variable
   /// \param name Name identifier of the variable
-  explicit Variable(const bus_size_t size, ident_t name) :
-      Argument(size), m_name(name) {}
+  explicit Variable(bus_size_t size, ident_t name);
 
   /// Kind of a Variable (obvious)
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the name of the variable
   [[nodiscard]] ident_t get_name() const noexcept { return m_name; }
+
+  [[nodiscard]] std::string get_repr() const noexcept override {
+    return std::string(get_name());
+  }
 
   delete_copy_ctr(Variable)
 
@@ -225,11 +211,7 @@ public:
   /// \param binop Type of operation performed : AND, OR, etc.
   /// \param lhs Left hand side of the operation
   /// \param rhs Right hand side of the operation
-  explicit BinOpExpression(BinOpKind binop, const Argument::ptr &lhs, const Argument::ptr &rhs) :
-      Expression(same_bus_size(lhs, rhs)),
-      m_kind(binop),
-      m_lhs(lhs),
-      m_rhs(rhs) {}
+  explicit BinOpExpression(BinOpKind binop, const Argument::ptr &lhs, const Argument::ptr &rhs);
 
   /// BinOpExpression Kind : Kind::BINOP
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
@@ -259,11 +241,7 @@ public:
   /// \param choice Bit used to make a choice. Must have a bus size of 1
   /// \param true_arg Value of the expression if choice bit is 1
   /// \param false_arg Value of the expression if choice bit is 0
-  explicit MuxExpression(const Argument::ptr &choice, const Argument::ptr &true_arg, const Argument::ptr &false_arg) :
-      Expression(same_bus_size(true_arg, false_arg)),
-      m_choice(check_bus_size_equal(choice, 1)),
-      m_true(true_arg),
-      m_false(false_arg) {}
+  explicit MuxExpression(const Argument::ptr &choice, const Argument::ptr &true_arg, const Argument::ptr &false_arg);
 
   /// MuxExpression Kind : Kind::MUX
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
@@ -293,9 +271,7 @@ public:
   /// \param addr_size The size of an address bus
   /// \param word_size The size of the word read
   /// \param read_addr The address to read to
-  explicit RomExpression(const bus_size_t addr_size, const bus_size_t word_size, const Argument::ptr &read_addr) :
-      Expression(word_size),
-      m_read_addr(check_bus_size_equal(read_addr, addr_size)) {}
+  explicit RomExpression(bus_size_t addr_size, bus_size_t word_size, const Argument::ptr &read_addr);
 
   /// RomExpression Kind : Kind::ROM
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
@@ -323,14 +299,8 @@ public:
   /// \param write_enable Bit used to know if writing. If 1, we write 'data' at 'write_addr'.
   /// \param write_addr The address to write to. Must have a bus size of addr_size.
   /// \param data Data to write (if write_enable). Must have a bus size of word_size.
-  explicit RamExpression(const bus_size_t addr_size, const bus_size_t word_size, const Argument::ptr &read_addr,
-                         const Argument::ptr &write_enable, const Argument::ptr &write_addr, const Argument::ptr &data)
-      :
-      Expression(word_size),
-      m_read_addr(check_bus_size_equal(read_addr, addr_size)),
-      m_write_enable(check_bus_size_equal(write_enable, 1)),
-      m_write_addr(check_bus_size_equal(write_addr, addr_size)),
-      m_write_data(check_bus_size_equal(data, word_size)) {}
+  explicit RamExpression(bus_size_t addr_size, bus_size_t word_size, const Argument::ptr &read_addr,
+                         const Argument::ptr &write_enable, const Argument::ptr &write_addr, const Argument::ptr &data);
 
   /// RamExpression Kind : Kind::RAM
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
@@ -366,25 +336,22 @@ public:
   /// Constructor of the concatenation of two buses.
   /// \param begin_arg First part of the concatenation. It will be in the beginning of the created bus.
   /// \param end_arg Lst part of the concatenation. It will be at the end of the created bus.
-  explicit ConcatExpression(const Variable::ptr &begin_arg, const Variable::ptr &end_arg) :
-      Expression(begin_arg->get_bus_size() + end_arg->get_bus_size()),
-      m_beg(begin_arg),
-      m_last(end_arg) {}
+  explicit ConcatExpression(const Argument::ptr &begin_arg, const Argument::ptr &end_arg);
 
   /// ConcatExpression Kind : Kind::CONCAT
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
 
   /// Returns the beginning of the bus.
-  [[nodiscard]] const Variable::ptr &get_beginning_part() const noexcept { return m_beg; }
+  [[nodiscard]] const Argument::ptr &get_beginning_part() const noexcept { return m_beg; }
 
   /// Returns the end of the bus.
-  [[nodiscard]] const Variable::ptr &get_last_part() const noexcept { return m_last; }
+  [[nodiscard]] const Argument::ptr &get_last_part() const noexcept { return m_last; }
 
   delete_copy_ctr(ConcatExpression)
 
 private:
-  const Variable::ptr m_beg;
-  const Variable::ptr m_last;
+  const Argument::ptr m_beg;
+  const Argument::ptr m_last;
 };
 
 /// The 'SLICE begin end arg' expression.
@@ -396,11 +363,7 @@ public:
   /// \param begin Begin index of the slice section.
   /// \param end End index of the slice section INCLUDED.
   /// \param arg Argument to slice
-  explicit SliceExpression(const bus_size_t begin, const bus_size_t end, const Argument::ptr &arg) :
-      Expression(end - begin + 1),
-      m_begin(begin),
-      m_end(end),
-      m_arg(check_bus_size_at_least(arg, end + 1)) {} // indexes start at 0 !
+  explicit SliceExpression(bus_size_t begin, bus_size_t end, const Argument::ptr &arg);
 
   /// SliceExpression Kind : Kind::SLICE
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
@@ -429,10 +392,7 @@ public:
   /// Constructor of the Select expression. Select the 'index'-th bit of the bus 'arg'.
   /// \param index Bit index to select
   /// \param arg Argument
-  explicit SelectExpression(const bus_size_t index, const Argument::ptr &arg) :
-      Expression(1),
-      m_index(index),
-      m_arg(check_bus_size_at_least(arg, index + 1)) {} // indexes start at 0 !
+  explicit SelectExpression(bus_size_t index, const Argument::ptr &arg);
 
   /// SelectExpression Kind : Kind::SELECT
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }

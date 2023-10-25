@@ -51,11 +51,6 @@ bool Lexer::is_hexadecimal_digit(const Lexer::DataBuffer &b) {
       || (b.current_char() >= 'A' && b.current_char() <= 'F');
 }
 
-/// Returns true if the given ASCII character is a non zero decimal digit.
-bool Lexer::is_non_zero_decimal_digit(const Lexer::DataBuffer &b) {
-  return b.current_char() >= '1' && b.current_char() <= '9';
-}
-
 /// Returns true if the given ASCII character is a valid first character for
 /// an identifier.
 bool Lexer::is_ident_start(const Lexer::DataBuffer &b) {
@@ -111,37 +106,25 @@ void Lexer::tokenize(Token &token) {
       continue; // get the next valid token
 
     case '0': {
-      DataBuffer buf = m_buf;
+      DataBuffer buf = m_buf; // Copy of the buffer to test the next char
       buf.next_char();
-      // Can either be BINARY_CONSTANT or DECIMAL_CONSTANT or HEXADECIMAL_CONSTANT
-      if (buf.current_char() == 'd') {
+      // Can either be an INTEGER, a BINARY_CONSTANT, a DECIMAL_CONSTANT or an HEXADECIMAL_CONSTANT
+      if (buf.current_char() == 'b') {
+        // It's a BINARY_CONSTANT
+        tokenize_binary_constant(token);
+      } else if (buf.current_char() == 'd') {
         // It's a DECIMAL_CONSTANT
         tokenize_decimal_constant(token);
-        return;
       } else if (buf.current_char() == 'x') {
         // It's a HEXADECIMAL_CONSTANT
         tokenize_hexadecimal_constant(token);
-        return;
       } else {
-        // Can only be a BINARY_CONSTANT
-        tokenize_binary_constant(token);
-        return;
-      }
-    }
-    case '1': {
-      // Can be a BINARY_CONSTANT or an INTEGER
-      // We return the longest token possible.
-      size_t int_length = parse_max_int_length(m_buf);
-      size_t bin_length = parse_max_bin_length(m_buf);
-
-      if (int_length > bin_length) {
+        // Can only be an INTEGER
         tokenize_integer(token);
-        return;
-      } else {
-        tokenize_binary_constant(token);
-        return;
       }
+      return;
     }
+    case '1':
     case '2':
     case '3':
     case '4':
@@ -185,26 +168,6 @@ void Lexer::skip_comment() {
   while (!m_buf.is_eof() && m_buf.current_char() != '\n') {
     m_buf.next_char();
   }
-}
-
-size_t Lexer::parse_max_int_length(Lexer::DataBuffer b) {
-  size_t rep = 0;
-  while (is_decimal_digit(b)) {
-    rep++;
-    b.next_char();
-  }
-
-  return rep;
-}
-
-size_t Lexer::parse_max_bin_length(Lexer::DataBuffer b) {
-  size_t rep = 0;
-  while (is_binary_digit(b)) {
-    rep++;
-    b.next_char();
-  }
-
-  return rep;
 }
 
 const std::unordered_map<std::string_view, TokenKind> spelling2keyword = {
@@ -259,7 +222,7 @@ void Lexer::tokenize_identifier(Token &token) {
 }
 
 void Lexer::tokenize_integer(Token &token) {
-  assert(is_non_zero_decimal_digit(m_buf));
+  assert(is_decimal_digit(m_buf));
 
   const char *begin = m_buf.current_pos();
   const uint32_t column_begin = m_buf.current_column();
@@ -323,12 +286,14 @@ void Lexer::tokenize_hexadecimal_constant(Token &token) {
 }
 
 void Lexer::tokenize_binary_constant(Token &token) {
-  assert(is_binary_digit(m_buf));
-
-  const char *begin = m_buf.current_pos();
+  assert(m_buf.current_char() == '0');
   const uint32_t column_begin = m_buf.current_column();
 
   m_buf.next_char();
+  assert(m_buf.current_char() == 'b');
+  m_buf.next_char();
+
+  const char *begin = m_buf.current_pos();
 
   while (is_binary_digit(m_buf)) {
     m_buf.next_char();
@@ -340,4 +305,3 @@ void Lexer::tokenize_binary_constant(Token &token) {
   token.spelling = std::string_view(begin, std::distance(begin, end));
   token.position = {m_buf.current_line(), column_begin};
 }
-

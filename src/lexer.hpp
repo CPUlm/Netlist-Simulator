@@ -30,11 +30,22 @@ private:
   /// lexer is located at the first valid character of an identifier.
   void tokenize_identifier(Token &token);
 
-  /// Tokenizes an INTEGER. This function should only be called when the
-  /// lexer is located at the first valid character of an integer ie. a non
-  /// zero digit.
+  /// Tokenizes a BUS_SIZE. This function should only be called when the
+  /// lexer is located at the first valid character of an integer ie. a
+  /// decimal digits
   void tokenize_integer(Token &token);
 
+  /// Tokenizes a BINARY_CONSTANT. This function should only be called when the
+  /// lexer is located at the first valid characters of a binary constant ie. '0b'
+  void tokenize_binary_constant(Token &Token);
+
+  /// Tokenizes a DECIMAL_CONSTANT. This function should only be called when the
+  /// lexer is located at the first valid characters of a decimal constant ie. '0d'
+  void tokenize_decimal_constant(Token &Token);
+
+  /// Tokenizes a HEXADECIMAL_CONSTANT. This function should only be called when the
+  /// lexer is located at the first valid characters of a hexadecimal constant ie. '0x'
+  void tokenize_hexadecimal_constant(Token &Token);
 private:
   class DataBuffer {
   public:
@@ -61,20 +72,12 @@ private:
 
   ReportContext &m_context;
 
-  void tokenize_decimal_constant(Token &Token);
-  void tokenize_hexadecimal_constant(Token &Token);
-  void tokenize_binary_constant(Token &Token);
-
   [[nodiscard]] static inline bool is_whitespace(const DataBuffer &b);
   [[nodiscard]] static inline bool is_binary_digit(const DataBuffer &b);
   [[nodiscard]] static inline bool is_decimal_digit(const DataBuffer &b);
   [[nodiscard]] static inline bool is_hexadecimal_digit(const DataBuffer &b);
-  [[nodiscard]] static inline bool is_non_zero_decimal_digit(const DataBuffer &b);
   [[nodiscard]] static inline bool is_ident_start(const Lexer::DataBuffer &b);
   [[nodiscard]] static inline bool is_ident_body(const Lexer::DataBuffer &b);
-
-  [[nodiscard]] static size_t parse_max_int_length(Lexer::DataBuffer Buffer);
-  [[nodiscard]] static size_t parse_max_bin_length(Lexer::DataBuffer Buffer);
 };
 
 #endif // NETLIST_LEXER_HPP

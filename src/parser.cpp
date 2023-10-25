@@ -1,10 +1,43 @@
 #include "parser.hpp"
+#include <sstream>
+
+/// Parse the current token as an integer in the given base. We use a template to process different integer types.
+template<class T>
+[[nodiscard]] T parse_int(const Token &token, int base, ReportContext &c) {
+  T v;
+
+  auto [ptr, ec] = std::from_chars(token.spelling.begin(), token.spelling.end(), v, base);
+  if (ec == std::errc::result_out_of_range) {
+    c.report(ReportSeverity::ERROR)
+        .with_location(token.position)
+        .with_message("The value '{}' (interpreted in base {}) is too big to fit in a {}. "
+                      "Max value authorised : '{}'",
+                      token.spelling, base, typeid(T).name(), std::numeric_limits<T>::max())
+        .build()
+        .exit();
+  } else if (ec == std::errc::invalid_argument) {
+    c.report(ReportSeverity::ERROR)
+        .with_location(token.position)
+        .with_message("Error parsing value '{}' in base {}", token.spelling, base)
+        .build()
+        .exit();
+  } else if (*ptr != '\0') {
+    c.report(ReportSeverity::ERROR)
+        .with_location(token.position)
+        .with_message("Error parsing value '{}' in base {}. Successfully parsed the value '{}' "
+                      "but unable to parse this part : '{}'", token.spelling, base, v, ptr)
+        .build()
+        .exit();
+  }
+
+  return v;
+}
 
 const std::unordered_map<TokenKind, std::string> token_spelling = {
     {TokenKind::EOI, "End-Of-File"},
     {TokenKind::IDENTIFIER, "Identifier (such as '_l_10')"},
-    {TokenKind::INTEGER, "Integer (such as '42')"},
-    {TokenKind::BINARY_CONSTANT, "Binary Constant (such as '011011' or '1')"},
+    {TokenKind::INTEGER, "Integer (such as '42' or '0100101010110' or '1')"},
+    {TokenKind::BINARY_CONSTANT, "Binary Constant (such as '0b011011' or '0b1')"},
     {TokenKind::DECIMAL_CONSTANT, "Decimal Constant (such as '0d215')"},
     {TokenKind::HEXADECIMAL_CONSTANT, "Hexadecimal Constant (such as '0xf2f')"},
 
@@ -32,41 +65,10 @@ const std::unordered_map<TokenKind, std::string> token_spelling = {
     {TokenKind::KEY_RAM, "RAM"},
 };
 
-Parser::Parser(ReportContext &context, Lexer &lexer) : m_context(context), m_lexer(lexer) {
+Parser::Parser(ReportContext &context, Lexer &lexer)
+    : m_context(context), m_lexer(lexer) {
   // Gets the first token
-  m_lexer.tokenize(m_token);
-}
-
-void Parser::consume() { m_lexer.tokenize(m_token); }
-
-void Parser::token_assert(const std::set<TokenKind> &token_set) const noexcept {
-  if (!token_set.contains(m_token.kind)) {
-    std::string tokens = token_spelling.at(*token_set.begin());
-
-    if (token_set.size() > 1) {
-      for (auto it = ++token_set.begin(); it != token_set.end(); it++) {
-        tokens.append("' or '" + token_spelling.at(*it));
-      }
-    }
-
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("Unexpected token. Found : '{}', expected : '{}'",
-                      m_token.spelling, tokens)
-        .build()
-        .exit();
-  }
-}
-
-void Parser::token_assert(TokenKind token) const noexcept {
-  if (m_token.kind != token) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("Unexpected token. Found : '{}', expected : '{}'",
-                      m_token.spelling, token_spelling.at(token))
-        .build()
-        .exit();
-  }
+  consume();
 }
 
 Program::ptr Parser::parse_program() {
@@ -119,7 +121,78 @@ Program::ptr Parser::parse_program() {
   return p;
 }
 
-Parser::var_ref_map Parser::parse_inputs_references() noexcept {
+[[noreturn]] void Parser::unexpected_token(const std::set<TokenKind> &expected) const {
+  std::stringstream tokens;
+
+  bool first = true;
+
+  for (const TokenKind &tok : expected) {
+    if (first) {
+      first = false;
+    } else {
+      tokens << "' or '";
+    }
+
+    tokens << token_spelling.at(tok);
+  }
+
+  m_context.report(ReportSeverity::ERROR)
+      .with_location(m_token.position)
+      .with_message("Unexpected token. Found : '{}', expected : '{}'", m_token.spelling, tokens.str())
+      .build()
+      .exit();
+}
+
+void Parser::token_assert(const std::set<TokenKind> &token_set) const {
+  if (!token_set.contains(m_token.kind)) {
+    unexpected_token(token_set);
+  }
+}
+
+void Parser::token_assert(TokenKind token) const {
+  if (m_token.kind != token) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("Unexpected token. Found : '{}', expected : '{}'", m_token.spelling, token_spelling.at(token))
+        .build()
+        .exit();
+  }
+}
+
+void Parser::assert_same_bus_size(const Argument::ptr &arg1, const Argument::ptr &arg2, const SourcePosition &pos) {
+  if (arg1->get_bus_size() != arg2->get_bus_size()) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(pos)
+        .with_message("The two arguments '{}' (bus size : {}) and '{}' (bus size : {}) should have the same bus size.",
+                      arg1->get_repr(), arg1->get_bus_size(), arg2->get_repr(), arg2->get_bus_size())
+        .build()
+        .exit();
+  }
+}
+
+void Parser::assert_bus_size_eq(const Argument::ptr &arg, bus_size_t size, const SourcePosition &pos) {
+  if (arg->get_bus_size() != size) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(pos)
+        .with_message("The argument '{}' (bus size : {}) should have a bus size of {}.",
+                      arg->get_repr(), arg->get_bus_size(), size)
+        .build()
+        .exit();
+  }
+}
+
+void Parser::assert_bus_size_gt(const Argument::ptr &arg, bus_size_t size, const SourcePosition &pos) {
+  if (arg->get_bus_size() <= size) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(pos)
+        .with_message("The argument '{}' (bus size : {}) should have a bus size strictly greater than {}.",
+                      arg->get_repr(), arg->get_bus_size(), size)
+        .build()
+        .exit();
+  }
+}
+
+Parser::var_ref_map Parser::parse_inputs_references() {
   token_assert(TokenKind::KEY_INPUT);
   consume(); // eat 'INPUT'
 
@@ -152,7 +225,7 @@ Parser::var_ref_map Parser::parse_inputs_references() noexcept {
   return var;
 }
 
-Parser::var_ref_map Parser::parse_outputs_references() noexcept {
+Parser::var_ref_map Parser::parse_outputs_references() {
   token_assert(TokenKind::KEY_OUTPUT);
   consume(); // eat 'OUTPUT'
 
@@ -184,7 +257,7 @@ Parser::var_ref_map Parser::parse_outputs_references() noexcept {
   return var;
 }
 
-void Parser::parse_variable_declaration() noexcept {
+void Parser::parse_variable_declaration() {
   token_assert(TokenKind::KEY_VAR);
   consume(); // eat 'VAR'
 
@@ -223,143 +296,6 @@ void Parser::parse_variable_declaration() noexcept {
       token_assert(TokenKind::IDENTIFIER);
     }
   }
-}
-
-Constant::ptr Parser::parse_bin_const(bus_size_t size) noexcept {
-  token_assert(TokenKind::BINARY_CONSTANT);
-  auto value = parse_int<value_t>(2); // We parse in base 2 here
-
-  if (value > Bus::max_value(size)) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("The binary value '{}' (decimal : {}) is too large to fit in a bus size of {}."
-                      " The maximum authorised value for the variable is : {}",
-                      m_token.spelling, value, size, Bus::max_value(size))
-        .build()
-        .exit();
-  }
-
-  consume();
-  return std::make_shared<Constant>(size, value);
-}
-
-Constant::ptr Parser::parse_dec_const(bus_size_t size) noexcept {
-  token_assert(TokenKind::DECIMAL_CONSTANT);
-  auto value = parse_int<value_t>(10); // We parse in base 10 here
-
-  if (value > Bus::max_value(size)) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("The decimal value '{}' is too large to fit in a bus size of {}."
-                      " The maximum authorised value for the variable is : {}",
-                      m_token.spelling, value, size, Bus::max_value(size))
-        .build()
-        .exit();
-  }
-
-  consume();
-  return std::make_shared<Constant>(size, value);
-}
-
-Constant::ptr Parser::parse_hex_const(bus_size_t size) noexcept {
-  token_assert(TokenKind::HEXADECIMAL_CONSTANT);
-  auto value = parse_int<value_t>(16); // We parse in base 16 here
-
-  if (value > Bus::max_value(size)) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("The hexadecimal value '{}' (decimal : {}) is too large to fit in a bus size of {}."
-                      " The maximum authorised value for the variable is : {}",
-                      m_token.spelling, value, size, Bus::max_value(size))
-        .build()
-        .exit();
-  }
-
-  consume();
-  return std::make_shared<Constant>(size, value);
-}
-
-Variable::ptr Parser::parse_var() noexcept {
-  token_assert(TokenKind::IDENTIFIER);
-
-  if (!vars.contains(m_token.spelling)) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("Undefined variable {}.", m_token.spelling)
-        .build()
-        .exit();
-  }
-
-  const Variable::ptr &v = vars.at(m_token.spelling);
-  consume();
-  return v;
-}
-
-Variable::ptr Parser::parse_var(bus_size_t size) noexcept {
-  auto v = parse_var();
-  assert_var_size(v, size);
-  return v;
-}
-
-void Parser::assert_var_size(const Variable::ptr &var, bus_size_t size) noexcept {
-  if (var->get_bus_size() != size) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(var_decl.at(var->get_name()).position)
-        .with_message("Variable '{}' (declared bus size : {}) should have a bus size of {}.",
-                      var->get_name(), var->get_bus_size(), size)
-        .build()
-        .exit();
-  }
-}
-
-void Parser::assert_var_size_greater_than(const Variable::ptr &var, bus_size_t minimal_size) noexcept {
-  if (var->get_bus_size() < minimal_size) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(var_decl.at(var->get_name()).position)
-        .with_message("Variable '{}' (declared bus size : {}) should have a bus size >= {} in this context.",
-                      var->get_name(), var->get_bus_size(), minimal_size)
-        .build()
-        .exit();
-  }
-}
-
-Argument::ptr Parser::parse_argument(bus_size_t expected_size) noexcept {
-  token_assert({TokenKind::IDENTIFIER, TokenKind::BINARY_CONSTANT, TokenKind::DECIMAL_CONSTANT,
-                TokenKind::HEXADECIMAL_CONSTANT, TokenKind::INTEGER});
-
-  if (m_token.kind == TokenKind::IDENTIFIER) {
-    return parse_var(expected_size);
-  } else if (m_token.kind == TokenKind::BINARY_CONSTANT) {
-    return parse_bin_const(expected_size);
-  } else if (m_token.kind == TokenKind::DECIMAL_CONSTANT) {
-    return parse_dec_const(expected_size);
-  } else if (m_token.kind == TokenKind::HEXADECIMAL_CONSTANT) {
-    return parse_hex_const(expected_size);
-  } else {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("Missing decimal prefix for the constant '{}'", m_token.spelling)
-        .build()
-        .exit();
-  }
-}
-
-bus_size_t Parser::parse_bus_size() noexcept {
-  token_assert({TokenKind::INTEGER,
-                TokenKind::BINARY_CONSTANT}); // '10' can will be interpreted as a BinaryConstant here
-
-  auto bs = parse_int<bus_size_t>(10); // We parse in base 10 here.
-
-  if (bs > max_bus_size) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("Integer '{}' is too big to be a bus size. Max bus size authorised : '{}'", bs, max_bus_size)
-        .build()
-        .exit();
-  }
-
-  consume();
-  return bs;
 }
 
 void Parser::build_intput_output_list(Program::ptr &p, const var_ref_map &in_refs, const var_ref_map &out_refs) {
@@ -414,215 +350,345 @@ void Parser::parse_equations(Program::ptr &p) {
     consume(); // eat the variable
     token_assert(TokenKind::EQUAL);
     consume(); // eat '='
-
-    switch (m_token.kind) {
-    case TokenKind::IDENTIFIER: {
-      const Variable::ptr r_var = parse_var(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<ArgExpression>(r_var));
-      break;
+    Expression::ptr eq = parse_expression();
+    if (eq->get_bus_size() != assigment_var->get_bus_size()) {
+      // Wrong bus size.
     }
+    p->m_eq.try_emplace(assigment_var, std::move(eq));
+  }
+}
 
-    case TokenKind::BINARY_CONSTANT: {
-      const Constant::ptr cst = parse_bin_const(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<ArgExpression>(cst));
-      break;
-    }
+Expression::ptr Parser::parse_expression() {
+  const SourcePosition expr_pos = m_token.position;
 
-    case TokenKind::DECIMAL_CONSTANT: {
-      const Constant::ptr cst = parse_dec_const(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<ArgExpression>(cst));
-      break;
-    }
+  switch (m_token.kind) {
+  case TokenKind::IDENTIFIER: {
+    return std::make_unique<ArgExpression>(parse_variable());
+  }
 
-    case TokenKind::HEXADECIMAL_CONSTANT: {
-      const Constant::ptr cst = parse_hex_const(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<ArgExpression>(cst));
-      break;
-    }
+  case TokenKind::INTEGER: {
+    return std::make_unique<ArgExpression>(parse_binary_digits());
+  }
 
-    case TokenKind::INTEGER: {
+  case TokenKind::BINARY_CONSTANT: {
+    return std::make_unique<ArgExpression>(parse_binary_constant());
+  }
+
+  case TokenKind::DECIMAL_CONSTANT: {
+    return std::make_unique<ArgExpression>(parse_decimal_constant());
+  }
+
+  case TokenKind::HEXADECIMAL_CONSTANT: {
+    return std::make_unique<ArgExpression>(parse_hexadecimal_constant());
+  }
+
+  case TokenKind::KEY_NOT: {
+    consume();
+
+    return std::make_unique<NotExpression>(parse_argument());
+  }
+
+  case TokenKind::KEY_AND: {
+    consume();
+
+    const Argument::ptr lhs = parse_argument();
+    const Argument::ptr rhs = parse_argument();
+
+    assert_same_bus_size(lhs, rhs, expr_pos);
+
+    return std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::AND, lhs, rhs);
+  }
+
+  case TokenKind::KEY_NAND: {
+    consume();
+
+    const Argument::ptr lhs = parse_argument();
+    const Argument::ptr rhs = parse_argument();
+
+    assert_same_bus_size(lhs, rhs, expr_pos);
+
+    return std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::NAND, lhs, rhs);
+  }
+
+  case TokenKind::KEY_OR: {
+    consume();
+
+    const Argument::ptr lhs = parse_argument();
+    const Argument::ptr rhs = parse_argument();
+
+    assert_same_bus_size(lhs, rhs, expr_pos);
+
+    return std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::OR, lhs, rhs);
+  }
+
+  case TokenKind::KEY_XOR: {
+    consume();
+
+    const Argument::ptr lhs = parse_argument();
+    const Argument::ptr rhs = parse_argument();
+
+    assert_same_bus_size(lhs, rhs, expr_pos);
+
+    return std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::XOR, lhs, rhs);
+  }
+
+  case TokenKind::KEY_MUX: {
+    consume();
+
+    const Argument::ptr choice = parse_argument();
+    const Argument::ptr true_branch = parse_argument();
+    const Argument::ptr false_branch = parse_argument();
+
+    assert_bus_size_eq(choice, 1, expr_pos);
+    assert_same_bus_size(true_branch, false_branch, expr_pos);
+
+    return std::make_unique<MuxExpression>(choice, true_branch, false_branch);
+  }
+
+  case TokenKind::KEY_REG: {
+    consume();
+
+    return std::make_unique<RegExpression>(parse_variable());
+  }
+
+  case TokenKind::KEY_CONCAT: {
+    consume();
+
+    const Argument::ptr arg_beg = parse_argument();
+    const Argument::ptr arg_end = parse_argument();
+
+    return std::make_unique<ConcatExpression>(arg_beg, arg_end);
+  }
+
+  case TokenKind::KEY_SELECT: {
+    consume();
+
+    const bus_size_t index = parse_bus_size();
+    const Argument::ptr arg = parse_argument();
+
+    assert_bus_size_gt(arg, index, expr_pos);
+
+    return std::make_unique<SelectExpression>(index, arg);
+  }
+
+  case TokenKind::KEY_SLICE: {
+    consume();
+
+    const bus_size_t beg = parse_bus_size();
+    const bus_size_t end = parse_bus_size();
+    const Argument::ptr arg = parse_argument();
+
+    if (beg >= end) {
       m_context.report(ReportSeverity::ERROR)
-          .with_location(m_token.position)
-          .with_message("Missing decimal prefix during affectation of the variable {} with integer constant '{}'",
-                        assigment_var->get_name(), m_token.spelling)
+          .with_location(expr_pos)
+          .with_message("The beginning of the interval ({}) must be less than the end of the interval ({}).", beg, end)
           .build()
           .exit();
     }
 
-    case TokenKind::KEY_NOT: {
-      consume();
-      const Argument::ptr arg = parse_argument(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<NotExpression>(arg));
-      break;
-    }
+    assert_bus_size_gt(arg, end, expr_pos);
 
-    case TokenKind::KEY_AND: {
-      consume();
-      const Argument::ptr lhs = parse_argument(assigment_var->get_bus_size());
-      const Argument::ptr rhs = parse_argument(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::AND, lhs, rhs));
-      break;
-    }
+    return std::make_unique<SliceExpression>(beg, end, arg);
+  }
 
-    case TokenKind::KEY_NAND: {
-      consume();
-      const Argument::ptr lhs = parse_argument(assigment_var->get_bus_size());
-      const Argument::ptr rhs = parse_argument(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::NAND, lhs, rhs));
-      break;
-    }
+  case TokenKind::KEY_ROM: {
+    consume();
 
-    case TokenKind::KEY_OR: {
-      consume();
-      const Argument::ptr lhs = parse_argument(assigment_var->get_bus_size());
-      const Argument::ptr rhs = parse_argument(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::OR, lhs, rhs));
-      break;
-    }
+    const bus_size_t addr_size = parse_bus_size();
+    const bus_size_t word_size = parse_bus_size();
+    const Argument::ptr read_addr = parse_argument();
 
-    case TokenKind::KEY_XOR: {
-      consume();
-      const Argument::ptr lhs = parse_argument(assigment_var->get_bus_size());
-      const Argument::ptr rhs = parse_argument(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<BinOpExpression>(BinOpExpression::BinOpKind::XOR, lhs, rhs));
-      break;
-    }
+    assert_bus_size_eq(read_addr, addr_size, expr_pos);
 
-    case TokenKind::KEY_MUX: {
-      consume();
-      const Argument::ptr choice = parse_argument(1);
-      const Argument::ptr true_branch = parse_argument(assigment_var->get_bus_size());
-      const Argument::ptr false_branch = parse_argument(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<MuxExpression>(choice, true_branch, false_branch));
-      break;
-    }
+    return std::make_unique<RomExpression>(addr_size, word_size, read_addr);
+  }
 
-    case TokenKind::KEY_REG: {
-      consume();
-      const Variable::ptr var = parse_var(assigment_var->get_bus_size());
-      p->m_eq.try_emplace(assigment_var, std::make_unique<RegExpression>(var));
-      break;
-    }
+  case TokenKind::KEY_RAM: {
+    consume();
 
-    case TokenKind::KEY_CONCAT: {
-      consume();
-      const Variable::ptr var_beg = parse_var();
+    const bus_size_t addr_size = parse_bus_size();
+    const bus_size_t word_size = parse_bus_size();
+    const Argument::ptr read_addr = parse_argument();
+    const Argument::ptr write_enable = parse_argument();
+    const Argument::ptr write_addr = parse_argument();
+    const Argument::ptr data = parse_argument();
 
-      if (var_beg->get_bus_size() >= assigment_var->get_bus_size()) {
-        m_context.report(ReportSeverity::ERROR)
-            .with_location(var_decl[var_beg->get_name()].position)
-            .with_message("Variable '{}' (declared bus size : {}) should have a bus size lower than {} to make sense"
-                          " in this CONCAT expression.",
-                          var_beg->get_name(), var_beg->get_bus_size(), assigment_var->get_bus_size())
-            .build()
-            .exit();
-      }
+    assert_bus_size_eq(read_addr, addr_size, expr_pos);
+    assert_bus_size_eq(write_enable, 1, expr_pos);
+    assert_bus_size_eq(write_addr, addr_size, expr_pos);
+    assert_bus_size_eq(data, word_size, expr_pos);
 
-      const Variable::ptr var_end = parse_var(assigment_var->get_bus_size() - var_beg->get_bus_size());
+    return std::make_unique<RamExpression>(addr_size, word_size, read_addr, write_enable, write_addr, data);
+  }
 
-      p->m_eq.try_emplace(assigment_var, std::make_unique<ConcatExpression>(var_beg, var_end));
-      break;
-    }
+  case TokenKind::EOI:
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("Missing expression for assigment.")
+        .build()
+        .exit();
 
-    case TokenKind::KEY_SELECT: {
-      consume();
-      bus_size_t index = parse_bus_size();
+  case TokenKind::EQUAL:
+  case TokenKind::COMMA:
+  case TokenKind::COLON:
+  case TokenKind::KEY_OUTPUT:
+  case TokenKind::KEY_INPUT:
+  case TokenKind::KEY_VAR:
+  case TokenKind::KEY_IN:
+    unexpected_token({TokenKind::IDENTIFIER, TokenKind::INTEGER, TokenKind::BINARY_CONSTANT,
+                      TokenKind::DECIMAL_CONSTANT, TokenKind::HEXADECIMAL_CONSTANT, TokenKind::KEY_NOT,
+                      TokenKind::KEY_AND, TokenKind::KEY_NAND, TokenKind::KEY_OR, TokenKind::KEY_XOR,
+                      TokenKind::KEY_MUX, TokenKind::KEY_REG, TokenKind::KEY_CONCAT, TokenKind::KEY_SELECT,
+                      TokenKind::KEY_SLICE, TokenKind::KEY_ROM, TokenKind::KEY_RAM});
+  }
+}
 
-      if (m_token.kind == TokenKind::IDENTIFIER) { // It's a variable
-        const Variable::ptr var = parse_var();
-        assert_var_size_greater_than(var, index + 1);
+bus_size_t Parser::parse_bus_size() {
+  token_assert(TokenKind::INTEGER);
 
-        p->m_eq.try_emplace(assigment_var, std::make_unique<SelectExpression>(index, var));
-      } else { // We expect a constant
-        // Cannot be a variable, so it's okay to enforce this bus size
-        const Argument::ptr cst = parse_argument(max_bus_size);
-        p->m_eq.try_emplace(assigment_var, std::make_unique<SelectExpression>(index, cst));
-      }
+  auto bs = parse_int<bus_size_t>(m_token, 10, m_context); // We parse in base 10 here.
 
-      break;
-    }
+  if (bs > max_bus_size) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("Integer '{}' is too big to be a bus size. Max bus size authorised : '{}'", bs, max_bus_size)
+        .build()
+        .exit();
+  }
 
-    case TokenKind::KEY_SLICE: {
-      consume();
-      bus_size_t beg = parse_bus_size();
-      bus_size_t end = parse_bus_size();
+  consume();
+  return bs;
+}
 
-      if (m_token.kind == TokenKind::IDENTIFIER) { // It's a variable
-        const Variable::ptr var = parse_var();
-        assert_var_size_greater_than(var, end + 1);
+std::optional<bus_size_t> Parser::parse_size_spec() {
+  if (m_token.kind == TokenKind::COLON) {
+    consume(); // eat ':'
+    return parse_bus_size();
+  }
 
-        p->m_eq.try_emplace(assigment_var, std::make_unique<SliceExpression>(beg, end, var));
-      } else { // We expect a constant
-        // Cannot be a variable, so it's okay to enforce this bus size
-        const Argument::ptr cst = parse_argument(max_bus_size);
-        p->m_eq.try_emplace(assigment_var, std::make_unique<SliceExpression>(beg, end, cst));
-      }
+  return {};
+}
 
-      break;
-    }
+Constant::ptr Parser::parse_binary_digits() {
+  token_assert(TokenKind::INTEGER);
 
-    case TokenKind::KEY_ROM: {
-      consume();
-      const bus_size_t addr_size = parse_bus_size();
+  auto val = parse_int<value_t>(m_token, 2, m_context); // We parse in base 2 here.
 
-      const SourcePosition pos = m_token.position;
-      const bus_size_t word_size = parse_bus_size();
+  consume();
+  return std::make_shared<Constant>(m_token.spelling.size(), val);
+}
 
-      if (word_size != assigment_var->get_bus_size()) {
-        m_context.report(ReportSeverity::ERROR)
-            .with_location(pos)
-            .with_message("Bus size mismatch between the word_size of this ROM expression (word_size : {}) and the"
-                          " target variable '{}' (bus size : {})",
-                          word_size, assigment_var->get_name(), assigment_var->get_bus_size())
-            .build()
-            .exit();
-      }
+Constant::ptr Parser::parse_binary_constant() {
+  token_assert(TokenKind::BINARY_CONSTANT);
 
-      const Argument::ptr read_addr = parse_argument(addr_size);
+  const Token cst_tok = m_token; // We copy the token in case of no size specifier
+  auto val = parse_int<value_t>(m_token, 2, m_context); // We parse in base 2 here
+  consume();
 
-      p->m_eq.try_emplace(assigment_var, std::make_unique<RomExpression>(addr_size, word_size, read_addr));
-      break;
-    }
+  auto size = parse_size_spec();
 
-    case TokenKind::KEY_RAM: {
-      consume();
-      const bus_size_t addr_size = parse_bus_size();
-
-      const SourcePosition pos = m_token.position;
-      const bus_size_t word_size = parse_bus_size();
-
-      if (word_size != assigment_var->get_bus_size()) {
-        m_context.report(ReportSeverity::ERROR)
-            .with_location(pos)
-            .with_message("Bus size mismatch between the word_size of this ROM expression (word_size : {}) and the"
-                          " target variable '{}' (bus size : {})",
-                          word_size, assigment_var->get_name(), assigment_var->get_bus_size())
-            .build()
-            .exit();
-      }
-
-      const Argument::ptr read_addr = parse_argument(addr_size);
-      const Argument::ptr write_enable = parse_argument(1);
-      const Argument::ptr write_addr = parse_argument(addr_size);
-      const Argument::ptr data = parse_argument(word_size);
-
-      p->m_eq.try_emplace(assigment_var,
-                          std::make_unique<RamExpression>(addr_size,
-                                                          word_size,
-                                                          read_addr,
-                                                          write_enable,
-                                                          write_addr,
-                                                          data));
-      break;
-    }
-
-    default: {
+  if (size.has_value()) {
+    if (val > Bus::max_value(size.value())) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
-          .with_message("Cannot interpret the assigment of variable '{}'.", assigment_var->get_name())
+          .with_message("The binary value '{}' (decimal : {}) is too large to fit in a bus size of {}. "
+                        "The maximum authorised value for the variable is : {}",
+                        cst_tok.spelling, val, size.value(), Bus::max_value(size.value()))
           .build()
           .exit();
     }
+    return std::make_shared<Constant>(size.value(), val);
+  } else {
+    return std::make_shared<Constant>(cst_tok.spelling.size(), val); // '0b' prefix is no in the token spelling
+  }
+}
+
+Constant::ptr Parser::parse_decimal_constant() {
+  token_assert(TokenKind::DECIMAL_CONSTANT);
+
+  auto val = parse_int<value_t>(m_token, 10, m_context); // We parse in base 10 here
+  consume();
+  auto size = parse_size_spec();
+
+  if (!size.has_value()) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("The decimal constant '{}' should have a size specifier.", val)
+        .build()
+        .exit();
+  }
+
+  if (val > Bus::max_value(size.value())) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("The decimal value '{}' is too large to fit in a bus size of {}. "
+                      "The maximum authorised value for the variable is : {}",
+                      val, size.value(), Bus::max_value(size.value()))
+        .build()
+        .exit();
+  }
+
+  return std::make_shared<Constant>(size.value(), val);
+}
+
+Constant::ptr Parser::parse_hexadecimal_constant() {
+  token_assert(TokenKind::HEXADECIMAL_CONSTANT);
+
+  const Token cst_tok = m_token; // We copy the token in case of no size specifier
+  auto val = parse_int<value_t>(m_token, 16, m_context); // We parse in base 16 here
+  consume();
+
+  auto size = parse_size_spec();
+
+  if (size.has_value()) {
+    if (val > Bus::max_value(size.value())) {
+      m_context.report(ReportSeverity::ERROR)
+          .with_location(m_token.position)
+          .with_message("The hexadecimal value '{}' (decimal : {}) is too large to fit in a bus size of {}. "
+                        "The maximum authorised value for the variable is : {}",
+                        cst_tok.spelling, val, size.value(), Bus::max_value(size.value()))
+          .build()
+          .exit();
     }
+    return std::make_shared<Constant>(size.value(), val);
+  } else {
+    // One hexadecimal digit <-> 4 bits
+    return std::make_shared<Constant>(cst_tok.spelling.size() * 4, val); // '0x' prefix is no in the token spelling
+  }
+}
+
+Variable::ptr Parser::parse_variable() {
+  token_assert(TokenKind::IDENTIFIER);
+
+  if (!vars.contains(m_token.spelling)) {
+    m_context.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_message("Undefined variable {}.", m_token.spelling)
+        .build()
+        .exit();
+  }
+
+  const Variable::ptr &v = vars.at(m_token.spelling);
+  consume();
+  return v;
+}
+
+Argument::ptr Parser::parse_argument() {
+  if (m_token.kind == TokenKind::IDENTIFIER) {
+    return parse_variable();
+  } else if (m_token.kind == TokenKind::INTEGER) {
+    return parse_binary_digits();
+  } else if (m_token.kind == TokenKind::BINARY_CONSTANT) {
+    return parse_binary_constant();
+  } else if (m_token.kind == TokenKind::DECIMAL_CONSTANT) {
+    return parse_decimal_constant();
+  } else if (m_token.kind == TokenKind::HEXADECIMAL_CONSTANT) {
+    return parse_hexadecimal_constant();
+  } else {
+    unexpected_token({TokenKind::IDENTIFIER,
+                      TokenKind::INTEGER,
+                      TokenKind::BINARY_CONSTANT,
+                      TokenKind::DECIMAL_CONSTANT,
+                      TokenKind::HEXADECIMAL_CONSTANT});
   }
 }
