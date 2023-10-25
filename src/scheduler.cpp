@@ -132,6 +132,8 @@ std::vector<Equation> read_exp(Equation * e)	{
 		std::cout << "is not " << (v->get_kind() == Value::Kind::INPUT) << "\n";
 	}
 
+	// TODO
+
 }
 
 
