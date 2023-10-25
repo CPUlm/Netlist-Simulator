@@ -1,21 +1,7 @@
 #include "simulator.hpp"
 
 #include <cassert>
-
-/* --------------------------------------------------------
- * class BreakPoint
- */
-
-void BreakPoint::activate(ByteCode &bytecode) {
-  saved_word = bytecode.words[offset];
-  bytecode.words[offset] = static_cast<std::uint32_t>(OpCode::BREAK);
-  is_active = true;
-}
-
-void BreakPoint::deactivate(ByteCode &bytecode) {
-  bytecode.words[offset] = saved_word;
-  is_active = false;
-}
+#include <fmt/format.h>
 
 /* --------------------------------------------------------
  * class Simulator
@@ -24,231 +10,124 @@ void BreakPoint::deactivate(ByteCode &bytecode) {
 // ------------------------
 // The registers API
 
-RegValue Simulator::get_register(RegIndex reg) const {
+reg_value_t Simulator::get_register(reg_t reg) const {
   assert(is_valid_register(reg));
 
-  const auto mask = (1 << m_d.bytecode.registers[reg].bit_width) - 1;
-  return m_d.registers_value[reg] & mask;
+  const auto mask = (1 << m_d.program.registers[reg.index].bus_size) - 1;
+  return m_d.registers_value[reg.index] & mask;
 }
 
-void Simulator::set_register(RegIndex reg, RegValue value) {
+void Simulator::set_register(reg_t reg, reg_value_t value) {
   assert(is_valid_register(reg));
-  m_d.registers_value[reg] = value;
+  m_d.registers_value[reg.index] = value;
 }
 
 void Simulator::print_registers(std::size_t registers_start, std::size_t registers_end) {
   // Adjust the given register range to be a valid range.
-  auto registers_count = registers_end - registers_start + 1;
-  registers_count = std::min(m_d.bytecode.registers.size(), registers_count);
-  registers_end = registers_start + registers_count;
+  registers_end = std::min(registers_end, m_d.program.registers.size() - 1);
 
-  fmt::print("Registers:");
+  fmt::println("Registers:");
 
   if (registers_start != 0)
-    fmt::print("  - ...");
+    fmt::println("  - ...");
 
   // Prints the registers value (in binary of course).
   for (std::size_t i = registers_start; i <= registers_end; ++i) {
-    const auto &reg_info = m_d.bytecode.registers[i];
-    const auto mask = (1 << reg_info.bit_width) - 1;
+    const auto &reg_info = m_d.program.registers[i];
+    const auto mask = (1 << reg_info.bus_size) - 1;
     const auto current_value = m_d.registers_value[i] & mask;
     const auto previous_value = m_d.previous_registers_value[i] & mask;
     // Prints something like `  - regs[0] = 0b00101 (prev 0b00100)`
     // The `+ 2` in the code below is because we must consider that `0b` is also printed.
-    fmt::print("  - r{} = {:#0{}b} (prev {:#0{}b})", i, current_value, reg_info.bit_width + 2, previous_value,
-               reg_info.bit_width + 2);
+    fmt::println("  - %{} = {:#0{}b} (prev {:#0{}b})", i, current_value, reg_info.bus_size + 2, previous_value,
+                 reg_info.bus_size + 2);
   }
 
-  if (registers_end >= m_d.bytecode.registers.size())
-    fmt::print("  - ...");
+  if (registers_end >= m_d.program.registers.size())
+    fmt::println("  - ...");
 }
 
 void Simulator::print_ram(std::size_t region_start, std::size_t region_end) {
   // TODO: implement RAM printing
 }
 
-void Simulator::execute() {
-  while (!(m_d.at_breakpoint || m_d.at_end()))
-    step();
+void Simulator::execute(size_t cycles) {
+  while (cycles-- > 0) {
+    while (!at_end())
+      step();
+
+    m_d.pc = 0;
+  }
 }
 
 void Simulator::step() {
-  if (m_d.at_breakpoint)
-    handle_breakpoint();
-
-  m_d.read_one();
+  m_d.program.instructions[m_d.pc]->visit(m_d);
+  ++m_d.pc;
 }
 
-std::vector<BreakPoint>::iterator Simulator::find_breakpoint(std::size_t pc) {
-  assert(pc < m_d.bytecode.words.size());
-
-  for (auto it = m_d.breakpoints.begin(); it != m_d.breakpoints.end(); ++it) {
-    if (it->offset == pc)
-      return it;
-  }
-
-  return m_d.breakpoints.end();
+Simulator::Detail::Detail(const Program &program) : program(program) {
+  registers_value = std::make_unique<reg_value_t[]>(program.registers.size());
+  previous_registers_value = std::make_unique<reg_value_t[]>(program.registers.size());
 }
 
-void Simulator::handle_breakpoint() {
-  assert(m_d.at_breakpoint);
-
-  auto breakpoint_it = find_breakpoint(m_d.get_position());
-  assert(breakpoint_it != m_d.breakpoints.end()); // the breakpoint must exist
-
-  // Temporary deactivate the breakpoint then do a single step of execution.
-  // Finally, reactivate the breakpoint.
-  m_d.at_breakpoint = false;
-  breakpoint_it->deactivate(m_d.bytecode);
-  // We are inside a recursive call chain because handle_breakpoint() is called by step().
-  // However, we don't have an infinite loop because handle_breakpoint() is only called
-  // if at_breakpoint() is true, but we set it to false just above.
-  step();
-
-  // Handle oneshot breakpoints, that is breakpoints that only works one time:
-  if (breakpoint_it->oneshot) {
-    m_d.breakpoints.erase(breakpoint_it);
-  } else {
-    breakpoint_it->activate(m_d.bytecode);
-  }
+void Simulator::Detail::visit_const(const ConstInstruction &inst) {
+  registers_value[inst.output.index] = inst.value;
 }
 
-Simulator::Detail::Detail(const ByteCode &bytecode) : ByteCodeReader<Detail>(bytecode), bytecode(bytecode) {
-  registers_value = std::make_unique<RegValue[]>(bytecode.registers.size());
-  previous_registers_value = std::make_unique<RegValue[]>(bytecode.registers.size());
-}
-
-#define SIMULATOR_PEDANTIC_CHECKS
-
-// If we really want to detect all possible errors at runtime, we can enable SIMULATOR_PEDANTIC_CHECKS
-// which adds many asserts into the simulator code. This may be quite useful during development or
-// to debug the simulator, however its slows down the simulation.
-#ifdef SIMULATOR_PEDANTIC_CHECKS
-#define SIMULATOR_ASSERT(expr) assert(expr)
-#else
-#define SIMULATOR_ASSERT(expr)
-#endif
-
-// Check if the given register index is in the bounds declared by the bytecode.
-// As you may suspect, it is not good to have a bytecode that contains instruction accessing
-// registers that do not exist. However, in practice this should never happen as the
-// bytecode is generated by ByteCodeWriter which do not generate ill-formed register access.
-#define SIMULATOR_CHECK_REG(reg) SIMULATOR_ASSERT((reg) < bytecode.registers.size())
-// Checks if both the given register index are referencing registers of the same bit width.
-// Normally, these checks are done at compile time by the parser. But just to be pedantic,
-// you can use this macro to check at the simulation time.
-#define SIMULATOR_CHECK_BIT_WIDTH(l, r)                                                                                \
-  SIMULATOR_ASSERT(bytecode.registers[(l)].bit_width == bytecode.registers[(r)].bit_width)
-
-void Simulator::Detail::handle_break() {
-  at_breakpoint = true;
-}
-
-void Simulator::Detail::handle_const(const ConstInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.output);
-
-  registers_value[inst.output] = inst.value;
-}
-
-void Simulator::Detail::handle_not(const NotInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input);
-  SIMULATOR_CHECK_REG(inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input, inst.output);
-
+void Simulator::Detail::visit_not(const NotInstruction &inst) {
   // We don't want a logical not but a bitwise not.
-  registers_value[inst.output] = ~(registers_value[inst.input]);
+  registers_value[inst.output.index] = ~(registers_value[inst.input.index]);
 }
 
-void Simulator::Detail::handle_and(const BinaryInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input_lhs);
-  SIMULATOR_CHECK_REG(inst.input_rhs);
-  SIMULATOR_CHECK_REG(inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_lhs, inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_rhs, inst.output);
-
-  const auto lhs = registers_value[inst.input_lhs];
-  const auto rhs = registers_value[inst.input_rhs];
+void Simulator::Detail::visit_and(const AndInstruction &inst) {
+  const auto lhs = registers_value[inst.lhs.index];
+  const auto rhs = registers_value[inst.rhs.index];
   // We don't want a logical and, but a bitwise and.
-  registers_value[inst.output] = lhs & rhs;
+  registers_value[inst.output.index] = lhs & rhs;
 }
 
-void Simulator::Detail::handle_or(const BinaryInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input_lhs);
-  SIMULATOR_CHECK_REG(inst.input_rhs);
-  SIMULATOR_CHECK_REG(inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_lhs, inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_rhs, inst.output);
-
-  const auto lhs = registers_value[inst.input_lhs];
-  const auto rhs = registers_value[inst.input_rhs];
-  // We don't want a logical or but a bitwise or.
-  registers_value[inst.output] = lhs | rhs;
+void Simulator::Detail::visit_nand(const NandInstruction &inst) {
+  const auto lhs = registers_value[inst.lhs.index];
+  const auto rhs = registers_value[inst.rhs.index];
+  registers_value[inst.output.index] = lhs | rhs;
 }
 
-void Simulator::Detail::handle_nand(const BinaryInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input_lhs);
-  SIMULATOR_CHECK_REG(inst.input_rhs);
-  SIMULATOR_CHECK_REG(inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_lhs, inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_rhs, inst.output);
-
-  const auto lhs = registers_value[inst.input_lhs];
-  const auto rhs = registers_value[inst.input_rhs];
+void Simulator::Detail::visit_or(const OrInstruction &inst) {
+  const auto lhs = registers_value[inst.lhs.index];
+  const auto rhs = registers_value[inst.rhs.index];
   // We let the C++ compiler select instruction to implement NAND (there is no NAND operator in C++).
-  registers_value[inst.output] = ~(lhs & rhs);
+  registers_value[inst.output.index] = ~(lhs & rhs);
 }
 
-void Simulator::Detail::handle_nor(const BinaryInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input_lhs);
-  SIMULATOR_CHECK_REG(inst.input_rhs);
-  SIMULATOR_CHECK_REG(inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_lhs, inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_rhs, inst.output);
-
-  const auto lhs = registers_value[inst.input_lhs];
-  const auto rhs = registers_value[inst.input_rhs];
+void Simulator::Detail::visit_nor(const NorInstruction &inst) {
+  const auto lhs = registers_value[inst.lhs.index];
+  const auto rhs = registers_value[inst.rhs.index];
   // We let the C++ compiler select instruction to implement NOR (there is no NOR operator in C++).
-  registers_value[inst.output] = ~(lhs | rhs);
+  registers_value[inst.output.index] = ~(lhs | rhs);
 }
 
-void Simulator::Detail::handle_xor(const BinaryInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input_lhs);
-  SIMULATOR_CHECK_REG(inst.input_rhs);
-  SIMULATOR_CHECK_REG(inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_lhs, inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input_rhs, inst.output);
-
-  const auto lhs = registers_value[inst.input_lhs];
-  const auto rhs = registers_value[inst.input_rhs];
-  registers_value[inst.output] = lhs ^ rhs;
+void Simulator::Detail::visit_xor(const XorInstruction &inst) {
+  const auto lhs = registers_value[inst.lhs.index];
+  const auto rhs = registers_value[inst.rhs.index];
+  registers_value[inst.output.index] = lhs ^ rhs;
 }
 
-void Simulator::Detail::handle_reg(const RegInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input);
-  SIMULATOR_CHECK_REG(inst.output);
-  SIMULATOR_CHECK_BIT_WIDTH(inst.input, inst.output);
-
-  const auto previous_value = previous_registers_value[inst.input];
-  registers_value[inst.output] = previous_value;
+void Simulator::Detail::visit_reg(const RegInstruction &inst) {
+  const auto previous_value = previous_registers_value[inst.input.index];
+  registers_value[inst.output.index] = previous_value;
 }
 
-void Simulator::Detail::handle_slice(const SliceInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input);
-
+void Simulator::Detail::visit_slice(const SliceInstruction &inst) {
   // The `+ 1` is because both end and first are inclusives.
-  const auto bit_width = inst.end - inst.first + 1;
-  SIMULATOR_ASSERT(bytecode.registers[inst.output].bit_width == bit_width);
+  const auto bit_width = inst.end - inst.start + 1;
 
-  const auto value = registers_value[inst.input];
+  const auto value = registers_value[inst.input.index];
   // Mask is a binary integer whose least significant bit_width bits are set to 1.
   const auto mask = (1 << (bit_width)) - 1;
-  registers_value[inst.output] = (value >> inst.first) & mask;
+  registers_value[inst.output.index] = (value >> inst.start) & mask;
 }
 
-void Simulator::Detail::handle_select(const SelectInstruction &inst) {
-  SIMULATOR_CHECK_REG(inst.input);
-  SIMULATOR_ASSERT(bytecode.registers[inst.output].bit_width == 1);
-
-  const auto value = registers_value[inst.input];
-  registers_value[inst.output] = (value >> inst.i) & 0b1;
+void Simulator::Detail::visit_select(const SelectInstruction &inst) {
+  const auto value = registers_value[inst.input.index];
+  registers_value[inst.output.index] = (value >> inst.i) & 0b1;
 }

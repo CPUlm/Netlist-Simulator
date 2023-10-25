@@ -1,11 +1,10 @@
 #include "parser.hpp"
 
-#include "fmt/format.h"
-#include <algorithm>
 #include <cassert>
-#include <vector>
 
 template <typename T> [[nodiscard]] static T parse_integer_literal(std::string_view literal) {
+  // TODO(hgruniaux): use std::from_chars, implements binary, hexadecimal, decimal parsing
+
   T value = 0;
   for (char ch : literal) {
     value *= 10;
@@ -20,7 +19,7 @@ Parser::Parser(ReportManager &report_manager, Lexer &lexer) : m_report_manager(r
   m_lexer.tokenize(m_token);
 }
 
-std::optional<ByteCode> Parser::parse_program() {
+std::optional<Program> Parser::parse_program() {
   if (!parse_inputs())
     return std::nullopt;
   if (!parse_outputs())
@@ -29,7 +28,7 @@ std::optional<ByteCode> Parser::parse_program() {
     return std::nullopt;
   if (!parse_equations())
     return std::nullopt;
-  return m_bytecode_writer.finish();
+  return m_program_builder.build();
 }
 
 /// Grammar:
@@ -140,7 +139,7 @@ bool Parser::parse_inputs() {
           return false;
         }
 
-        const VariableInfo variable_info = {0, variable_location, 0,
+        const VariableInfo variable_info = {0, variable_location,
                                             /* is_input= */ true,
                                             /* is_output= */ false};
         m_variables.insert({variable_name, variable_info});
@@ -179,7 +178,7 @@ bool Parser::parse_outputs() {
           return false;
         }
 
-        const VariableInfo variable_info = {0, variable_location, size_in_bits,
+        const VariableInfo variable_info = {0, variable_location,
                                             /* is_input= */ false,
                                             /* is_output= */ true};
         m_variables.insert({variable_name, variable_info});
@@ -202,7 +201,8 @@ bool Parser::parse_variables() {
   std::unordered_set<std::string_view> already_defined_variables;
   return parse_variables_common(
       /* allow_size_specifier= */ true,
-      [this,&already_defined_variables](SourceLocation variable_location, std::string_view variable_name, size_t size_in_bits) {
+      [this, &already_defined_variables](SourceLocation variable_location, std::string_view variable_name,
+                                         size_t size_in_bits) {
         auto it = m_variables.find(variable_name);
         if (it != m_variables.end()) {
           if (already_defined_variables.contains(variable_name)) {
@@ -216,13 +216,12 @@ bool Parser::parse_variables() {
           }
 
           already_defined_variables.insert(variable_name);
-          it->second.size_in_bits = size_in_bits;
-          it->second.reg = m_bytecode_writer.register_reg(size_in_bits);
+          it->second.reg = m_program_builder.add_register(size_in_bits, std::string{variable_name});
           return true;
         }
 
-        const RegIndex reg = m_bytecode_writer.register_reg(size_in_bits);
-        const VariableInfo variable_info = {reg, variable_location, size_in_bits,
+        const reg_t reg = m_program_builder.add_register(size_in_bits, std::string{variable_name});
+        const VariableInfo variable_info = {reg, variable_location,
                                             /* is_input= */ false,
                                             /* is_output= */ false};
         m_variables.insert({variable_name, variable_info});
@@ -291,7 +290,7 @@ bool Parser::parse_equation() {
 
   consume(); // eat `=`
 
-  RegIndex output_reg = it->second.reg;
+  reg_t output_reg = it->second.reg;
   return parse_expression(output_reg);
 }
 
@@ -308,7 +307,7 @@ bool Parser::parse_equation() {
 ///             | ram-expression
 ///             | rom-expression
 /// ```
-bool Parser::parse_expression(RegIndex output_reg) {
+bool Parser::parse_expression(reg_t output_reg) {
   switch (m_token.kind) {
   case TokenKind::INTEGER:
     return parse_const_expression(output_reg);
@@ -317,15 +316,12 @@ bool Parser::parse_expression(RegIndex output_reg) {
   case TokenKind::KEY_REG:
     return parse_reg_expression(output_reg);
   case TokenKind::KEY_AND:
-    return parse_binary_expression(OpCode::AND, output_reg);
-  case TokenKind::KEY_OR:
-    return parse_binary_expression(OpCode::OR, output_reg);
   case TokenKind::KEY_NAND:
-    return parse_binary_expression(OpCode::NAND, output_reg);
+  case TokenKind::KEY_OR:
   case TokenKind::KEY_NOR:
-    return parse_binary_expression(OpCode::NOR, output_reg);
   case TokenKind::KEY_XOR:
-    return parse_binary_expression(OpCode::XOR, output_reg);
+  case TokenKind::KEY_XNOR:
+    return parse_binary_expression(output_reg);
   case TokenKind::KEY_MUX:
     return parse_mux_expression(output_reg);
   case TokenKind::KEY_CONCAT:
@@ -353,7 +349,7 @@ bool Parser::parse_expression(RegIndex output_reg) {
 /// ```
 /// register := IDENTIFIER
 /// ```
-std::optional<RegIndex> Parser::parse_register() {
+std::optional<reg_t> Parser::parse_register() {
   switch (m_token.kind) {
   case TokenKind::IDENTIFIER: {
     const auto it = m_variables.find(m_token.spelling);
@@ -380,13 +376,13 @@ std::optional<RegIndex> Parser::parse_register() {
 /// ```
 /// const-expression := INTEGER
 /// ```
-bool Parser::parse_const_expression(RegIndex output_reg) {
+bool Parser::parse_const_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::INTEGER);
 
-  const auto value = parse_integer_literal<RegValue>(m_token.spelling);
+  const auto value = parse_integer_literal<reg_value_t>(m_token.spelling);
   consume(); // eat INTEGER
 
-  m_bytecode_writer.write_const({output_reg, value});
+  m_program_builder.add_const(output_reg, value);
   return true;
 }
 
@@ -394,7 +390,7 @@ bool Parser::parse_const_expression(RegIndex output_reg) {
 /// ```
 /// not-expression := "NOT" register
 /// ```
-bool Parser::parse_not_expression(RegIndex output_reg) {
+bool Parser::parse_not_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_NOT);
   consume(); // eat `NOT`
 
@@ -402,7 +398,7 @@ bool Parser::parse_not_expression(RegIndex output_reg) {
   if (!input_reg.has_value())
     return false;
 
-  m_bytecode_writer.write_not({output_reg, input_reg.value()});
+  m_program_builder.add_not(output_reg, input_reg.value());
   return true;
 }
 
@@ -410,7 +406,7 @@ bool Parser::parse_not_expression(RegIndex output_reg) {
 /// ```
 /// reg-expression := "REG" register
 /// ```
-bool Parser::parse_reg_expression(RegIndex output_reg) {
+bool Parser::parse_reg_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_REG);
   consume(); // eat `REG`
 
@@ -418,7 +414,7 @@ bool Parser::parse_reg_expression(RegIndex output_reg) {
   if (!input_reg.has_value())
     return false;
 
-  m_bytecode_writer.write_reg({output_reg, input_reg.value()});
+  m_program_builder.add_reg(output_reg, input_reg.value());
   return true;
 }
 
@@ -427,23 +423,48 @@ bool Parser::parse_reg_expression(RegIndex output_reg) {
 /// binary-expression := binary-opcode register register
 ///
 /// binary-opcode := "AND"
-///                | "OR"
 ///                | "NAND"
+///                | "OR"
 ///                | "NOR"
 ///                | "XOR"
+///                | "XNOR"
 /// ```
-bool Parser::parse_binary_expression(OpCode binary_opcode, RegIndex output_reg) {
+bool Parser::parse_binary_expression(reg_t output_reg) {
+  auto token_kind = m_token.kind;
   consume(); // eat the binary operator keyword
 
-  auto input_lhs_reg = parse_register();
-  if (!input_lhs_reg.has_value())
+  auto lhs_reg = parse_register();
+  if (!lhs_reg.has_value())
     return false;
 
-  auto input_rhs_reg = parse_register();
-  if (!input_rhs_reg.has_value())
+  auto rhs_reg = parse_register();
+  if (!rhs_reg.has_value())
     return false;
 
-  m_bytecode_writer.write_binary_inst(binary_opcode, {output_reg, input_lhs_reg.value(), input_rhs_reg.value()});
+  switch (token_kind) {
+  case TokenKind::KEY_AND:
+    m_program_builder.add_and(output_reg, lhs_reg.value(), rhs_reg.value());
+    break;
+  case TokenKind::KEY_NAND:
+    m_program_builder.add_nand(output_reg, lhs_reg.value(), rhs_reg.value());
+    break;
+  case TokenKind::KEY_OR:
+    m_program_builder.add_or(output_reg, lhs_reg.value(), rhs_reg.value());
+    break;
+  case TokenKind::KEY_NOR:
+    m_program_builder.add_nor(output_reg, lhs_reg.value(), rhs_reg.value());
+    break;
+  case TokenKind::KEY_XOR:
+    m_program_builder.add_xor(output_reg, lhs_reg.value(), rhs_reg.value());
+    break;
+  case TokenKind::KEY_XNOR:
+    m_program_builder.add_xnor(output_reg, lhs_reg.value(), rhs_reg.value());
+    break;
+  default:
+    assert(false && "unreachable code");
+    break;
+  }
+
   return true;
 }
 
@@ -451,7 +472,7 @@ bool Parser::parse_binary_expression(OpCode binary_opcode, RegIndex output_reg) 
 /// ```
 /// mux-expression := "MUX" register register register
 /// ```
-bool Parser::parse_mux_expression(RegIndex output_reg) {
+bool Parser::parse_mux_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_MUX);
   consume(); // eat `MUX`
 
@@ -459,15 +480,15 @@ bool Parser::parse_mux_expression(RegIndex output_reg) {
   if (!choice_reg.has_value())
     return false;
 
-  auto a_reg = parse_register();
-  if (!a_reg.has_value())
+  auto first_reg = parse_register();
+  if (!first_reg.has_value())
     return false;
 
-  auto b_reg = parse_register();
-  if (!b_reg.has_value())
+  auto second_reg = parse_register();
+  if (!second_reg.has_value())
     return false;
 
-  // TODO: Implement CHOICE instruction.
+  m_program_builder.add_mux(output_reg, choice_reg.value(), first_reg.value(), second_reg.value());
   return true;
 }
 
@@ -475,19 +496,19 @@ bool Parser::parse_mux_expression(RegIndex output_reg) {
 /// ```
 /// concat-expression := "CONCAT" register register
 /// ```
-bool Parser::parse_concat_expression(RegIndex output_reg) {
+bool Parser::parse_concat_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_CONCAT);
   consume(); // eat `CONCAT`
 
-  auto input_lhs_reg = parse_register();
-  if (!input_lhs_reg.has_value())
+  auto lhs_reg = parse_register();
+  if (!lhs_reg.has_value())
     return false;
 
-  auto input_rhs_reg = parse_register();
-  if (!input_rhs_reg.has_value())
+  auto rhs_reg = parse_register();
+  if (!rhs_reg.has_value())
     return false;
 
-  // TODO: Implement CONCAT instruction.
+  m_program_builder.add_concat(output_reg, lhs_reg.value(), rhs_reg.value());
   return true;
 }
 
@@ -495,7 +516,7 @@ bool Parser::parse_concat_expression(RegIndex output_reg) {
 /// ```
 /// slice-expression := "SELECT" INTEGER register
 /// ```
-bool Parser::parse_select_expression(RegIndex output_reg) {
+bool Parser::parse_select_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_SELECT);
   consume(); // eat `SELECT`
 
@@ -511,7 +532,7 @@ bool Parser::parse_select_expression(RegIndex output_reg) {
   if (!input_reg.has_value())
     return false;
 
-  m_bytecode_writer.write_slice({output_reg, i, input_reg.value()});
+  m_program_builder.add_select(output_reg, i, input_reg.value());
   return true;
 }
 
@@ -519,7 +540,7 @@ bool Parser::parse_select_expression(RegIndex output_reg) {
 /// ```
 /// slice-expression := "SLICE" INTEGER INTEGER register
 /// ```
-bool Parser::parse_slice_expression(RegIndex output_reg) {
+bool Parser::parse_slice_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_SLICE);
   consume(); // eat `SLICE`
 
@@ -543,7 +564,7 @@ bool Parser::parse_slice_expression(RegIndex output_reg) {
   if (!input_reg.has_value())
     return false;
 
-  m_bytecode_writer.write_slice({output_reg, first, end, input_reg.value()});
+  m_program_builder.add_slice(output_reg, first, end, input_reg.value());
   return true;
 }
 
@@ -551,7 +572,7 @@ bool Parser::parse_slice_expression(RegIndex output_reg) {
 /// ```
 /// ram-expression := "RAM" INTEGER INTEGER register
 /// ```
-bool Parser::parse_rom_expression(RegIndex output_reg) {
+bool Parser::parse_rom_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_ROM);
   consume(); // eat `ROM`
 
@@ -583,7 +604,7 @@ bool Parser::parse_rom_expression(RegIndex output_reg) {
 /// ```
 /// ram-expression := "RAM" INTEGER INTEGER register register register register
 /// ```
-bool Parser::parse_ram_expression(RegIndex output_reg) {
+bool Parser::parse_ram_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_RAM);
   consume(); // eat `RAM`
 
