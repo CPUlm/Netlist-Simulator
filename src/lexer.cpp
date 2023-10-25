@@ -13,7 +13,7 @@ void Lexer::DataBuffer::next_char() {
   if (*m_cur == '\n') {
     // We pass a new line
     m_line++;
-    m_col = 0;
+    m_col = 0; // The first char of a line is at column 1
   }
 
   if (!is_eof()) { // If EOF do nothing

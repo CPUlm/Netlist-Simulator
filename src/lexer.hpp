@@ -50,7 +50,7 @@ private:
   class DataBuffer {
   public:
     explicit DataBuffer(const char *beginning) noexcept
-        : m_line(0), m_col(0), m_cur(beginning) {}
+        : m_line(1), m_col(1), m_cur(beginning) {} // At the beginning, line 1 and column 1
 
     void next_char();
 
