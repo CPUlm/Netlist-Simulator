@@ -48,14 +48,13 @@ public:
     }
 
     uint32_t line_number, column_number;
-    report.manager.resolve_source_location(report.location.value(), line_number,
-                                           column_number);
+    report.manager.resolve_source_location(report.location.value(), line_number, column_number);
 
     const auto source_line = report.manager.get_line_at(line_number);
 
     print_source_code_header(report.manager.get_file_name(), line_number, column_number);
     print_source_line(line_number, source_line);
-    print_spans(report.spans);
+    print_spans(report.manager, line_number, report.spans);
     print_source_code_footer(report.note);
   }
 
@@ -73,9 +72,7 @@ private:
     [[nodiscard]] inline bool has_label() const { return !label.empty(); }
   };
 
-  void print_message(ReportSeverity severity,
-                     const std::optional<uint32_t> &code,
-                     std::string_view message) {
+  void print_message(ReportSeverity severity, const std::optional<uint32_t> &code, std::string_view message) {
 
     const char *severity_color;
     const char *severity_name;
@@ -94,20 +91,17 @@ private:
     }
 
     if (code.has_value())
-      print_colored(severity_color, "{}[{}{:04}]:", severity_name,
-                    severity_prefix, code.value());
+      print_colored(severity_color, "{}[{}{:04}]:", severity_name, severity_prefix, code.value());
     else
       print_colored(severity_color, "{}:", severity_name);
 
     m_out << " " << message << "\n";
   }
 
-  void print_source_code_header(std::string_view file_name,
-                                uint32_t line_number, uint32_t column_number) {
+  void print_source_code_header(std::string_view file_name, uint32_t line_number, uint32_t column_number) {
     m_out << "     ";
     print_colored(m_colors.box, "╭─[");
-    print_colored(m_colors.locus, "{}:{}:{}", file_name, line_number,
-                  column_number);
+    print_colored(m_colors.locus, "{}:{}:{}", file_name, line_number, column_number);
     print_colored(m_colors.box, "]");
     m_out << "\n";
   }
@@ -160,9 +154,7 @@ private:
   void print_spans_label(const std::vector<TrivialLabelledSpan> &spans) {
     // All spans without label must have been removed before calling this
     // function.
-    assert(std::count_if(spans.begin(), spans.end(), [](const auto &span) {
-             return !span.has_label();
-           }) == 0);
+    assert(std::count_if(spans.begin(), spans.end(), [](const auto &span) { return !span.has_label(); }) == 0);
 
     for (size_t i = 0; i < spans.size(); ++i) {
       print_span_margin();
@@ -171,8 +163,7 @@ private:
       size_t last_column_with_character = 0;
 
       for (size_t j = 0; j < spans.size() - i; ++j) {
-        size_t columns_to_fill =
-            (spans[j].start + spans[j].length - 1) - last_column_with_character;
+        size_t columns_to_fill = (spans[j].start + spans[j].length - 1) - last_column_with_character;
         while (columns_to_fill--)
           buffer.push_back(' ');
 
@@ -197,22 +188,27 @@ private:
     }
   }
 
-  void print_spans(const std::vector<LabelledSpan> &spans) {
+  void print_spans(ReportManager &report_manager, uint32_t current_line_number,
+                   const std::vector<LabelledSpan> &spans) {
     std::vector<TrivialLabelledSpan> trivial_spans;
 
     for (const auto &span : spans) {
+      uint32_t line_number, column_number;
+      report_manager.resolve_source_location(span.span.location, line_number, column_number);
+      if (line_number != current_line_number)
+        continue;
+
       TrivialLabelledSpan trivial_span;
       trivial_span.label = span.label;
       trivial_span.color = report_color_to_ansi(span.color);
-      trivial_span.start = span.span.location.offset;
+      trivial_span.start = column_number - 1;
       trivial_span.length = span.span.length;
       trivial_spans.push_back(trivial_span);
     }
 
     // Sort spans by their starting position.
-    std::sort(
-        trivial_spans.begin(), trivial_spans.end(),
-        [](const auto &lhs, const auto &rhs) { return lhs.start < rhs.start; });
+    std::sort(trivial_spans.begin(), trivial_spans.end(),
+              [](const auto &lhs, const auto &rhs) { return lhs.start < rhs.start; });
 
     // Check for overlapping spans and try to correct them.
     uint32_t last_column = 0;
@@ -232,8 +228,7 @@ private:
     }
 
     // Remove empty spans (spans with a null length).
-    std::erase_if(trivial_spans,
-                  [](const auto &span) { return span.is_empty(); });
+    std::erase_if(trivial_spans, [](const auto &span) { return span.is_empty(); });
 
     if (trivial_spans.empty())
       return;
@@ -241,8 +236,7 @@ private:
     print_underlines(trivial_spans);
 
     // Remove spans without label.
-    std::erase_if(trivial_spans,
-                  [](const auto &span) { return !span.has_label(); });
+    std::erase_if(trivial_spans, [](const auto &span) { return !span.has_label(); });
     print_spans_label(trivial_spans);
   }
 
@@ -263,21 +257,17 @@ private:
   /// with the given ANSI color (only the numerical value between the \x1b[ and
   /// m). If the use of colors is disabled, then the formatted message is
   /// printed verbatim.
-  template <typename... Args>
-  void print_colored(const char *ansi_color, std::string_view message,
-                     Args &&...args) {
+  template <typename... Args> void print_colored(const char *ansi_color, std::string_view message, Args &&...args) {
     if (m_use_colors)
       m_out << "\x1b[" << ansi_color << "m";
-    m_out << fmt::vformat(message,
-                          fmt::make_format_args(std::forward<Args>(args)...));
+    m_out << fmt::vformat(message, fmt::make_format_args(std::forward<Args>(args)...));
     if (m_use_colors)
       m_out << "\x1b[0m";
   }
 
   /// Returns the full ANSI escape code sequence corresponding to the given
   /// report color.
-  [[nodiscard]] static std::string_view
-  report_color_to_ansi(ReportColor color) {
+  [[nodiscard]] static std::string_view report_color_to_ansi(ReportColor color) {
     switch (color) {
     case ReportColor::RED:
       return "\x1b[31m";
@@ -330,13 +320,10 @@ std::string_view ReportManager::get_line_at(uint32_t line_number) {
   return {begin, line_length};
 }
 
-void ReportManager::resolve_source_location(SourceLocation location,
-                                            uint32_t &line_number,
-                                            uint32_t &column_number) {
+void ReportManager::resolve_source_location(SourceLocation location, uint32_t &line_number, uint32_t &column_number) {
   fill_line_map_if_needed();
 
-  m_line_map.get_line_and_column_numbers(location.offset, line_number,
-                                         column_number);
+  m_line_map.get_line_and_column_numbers(location.offset, line_number, column_number);
 }
 
 void ReportManager::fill_line_map_if_needed() {
