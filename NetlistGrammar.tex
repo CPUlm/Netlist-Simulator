@@ -1,0 +1,56 @@
+\documentclass[english, 12pt]{article}
+\usepackage[a4paper, top=1cm, bottom=1cm, left=1cm, right=1cm]{geometry}
+
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{grammar}
+
+\pagestyle{empty}
+
+\begin{document}
+\begin{grammar}
+    \symb{program} \is \kw{INPUT} \symb{ref-list} \kw{OUTPUT} \symb{ref-list} \kw{VAR} \symb{decl-list} \kw{IN} \symb{eqs} \eoi \si
+
+    \symb{ref-list} \is \symb{ref-list-non-empty} \linealt \eps \si
+
+    \symb{decl-list} \is \symb{decl-list-non-empty} \linealt \eps \si
+
+    \symb{ref-list-non-empty} \is \symb{ident} \kw{,} \symb{ref-list-non-empty} \linealt \symb{ident} \si
+
+    \symb{decl-list-non-empty} \is \symb{ident} \symb{size-spec} \kw{,} \symb{decl-list-non-empty} \linealt \symb{ident} \symb{size-spec} \si
+
+    \symb{eqs} \is \symb{ident} \kw{=} \symb{expr} \symb{eqs} \linealt \eps \si
+
+    \symb{expr} \is \symb{arg}
+    \alt            \kw{NOT}    \symb{arg}
+    \alt            \kw{AND}    \symb{arg}      \symb{arg}
+    \alt            \kw{NAND}   \symb{arg}      \symb{arg}
+    \alt            \kw{OR}     \symb{arg}      \symb{arg}
+    \alt            \kw{XOR}    \symb{arg}      \symb{arg}
+    \alt            \kw{MUX}    \symb{arg}      \symb{arg}      \symb{arg}
+    \alt            \kw{REG}    \symb{ident}
+    \alt            \kw{CONCAT} \symb{arg}      \symb{arg}
+    \alt            \kw{SELECT} \symb{bus-size} \symb{arg}
+    \alt            \kw{SLICE}  \symb{bus-size} \symb{bus-size} \symb{arg}
+    \alt            \kw{ROM}    \symb{bus-size} \symb{bus-size} \symb{arg}
+    \alt            \kw{RAM}    \symb{bus-size} \symb{bus-size} \symb{arg}  \symb{arg}  \symb{arg}  \symb{arg}
+    \si
+
+    \symb{arg}  \is \symb{ident} \linealt \symb{bin-digits} \linealt \symb{bin-const} \linealt \symb{dec-const} \linealt \symb{hex-const} \si
+
+    \symb{ident}        \is [\kw{a}-\kw{z}\kw{A}-\kw{Z}\kw{\_}][\kw{a}-\kw{z}\kw{A}-\kw{Z}\kw{0}-\kw{9}\kw{\_}]$\ast$ \si
+
+    \symb{bin-digits}    \is [\kw{0}\kw{1}][\kw{0}\kw{1}]$\ast$ \si
+
+    \symb{bin-const}    \is \kw{0b}[\kw{0}\kw{1}][\kw{0}\kw{1}]$\ast$ \symb{size-spec} \si
+
+    \symb{dec-const}    \is \kw{0d}[\kw{0}-\kw{9}][\kw{0}-\kw{9}]$\ast$ \kw{:} \symb{bus-size} \si
+
+    \symb{hex-const}    \is \kw{0x}[\kw{0}-\kw{9}\kw{a}-\kw{f}][\kw{0}-\kw{9}\kw{a}-\kw{f}]$\ast$ \symb{size-spec} \si
+
+    \symb{size-spec}    \is \kw{:} \symb{bus-size} \linealt \eps \si
+
+    \symb{bus-size}     \is [\kw{1}-\kw{9}][\kw{0}-\kw{9}]$\ast$ \si
+\end{grammar}
+\end{document}

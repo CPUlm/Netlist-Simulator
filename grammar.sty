@@ -1,0 +1,18 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{grammar}[2023/10/24 Grammar Package, Gabriel Desfrene]
+
+\RequirePackage{mathtools}
+\RequirePackage{longtable}
+
+\newcommand{\is}{& $\Coloneqq$ &}
+\newcommand{\si}{\\[1.5em]}
+\newcommand{\alt}{\\&|&}
+\newcommand{\linealt}{\big| {}}
+\newcommand{\comment}[1]{ \hfill (#1)}
+
+\newcommand{\eoi}{\#}
+\newcommand{\symb}[1]{$\langle$\textit{#1}$\rangle$}
+\newcommand{\kw}[1]{\textquoteleft\texttt{#1}\textquoteright}
+\newcommand{\eps}{$\varepsilon$}
+
+\newenvironment{grammar}{\begin{longtable}{lc@{\hspace{0.7em}}l}}{\end{longtable}}
