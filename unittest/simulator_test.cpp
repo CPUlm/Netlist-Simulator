@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "instruction.hpp"
+#include "simulator.hpp"
 
 TEST(SimulatorTest, step) {
   ByteCodeWriter writer;

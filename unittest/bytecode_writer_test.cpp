@@ -1,7 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "instruction.hpp"
+#include "bytecode.hpp"
 
 class MockByteCodeReader : public ByteCodeReader<MockByteCodeReader> {
 public:
