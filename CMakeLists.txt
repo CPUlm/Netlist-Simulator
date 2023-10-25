@@ -16,15 +16,13 @@ add_library(netlistlib
         src/graph.hpp
         src/parser.hpp
         src/parser.cpp
-        src/program.hpp
-        src/program.cpp
-        src/program_printer.hpp
-        src/program_printer.cpp
         src/line_map.hpp
         src/line_map.cpp
         src/report.hpp
         src/report.cpp
-        src/instruction.cpp
+        src/bytecode.cpp
+        src/simulator.hpp
+        src/simulator.cpp
 )
 
 target_link_libraries(netlistlib PUBLIC fmt::fmt)
