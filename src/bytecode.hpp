@@ -39,11 +39,6 @@ struct RegInfo {
   uint8_t bit_width = 1;
 };
 
-class Inst {};
-class NotInst {};
-class BinaryInst {int a;};
-std::vector<Inst> insts;
-
 struct ByteCode {
   std::vector<RegInfo> registers;
   std::vector<std::uint32_t> words;
