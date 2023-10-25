@@ -47,10 +47,12 @@ enum class TokenKind {
   KEY_NOT,
   /// The keyword `AND`.
   KEY_AND,
-  /// The keyword `NAND`.
-  KEY_NAND,
   /// The keyword `OR`.
   KEY_OR,
+  /// The keyword `NAND`.
+  KEY_NAND,
+  /// The keyword `NOR`.
+  KEY_NOR,
   /// The keyword `XOR`.
   KEY_XOR,
   /// The keyword `MUX`.
