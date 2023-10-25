@@ -21,7 +21,7 @@ template<class T>
         .with_message("Error parsing value '{}' in base {}", token.spelling, base)
         .build()
         .exit();
-  } else if (*ptr != '\0') {
+  } else if (ptr != token.spelling.end()) {
     c.report(ReportSeverity::ERROR)
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}. Successfully parsed the value '{}' "
@@ -92,6 +92,7 @@ Program::ptr Parser::parse_program() {
   parse_equations(p);
   // m_token.kind = TokenKind::EOI
 
+  // Let's check that all vars have a value defined (i.e. a INPUT or a OUTPUT)
   for (auto &decl_pair : vars) {
     const Variable::ptr &declared_var = decl_pair.second;
 
@@ -108,10 +109,25 @@ Program::ptr Parser::parse_program() {
     // No equation and no input
     m_context.report(ReportSeverity::ERROR)
         .with_location(var_decl.at(declared_var->get_name()).position)
-        .with_message("Declared variable '{}' does not have an associated equation.", declared_var->get_name())
+        .with_message("Declared variable '{}' does not have a defined value. Please add an equation to define its "
+                      "value or add it as an input", declared_var->get_name())
         .build()
         .exit();
 
+  }
+
+  // We check that inputs does not have equations
+  for (auto &ref_pair : in_refs) {
+    const Variable::ptr &input_var = vars.at(ref_pair.first);
+
+    if (p->m_eq.contains(input_var)) {
+      m_context.report(ReportSeverity::ERROR)
+          .with_location(ref_pair.second.position)
+          .with_message("Input variable '{}' have an associated equation. You must choose the state of the variable : "
+                        "Input or Defined by an Equation.", ref_pair.first)
+          .build()
+          .exit();
+    }
   }
 
   // Remove any existing variable
@@ -286,7 +302,7 @@ void Parser::parse_variable_declaration() {
           .exit();
     }
 
-    vars.try_emplace(v.spelling, std::make_shared<Variable>(v.size, v.spelling));
+    vars.emplace(v.spelling, std::make_shared<Variable>(v.size, v.spelling));
     var_decl[v.spelling] = v;
 
     token_assert({TokenKind::COMMA, TokenKind::KEY_IN});
@@ -347,14 +363,32 @@ void Parser::parse_equations(Program::ptr &p) {
           .exit();
     }
     const Variable::ptr &assigment_var = vars.at(m_token.spelling);
+    if (p->m_eq.contains(assigment_var)) {
+      m_context.report(ReportSeverity::ERROR)
+          .with_location(m_token.position)
+          .with_message("Multiple equations for variable '{}'", m_token.spelling)
+          .build()
+          .exit();
+    }
+
+    const SourcePosition var_pos = m_token.position;
     consume(); // eat the variable
+
     token_assert(TokenKind::EQUAL);
     consume(); // eat '='
+
     Expression::ptr eq = parse_expression();
     if (eq->get_bus_size() != assigment_var->get_bus_size()) {
-      // Wrong bus size.
+      m_context.report(ReportSeverity::ERROR)
+          .with_location(var_pos)
+          .with_message("Incompatible bus size. The variable '{}' should have a bus size of {} instead of {} to match "
+                        "the right-hand of its equation.",
+                        assigment_var->get_name(), eq->get_bus_size(), assigment_var->get_bus_size())
+          .build()
+          .exit();
     }
-    p->m_eq.try_emplace(assigment_var, std::move(eq));
+
+    p->m_eq.emplace(assigment_var, std::move(eq));
   }
 }
 
@@ -528,13 +562,7 @@ Expression::ptr Parser::parse_expression() {
         .build()
         .exit();
 
-  case TokenKind::EQUAL:
-  case TokenKind::COMMA:
-  case TokenKind::COLON:
-  case TokenKind::KEY_OUTPUT:
-  case TokenKind::KEY_INPUT:
-  case TokenKind::KEY_VAR:
-  case TokenKind::KEY_IN:
+  default:
     unexpected_token({TokenKind::IDENTIFIER, TokenKind::INTEGER, TokenKind::BINARY_CONSTANT,
                       TokenKind::DECIMAL_CONSTANT, TokenKind::HEXADECIMAL_CONSTANT, TokenKind::KEY_NOT,
                       TokenKind::KEY_AND, TokenKind::KEY_NAND, TokenKind::KEY_OR, TokenKind::KEY_XOR,
@@ -573,16 +601,17 @@ Constant::ptr Parser::parse_binary_digits() {
   token_assert(TokenKind::INTEGER);
 
   auto val = parse_int<value_t>(m_token, 2, m_context); // We parse in base 2 here.
+  auto size = static_cast<bus_size_t>(m_token.spelling.size());
 
   consume();
-  return std::make_shared<Constant>(m_token.spelling.size(), val);
+  return std::make_shared<Constant>(size, val);
 }
 
 Constant::ptr Parser::parse_binary_constant() {
   token_assert(TokenKind::BINARY_CONSTANT);
 
   const Token cst_tok = m_token; // We copy the token in case of no size specifier
-  auto val = parse_int<value_t>(m_token, 2, m_context); // We parse in base 2 here
+  auto val = parse_int<value_t>(cst_tok, 2, m_context); // We parse in base 2 here
   consume();
 
   auto size = parse_size_spec();
