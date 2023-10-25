@@ -4,11 +4,7 @@
 
 class ReportTest : public ::testing::Test {
 public:
-  ReportManager manager;
-
-  void SetUp() override {
-    manager.register_file_info("file.test", "foo bar\nx = ADD a b");
-  }
+  ReportContext ctx = ReportContext("file", false);
 };
 
 static void clear_stream(std::stringstream &stream) {
@@ -16,182 +12,67 @@ static void clear_stream(std::stringstream &stream) {
   stream.clear();
 }
 
-TEST_F(ReportTest, color_generator) {
-  ReportColorGenerator colors;
-  EXPECT_EQ(colors.next_color(), ReportColor::GREEN);
-  EXPECT_EQ(colors.next_color(), ReportColor::YELLOW);
-  EXPECT_EQ(colors.next_color(), ReportColor::BLUE);
-  EXPECT_EQ(colors.next_color(), ReportColor::MAGENTA);
-  EXPECT_EQ(colors.next_color(), ReportColor::CYAN);
-  EXPECT_EQ(colors.next_color(), ReportColor::RED);
-  EXPECT_EQ(colors.next_color(), ReportColor::GREEN); // we loop again
-}
-
-TEST_F(ReportTest, get_line_at) {
-  EXPECT_EQ(manager.get_line_at(1), "foo bar");
-  EXPECT_EQ(manager.get_line_at(2), "x = ADD a b");
-}
-
 TEST_F(ReportTest, with_message) {
   std::stringstream stream;
 
   // Error
-  manager.report(ReportSeverity::ERROR)
+  ctx.report(ReportSeverity::ERROR)
       .with_message("foo {1} {0}", "baz", "bar")
-      .finish()
+      .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), "error: foo bar baz\n");
+  EXPECT_EQ(stream.str(), "In file file:\nerror: foo bar baz\n");
 
   clear_stream(stream);
 
   // Error
-  manager.report(ReportSeverity::WARNING)
+  ctx.report(ReportSeverity::WARNING)
       .with_message("{:04} test", 3)
-      .finish()
+      .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), "warning: 0003 test\n");
+  EXPECT_EQ(stream.str(), "In file file:\nwarning: 0003 test\n");
 }
 
 TEST_F(ReportTest, with_code) {
   std::stringstream stream;
 
   // Error
-  manager.report(ReportSeverity::ERROR)
+  ctx.report(ReportSeverity::ERROR)
       .with_code(42)
       .with_message("foobar")
-      .finish()
+      .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), "error[E0042]: foobar\n");
+  EXPECT_EQ(stream.str(), "In file file:\nerror[E0042]: foobar\n");
 
   clear_stream(stream);
 
   // Warning
-  manager.report(ReportSeverity::WARNING)
+  ctx.report(ReportSeverity::WARNING)
       .with_code(42)
       .with_message("foobar")
-      .finish()
+      .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), "warning[W0042]: foobar\n");
+  EXPECT_EQ(stream.str(), "In file file:\nwarning[W0042]: foobar\n");
 }
 
 TEST_F(ReportTest, with_note) {
   std::stringstream stream;
 
-  manager.report(ReportSeverity::ERROR)
-      .with_location(SourceLocation { 0 })
+  ctx.report(ReportSeverity::ERROR)
       .with_message("foobar")
       .with_note("did you mean '{}'", "foo")
-      .finish()
+      .build()
       .print(stream);
-  const auto str = stream.str();
-  EXPECT_NE(str.find("note: did you mean 'foo'\n"), std::string::npos) << str;
+  EXPECT_EQ(stream.str(), "In file file:\nerror: foobar\nnote: did you mean 'foo'\n");
 }
 
-TEST_F(ReportTest, single_span_without_label) {
+TEST_F(ReportTest, with_position) {
   std::stringstream stream;
 
-  manager.report(ReportSeverity::ERROR)
-      .with_location(SourceLocation { 0 })
+  ctx.report(ReportSeverity::ERROR)
+      .with_location({42, 5})
       .with_message("foobar")
-      .with_span({0, 3})
-      .finish()
+      .with_note("did you mean '{}'", "foo")
+      .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), R"(error: foobar
-     ╭─[file.test:1:1]
-   1 │ foo bar
-     · ───
-     ╰─
-)");
-}
-
-TEST_F(ReportTest, single_span_with_label) {
-  std::stringstream stream;
-
-  manager.report(ReportSeverity::ERROR)
-      .with_location(SourceLocation { 0 })
-      .with_message("foobar")
-      .with_span({0, 3}, "baz")
-      .finish()
-      .print(stream);
-  EXPECT_EQ(stream.str(), R"(error: foobar
-     ╭─[file.test:1:1]
-   1 │ foo bar
-     · ──┬
-     ·   ╰─ baz
-     ╰─
-)");
-}
-
-TEST_F(ReportTest, multiple_spans_without_label) {
-  std::stringstream stream;
-
-  manager.report(ReportSeverity::ERROR)
-      .with_location(SourceLocation { 0 })
-      .with_message("foobar")
-      .with_span({0, 3})
-      .with_span({4, 3})
-      .finish()
-      .print(stream);
-  EXPECT_EQ(stream.str(), R"(error: foobar
-     ╭─[file.test:1:1]
-   1 │ foo bar
-     · ─── ───
-     ╰─
-)");
-}
-
-TEST_F(ReportTest, multiple_spans_with_label) {
-  std::stringstream stream;
-
-  manager.report(ReportSeverity::ERROR)
-      .with_location(SourceLocation { 0 })
-      .with_message("foobar")
-      .with_span({0, 3}, "foo '{}'", "bar")
-      .with_span({4, 3}, "baz")
-      .finish()
-      .print(stream);
-  EXPECT_EQ(stream.str(), R"(error: foobar
-     ╭─[file.test:1:1]
-   1 │ foo bar
-     · ──┬ ──┬
-     ·   │   ╰─ baz
-     ·   ╰─ foo 'bar'
-     ╰─
-)");
-}
-
-TEST_F(ReportTest, multiple_spans_single_label) {
-  std::stringstream stream;
-
-  manager.report(ReportSeverity::ERROR)
-      .with_location(SourceLocation { 0 })
-      .with_message("foobar")
-      .with_span({0, 3})
-      .with_span({4, 3}, "baz")
-      .finish()
-      .print(stream);
-  EXPECT_EQ(stream.str(), R"(error: foobar
-     ╭─[file.test:1:1]
-   1 │ foo bar
-     · ─── ──┬
-     ·       ╰─ baz
-     ╰─
-)");
-
-  clear_stream(stream);
-
-  manager.report(ReportSeverity::ERROR)
-      .with_location(SourceLocation { 0 })
-      .with_message("foobar")
-      .with_span({0, 3}, "foo '{}'", "bar")
-      .with_span({4, 3})
-      .finish()
-      .print(stream);
-  EXPECT_EQ(stream.str(), R"(error: foobar
-     ╭─[file.test:1:1]
-   1 │ foo bar
-     · ──┬ ───
-     ·   ╰─ foo 'bar'
-     ╰─
-)");
+  EXPECT_EQ(stream.str(), "In file file:42:5:\nerror: foobar\nnote: did you mean 'foo'\n");
 }
