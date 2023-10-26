@@ -4,7 +4,7 @@
 
 class LexerTest : public ::testing::Test {
 public:
-  ReportContext ctx = ReportContext("", false);
+  ReportContext ctx = ReportContext("file", false);
 };
 
 TEST_F(LexerTest, punctuation) {
@@ -320,4 +320,21 @@ TEST_F(LexerTest, new_lines) {
   EXPECT_EQ(token.spelling, "");
   EXPECT_EQ(token.position.line, 7);
   EXPECT_EQ(token.position.begin, 6);
+}
+
+using LexerDeathTest = LexerTest;
+
+TEST_F(LexerDeathTest, illegal_char) {
+  Lexer lexer(ctx, "a\n&");
+  Token token;
+
+  lexer.tokenize(token);
+  EXPECT_EQ(token.kind, TokenKind::IDENTIFIER);
+  EXPECT_EQ(token.spelling, "a");
+  EXPECT_EQ(token.position.line, 1);
+  EXPECT_EQ(token.position.begin, 1);
+
+  EXPECT_EXIT({ lexer.tokenize(token); },
+              testing::ExitedWithCode(2),
+              "Unknown character found : '&' \\(code : 0x26\\).");
 }
