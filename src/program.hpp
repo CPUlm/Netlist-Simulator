@@ -416,8 +416,6 @@ class Program {
 public:
   typedef std::unique_ptr<Program> ptr;
 
-  [[nodiscard]] const std::vector<Variable::ptr> &get_vars() const noexcept { return m_vars; };
-
   [[nodiscard]] const std::vector<Variable::ptr> &get_inputs() const noexcept { return m_input; };
 
   [[nodiscard]] const std::vector<Variable::ptr> &get_outputs() const noexcept { return m_output; };
@@ -430,9 +428,6 @@ public:
 
 private:
   friend Parser;
-  // All the variables
-  std::vector<Variable::ptr> m_vars = {};
-
   // All the variables categorized as 'input'
   std::vector<Variable::ptr> m_input = {};
 

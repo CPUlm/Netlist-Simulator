@@ -97,12 +97,10 @@ Program::ptr Parser::parse_program() {
     const Variable::ptr &declared_var = decl_pair.second;
 
     if (in_refs.contains(declared_var->get_name())) {
-      p->m_vars.push_back(declared_var);
       continue; // 'declared_var' is a input.
     }
 
     if (p->m_eq.contains(declared_var)) {
-      p->m_vars.push_back(declared_var);
       continue; // 'declared_var' has an equation
     }
 

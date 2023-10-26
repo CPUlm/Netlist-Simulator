@@ -22,17 +22,28 @@ inline void print_var_decl(std::ostream &out, const Variable::ptr &var) {
   }
 }
 
-static void print_variable_declaration(std::ostream &out, const std::vector<Variable::ptr> &var_list) {
+static void print_variable_declaration(std::ostream &out, const Program::ptr &p) {
   bool is_first = true;
 
-  for (const Variable::ptr &v : var_list) {
+  for (const Variable::ptr &v : p->get_inputs()) { // Print INPUT variables
     if (is_first) {
-      print_var_decl(out, v);
       is_first = false;
     } else {
       out << ", ";
-      print_var_decl(out, v);
     }
+
+    print_var_decl(out, v);
+  }
+
+  for (const auto &eq_s : p->get_equations()) {
+    const Variable::ptr &v = eq_s.first;
+    if (is_first) {
+      is_first = false;
+    } else {
+      out << ", ";
+    }
+
+    print_var_decl(out, v);
   }
 }
 
@@ -48,7 +59,7 @@ void ProgramPrinter::print() const {
   out << "\n";
 
   out << "VAR ";
-  print_variable_declaration(out, p->get_vars());
+  print_variable_declaration(out, p);
   out << "\n";
 
   out << "IN\n";
