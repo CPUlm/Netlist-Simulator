@@ -1,0 +1,32 @@
+Lexer :
+- 0x100 : Unknown character
+
+Parser :
+- 0x200 : Value too big to fit in Type
+- 0x201 : A Variable is declared without a defined value (no equation and not an input)
+- 0x202 : Input with an equation
+- 0x203 : Unexpected Token found
+- 0x204 : Two arguments should have the same bus size
+- 0x205 : An argument should have the specified bus size.
+- 0x206 : An argument should have a bus size strictly greater than specified bus size.
+- 0x207 : A variable has already been marked as input
+- 0x208 : A variable has already been marked as output
+- 0x209 : A variable has already been declared
+- 0x20a : An input has not been declared
+- 0x20b : An output has not been declared
+- 0x20c : Assignment of undefined variable
+- 0x20d : Multiple assignments for a variable
+- 0x20e : Incompatible bus size in an equation
+- 0x20f : Ill-formed interval
+- 0x210 : Missing expression for assignment
+- 0x211 : Invalid Bus-size (Too big)
+- 0x212 : Binary constant too big to fit in specified size
+- 0x213 : Decimal constant should have a specified size
+- 0x214 : Decimal constant too big to fit in specified size
+- 0x215 : Hexadecimal constant too big to fit in specified size
+- 0x216 : Undefined variable in expression
+
+
+"Impossible" Errors :
+- 0x900 : Error parsing integer in the specified base (Lexer prevent this in theory)
+- 0x901 : Not parsed all the integer (Lexer prevent this too)
