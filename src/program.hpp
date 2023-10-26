@@ -7,6 +7,7 @@
 #include <memory>
 #include <cassert>
 #include <unordered_map>
+#include <limits>
 
 #define delete_copy_ctr(class) class(class &) = delete;\
 class(const class &) = delete;
@@ -23,7 +24,13 @@ public:
   [[nodiscard]] bus_size_t get_bus_size() const noexcept { return bus_size; }
 
   /// Returns the max value of a bus with size s
-  [[nodiscard]] static inline value_t max_value(bus_size_t s) noexcept { return (1 << s) - 1; };
+  [[nodiscard]] static inline value_t max_value(bus_size_t s) noexcept {
+    if (s == max_bus_size) {
+      return std::numeric_limits<value_t>::max();
+    } else {
+      return (static_cast<value_t>(1) << s) - static_cast<value_t>(1);
+    }
+  };
 
   delete_copy_ctr(Bus)
 
