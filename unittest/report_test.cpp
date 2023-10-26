@@ -76,3 +76,33 @@ TEST_F(ReportTest, with_position) {
       .print(stream);
   EXPECT_EQ(stream.str(), "In file file:42:5:\nerror: foobar\nnote: did you mean 'foo'\n");
 }
+
+using ReportDeathTest = ReportTest;
+
+TEST_F(ReportDeathTest, with_exit) {
+  EXPECT_EXIT({
+                ctx.report(ReportSeverity::ERROR)
+                    .with_location({42, 5})
+                    .with_message("foobar")
+                    .with_note("did you mean '{}'", "foo")
+                    .build()
+                    .exit();
+              },
+              testing::ExitedWithCode(1),
+              "In file file:42:5:\nerror: foobar\nnote: did you mean 'foo'\n");
+}
+
+TEST_F(ReportDeathTest, with_exit_and_code) {
+  EXPECT_EXIT({
+                ctx.report(ReportSeverity::ERROR)
+                    .with_code(10)
+                    .with_location({42, 5})
+                    .with_message("foobar")
+                    .with_note("did you mean '{}'", "foo")
+                    .build()
+                    .exit();
+              },
+              testing::ExitedWithCode(10),
+              "In file file:42:5:\nerror\\[E0010\\]: foobar\nnote: did you mean 'foo'\n");
+}
+
