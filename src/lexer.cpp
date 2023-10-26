@@ -146,6 +146,7 @@ void Lexer::tokenize(Token &token) {
           .with_message("Unknown character found : '{}' (code : {:#x}).",
                         m_buf.current_char(), m_buf.current_char())
           .with_location({m_buf.current_line(), m_buf.current_column()})
+          .with_code(0x100)
           .build()
           .exit();
     }

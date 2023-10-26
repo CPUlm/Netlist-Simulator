@@ -8,17 +8,48 @@ template<class T>
 
   auto [ptr, ec] = std::from_chars(token.spelling.begin(), token.spelling.end(), v, base);
   if (ec == std::errc::result_out_of_range) {
-    c.report(ReportSeverity::ERROR)
-        .with_location(token.position)
-        .with_message("The value '{}' (interpreted in base {}) is too big to fit in a {}. "
-                      "Max value authorised : '{}'",
-                      token.spelling, base, typeid(T).name(), std::numeric_limits<T>::max())
-        .build()
-        .exit();
+    if (base == 2) {
+      c.report(ReportSeverity::ERROR)
+          .with_location(token.position)
+          .with_message("The value '{}' (interpreted in base {}) is too big to be parsed in the context. "
+                        "Max value authorised : '{:b}'",
+                        token.spelling, base, std::numeric_limits<T>::max())
+          .with_code(0x200)
+          .build()
+          .exit();
+    } else if (base == 10) {
+      c.report(ReportSeverity::ERROR)
+          .with_location(token.position)
+          .with_message("The value '{}' (interpreted in base {}) is too big to be parsed in the context. "
+                        "Max value authorised : '{:d}'",
+                        token.spelling, base, std::numeric_limits<T>::max())
+          .with_code(0x200)
+          .build()
+          .exit();
+    } else if (base == 16) {
+      c.report(ReportSeverity::ERROR)
+          .with_location(token.position)
+          .with_message("The value '{}' (interpreted in base {}) is too big to be parsed in the context. "
+                        "Max value authorised : '{:x}'",
+                        token.spelling, base, std::numeric_limits<T>::max())
+          .with_code(0x200)
+          .build()
+          .exit();
+    } else {
+      c.report(ReportSeverity::ERROR)
+          .with_location(token.position)
+          .with_message("The value '{}' (interpreted in base {}) is too big to be parsed in the context. "
+                        "Max value authorised : '{:d}'",
+                        token.spelling, base, std::numeric_limits<T>::max())
+          .with_code(0x200)
+          .build()
+          .exit();
+    }
   } else if (ec == std::errc::invalid_argument) {
     c.report(ReportSeverity::ERROR)
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}", token.spelling, base)
+        .with_code(0x900)
         .build()
         .exit();
   } else if (ptr != token.spelling.end()) {
@@ -26,6 +57,7 @@ template<class T>
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}. Successfully parsed the value '{}' "
                       "but unable to parse this part : '{}'", token.spelling, base, v, ptr)
+        .with_code(0x901)
         .build()
         .exit();
   }
@@ -109,6 +141,7 @@ Program::ptr Parser::parse_program() {
         .with_location(var_decl.at(declared_var->get_name()).position)
         .with_message("Declared variable '{}' does not have a defined value. Please add an equation to define its "
                       "value or add it as an input", declared_var->get_name())
+        .with_code(0x201)
         .build()
         .exit();
 
@@ -123,6 +156,7 @@ Program::ptr Parser::parse_program() {
           .with_location(ref_pair.second.position)
           .with_message("Input variable '{}' have an associated equation. You must choose the state of the variable : "
                         "Input or Defined by an Equation.", ref_pair.first)
+          .with_code(0x202)
           .build()
           .exit();
     }
@@ -153,6 +187,7 @@ Program::ptr Parser::parse_program() {
   m_context.report(ReportSeverity::ERROR)
       .with_location(m_token.position)
       .with_message("Unexpected token. Found : '{}', expected : '{}'", m_token.spelling, tokens.str())
+      .with_code(0x203)
       .build()
       .exit();
 }
@@ -168,6 +203,7 @@ void Parser::token_assert(TokenKind token) const {
     m_context.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
         .with_message("Unexpected token. Found : '{}', expected : '{}'", m_token.spelling, token_spelling.at(token))
+        .with_code(0x203)
         .build()
         .exit();
   }
@@ -179,6 +215,7 @@ void Parser::assert_same_bus_size(const Argument::ptr &arg1, const Argument::ptr
         .with_location(pos)
         .with_message("The two arguments '{}' (bus size : {}) and '{}' (bus size : {}) should have the same bus size.",
                       arg1->get_repr(), arg1->get_bus_size(), arg2->get_repr(), arg2->get_bus_size())
+        .with_code(0x204)
         .build()
         .exit();
   }
@@ -190,6 +227,7 @@ void Parser::assert_bus_size_eq(const Argument::ptr &arg, bus_size_t size, const
         .with_location(pos)
         .with_message("The argument '{}' (bus size : {}) should have a bus size of {}.",
                       arg->get_repr(), arg->get_bus_size(), size)
+        .with_code(0x205)
         .build()
         .exit();
   }
@@ -201,6 +239,7 @@ void Parser::assert_bus_size_gt(const Argument::ptr &arg, bus_size_t size, const
         .with_location(pos)
         .with_message("The argument '{}' (bus size : {}) should have a bus size strictly greater than {}.",
                       arg->get_repr(), arg->get_bus_size(), size)
+        .with_code(0x206)
         .build()
         .exit();
   }
@@ -222,6 +261,7 @@ Parser::var_ref_map Parser::parse_inputs_references() {
               "The variable '{}' has already been marked as input at {}.",
               m_token.spelling,
               m_context.get_location(var[m_token.spelling].position))
+          .with_code(0x207)
           .build()
           .exit();
     }
@@ -254,6 +294,7 @@ Parser::var_ref_map Parser::parse_outputs_references() {
               "The variable '{}' has already been marked as output at {}.",
               m_token.spelling,
               m_context.get_location(var[m_token.spelling].position))
+          .with_code(0x208)
           .build()
           .exit();
     }
@@ -283,12 +324,12 @@ void Parser::parse_variable_declaration() {
     v.position = m_token.position;
     consume(); // eat 'IDENTIFIER'
 
-    if (m_token.kind == TokenKind::COLON) {
-      consume(); // eat ':'
-      v.size = parse_bus_size();
-    } else {
-      v.size = 1;
+    auto size = parse_size_spec();
+    if (!size.has_value()) {
+      size = 1;
     }
+
+    v.size = size.value();
 
     if (var_decl.contains(v.spelling)) {
       m_context.report(ReportSeverity::ERROR)
@@ -296,6 +337,7 @@ void Parser::parse_variable_declaration() {
           .with_message("The variable '{}' has already been declared at {}.",
                         v.spelling,
                         m_context.get_location(var_decl[v.spelling].position))
+          .with_code(0x209)
           .build()
           .exit();
     }
@@ -322,6 +364,7 @@ void Parser::build_intput_output_list(Program::ptr &p, const var_ref_map &in_ref
           .with_message(
               "Missing declaration of input '{}' in the variable section.",
               i_ref.spelling)
+          .with_code(0x20a)
           .build()
           .exit();
     }
@@ -338,6 +381,7 @@ void Parser::build_intput_output_list(Program::ptr &p, const var_ref_map &in_ref
           .with_message(
               "Missing declaration of output '{}' in the variable section.",
               o_ref.spelling)
+          .with_code(0x20b)
           .build()
           .exit();
     }
@@ -357,6 +401,7 @@ void Parser::parse_equations(Program::ptr &p) {
           .with_location(m_token.position)
           .with_message("Assigment of undefined variable '{}'",
                         m_token.spelling)
+          .with_code(0x20c)
           .build()
           .exit();
     }
@@ -365,6 +410,7 @@ void Parser::parse_equations(Program::ptr &p) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
           .with_message("Multiple equations for variable '{}'", m_token.spelling)
+          .with_code(0x20d)
           .build()
           .exit();
     }
@@ -382,6 +428,7 @@ void Parser::parse_equations(Program::ptr &p) {
           .with_message("Incompatible bus size. The variable '{}' should have a bus size of {} instead of {} to match "
                         "the right-hand of its equation.",
                         assigment_var->get_name(), eq->get_bus_size(), assigment_var->get_bus_size())
+          .with_code(0x20e)
           .build()
           .exit();
     }
@@ -514,6 +561,7 @@ Expression::ptr Parser::parse_expression() {
       m_context.report(ReportSeverity::ERROR)
           .with_location(expr_pos)
           .with_message("The beginning of the interval ({}) must be less than the end of the interval ({}).", beg, end)
+          .with_code(0x20f)
           .build()
           .exit();
     }
@@ -556,7 +604,8 @@ Expression::ptr Parser::parse_expression() {
   case TokenKind::EOI:
     m_context.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
-        .with_message("Missing expression for assigment.")
+        .with_message("Missing expression for assignment.")
+        .with_code(0x210)
         .build()
         .exit();
 
@@ -578,6 +627,7 @@ bus_size_t Parser::parse_bus_size() {
     m_context.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
         .with_message("Integer '{}' is too big to be a bus size. Max bus size authorised : '{}'", bs, max_bus_size)
+        .with_code(0x211)
         .build()
         .exit();
   }
@@ -602,6 +652,7 @@ Constant::ptr Parser::parse_binary_digits() {
   auto size = static_cast<bus_size_t>(m_token.spelling.size());
 
   consume();
+  // No need to check that it fits in a value_t, parse_int has done it for us
   return std::make_shared<Constant>(size, val);
 }
 
@@ -619,13 +670,15 @@ Constant::ptr Parser::parse_binary_constant() {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
           .with_message("The binary value '{}' (decimal : {}) is too large to fit in a bus size of {}. "
-                        "The maximum authorised value for the variable is : {}",
+                        "The maximum authorised binary constant for the variable is : '{:#b}'",
                         cst_tok.spelling, val, size.value(), Bus::max_value(size.value()))
+          .with_code(0x212)
           .build()
           .exit();
     }
     return std::make_shared<Constant>(size.value(), val);
   } else {
+    // No need to check that it fits in a value_t, parse_int has done it for us
     return std::make_shared<Constant>(cst_tok.spelling.size(), val); // '0b' prefix is no in the token spelling
   }
 }
@@ -641,6 +694,7 @@ Constant::ptr Parser::parse_decimal_constant() {
     m_context.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
         .with_message("The decimal constant '{}' should have a size specifier.", val)
+        .with_code(0x213)
         .build()
         .exit();
   }
@@ -649,8 +703,9 @@ Constant::ptr Parser::parse_decimal_constant() {
     m_context.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
         .with_message("The decimal value '{}' is too large to fit in a bus size of {}. "
-                      "The maximum authorised value for the variable is : {}",
+                      "The maximum authorised decimal constant for the variable is : '0d{:d}'",
                       val, size.value(), Bus::max_value(size.value()))
+        .with_code(0x214)
         .build()
         .exit();
   }
@@ -672,14 +727,16 @@ Constant::ptr Parser::parse_hexadecimal_constant() {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
           .with_message("The hexadecimal value '{}' (decimal : {}) is too large to fit in a bus size of {}. "
-                        "The maximum authorised value for the variable is : {}",
+                        "The maximum authorised hexadecimal constant for the variable is : '{:#x}'",
                         cst_tok.spelling, val, size.value(), Bus::max_value(size.value()))
+          .with_code(0x215)
           .build()
           .exit();
     }
     return std::make_shared<Constant>(size.value(), val);
   } else {
     // One hexadecimal digit <-> 4 bits
+    // No need to check, parse_int has yet checked that val fit in a value_t
     return std::make_shared<Constant>(cst_tok.spelling.size() * 4, val); // '0x' prefix is no in the token spelling
   }
 }
@@ -690,7 +747,8 @@ Variable::ptr Parser::parse_variable() {
   if (!vars.contains(m_token.spelling)) {
     m_context.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
-        .with_message("Undefined variable {}.", m_token.spelling)
+        .with_message("Undefined variable '{}' in expression.", m_token.spelling)
+        .with_code(0x216)
         .build()
         .exit();
   }
