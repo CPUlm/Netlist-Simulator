@@ -5,9 +5,9 @@
 #include <iostream>
 #include <vector>
 
-/* --------------------------------------------------------
- * class ReportColorGenerator
- */
+// ========================================================
+// class ReportColorGenerator
+// ========================================================
 
 ReportColor ReportColorGenerator::next_color() {
   constexpr uint32_t COLOR_COUNT = 6 /* excluding color NONE */;
@@ -15,9 +15,9 @@ ReportColor ReportColorGenerator::next_color() {
   return static_cast<ReportColor>(m_current_idx + 1 /* excluding color NONE */);
 }
 
-/* --------------------------------------------------------
- * class ReportConsolePrinter
- */
+// ========================================================
+// class ReportConsolePrinter
+// ========================================================
 
 /// Utility class implementing the report's console printer.
 class ReportConsolePrinter {
@@ -300,9 +300,21 @@ void Report::print(std::ostream &out) const {
   printer.print(*this);
 }
 
-/* --------------------------------------------------------
- * class ReportManager
- */
+void Report::exit() {
+  if (code.has_value())
+    exit(static_cast<int>(code.value()));
+  else
+    exit(1);
+}
+
+void Report::exit(int error_code) {
+  print(std::cerr);
+  std::exit(error_code);
+}
+
+// ========================================================
+// class ReportManager
+// ========================================================
 
 std::string_view ReportManager::get_line_at(uint32_t line_number) {
   fill_line_map_if_needed();

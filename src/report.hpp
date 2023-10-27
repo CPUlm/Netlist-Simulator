@@ -55,7 +55,15 @@ struct Report {
 
   explicit Report(ReportManager &manager) : manager(manager) {}
 
+  /// Prints the report to the given output stream.
   void print(std::ostream &out = std::cerr) const;
+
+  /// Same as exit(int) but use the report code as the exit code if any.
+  /// Otherwise, 1 is used as the exit code.
+  void exit();
+  /// Prints the report to the standard error output and then exists the
+  /// program with the given \a error_code.
+  void exit(int error_code);
 };
 
 class ReportBuilder {

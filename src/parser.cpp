@@ -50,7 +50,7 @@ std::optional<size_t> Parser::parse_size_specifier() {
         .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
         .with_message("variables of bit size greater than {} bits is not allowed", MAX_VARIABLE_SIZE)
         .finish()
-        .print();
+        .exit();
     return std::nullopt;
   } else if (size_in_bits == 0) {
     m_report_manager.report(ReportSeverity::ERROR)
@@ -58,7 +58,7 @@ std::optional<size_t> Parser::parse_size_specifier() {
         .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
         .with_message("variables of bit size 0 is not allowed")
         .finish()
-        .print();
+        .exit();
     return std::nullopt;
   }
 
@@ -129,7 +129,7 @@ bool Parser::parse_inputs() {
               .with_span({variable_location, (uint32_t)variable_name.size()})
               .with_message("the input `{}' is defined more than once", variable_name)
               .finish()
-              .print();
+              .exit();
           return false;
         }
 
@@ -168,7 +168,7 @@ bool Parser::parse_outputs() {
             builder.with_message("the output `{}' is defined more than once", variable_name);
           }
 
-          builder.finish().print();
+          builder.finish().exit();
           return false;
         }
 
@@ -205,7 +205,7 @@ bool Parser::parse_variables() {
                 .with_span({variable_location, (uint32_t)variable_name.size()})
                 .with_message("the variable `{}' is defined more than once", variable_name)
                 .finish()
-                .print();
+                .exit();
             return false;
           }
 
@@ -268,7 +268,7 @@ bool Parser::parse_equation() {
         .with_span({m_token.position, (uint32_t)variable_label.size()})
         .with_message("equation label `{}' not declared inside `VAR' declaration", variable_label)
         .finish()
-        .print();
+        .exit();
     return false;
   } else if (it->second.is_input) {
     m_report_manager.report(ReportSeverity::ERROR)
@@ -276,7 +276,7 @@ bool Parser::parse_equation() {
         .with_span({m_token.position, (uint32_t)variable_label.size()})
         .with_message("cannot assign an expression to the input variable `{}'", variable_label)
         .finish()
-        .print();
+        .exit();
     return false;
   }
 
@@ -339,7 +339,7 @@ bool Parser::parse_expression(reg_t output_reg) {
         .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
         .with_message("invalid expression, expected an operator or a constant")
         .finish()
-        .print();
+        .exit();
     return false;
   }
 }
@@ -358,7 +358,7 @@ std::optional<reg_t> Parser::parse_register() {
           .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
           .with_message("variable `{}' not found", m_token.spelling)
           .finish()
-          .print();
+          .exit();
       return std::nullopt;
     }
 
@@ -653,5 +653,5 @@ void Parser::emit_unexpected_token_error(const Token &token, std::string_view ex
       .with_span({token.position, (uint32_t)token.spelling.size()})
       .with_message("unexpected token; expected {}", expected_token_name)
       .finish()
-      .print();
+      .exit();
 }
