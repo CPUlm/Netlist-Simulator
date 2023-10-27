@@ -19,6 +19,47 @@ ReportColor ReportColorGenerator::next_color() {
 // class ReportConsolePrinter
 // ========================================================
 
+#if __has_include(<unistd.h>)
+#define NETLIST_HAS_UNISTD 1
+#include <unistd.h>
+#elif defined(_WIN32)
+#include <windows.h>
+#undef ERROR // Windows.h defines this macro... Fuck you Microsoft
+#endif
+
+static bool check_if_terminal(std::ostream &out) {
+  // It is quite difficult to check if out redirects to a terminal.
+  // First, this is system-dependant to check if the standard output
+  // was redirected or not. Furthermore, checking if out corresponds to
+  // std::cout or std::cerr is not that easy. Finally, even if we know
+  // it is std::cout or std::cerr, we can not be sure that std::cout
+  // or std::cerr was redirected from the standard output.
+  // Therefore, this function is a heuristic that should work if everyone
+  // do the things the way they are intended to be.
+  // See: https://en.cppreference.com/w/cpp/io/basic_ios/rdbuf
+  // See: https://stackoverflow.com/questions/3318714/check-if-ostream-object-is-cout-or-ofstream-c
+
+  if (out.rdbuf() == std::cout.rdbuf()) {
+    // It is std::cout, we assume that std::cout is redirected to STDOUT.
+#ifdef NETLIST_HAS_UNISTD
+    return isatty(STDOUT_FILENO);
+#elif defined(_WIN32)
+    DWORD mode;
+    return GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &mode);
+#endif
+  } else if (out.rdbuf() == std::cerr.rdbuf()) {
+    // It is std::cerr, we assume that std::cout is redirected to STDERR.
+#ifdef NETLIST_HAS_UNISTD
+    return isatty(STDERR_FILENO);
+#elif defined(_WIN32)
+    DWORD mode;
+    return GetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), &mode);
+#endif
+  }
+
+  return false;
+}
+
 /// Utility class implementing the report's console printer.
 class ReportConsolePrinter {
 public:
@@ -37,7 +78,7 @@ public:
     const char *line_number = "0";
   };
 
-  explicit ReportConsolePrinter(std::ostream &out) : m_out(out) {}
+  explicit ReportConsolePrinter(std::ostream &out) : m_out(out) { m_use_colors = check_if_terminal(m_out); }
 
   /// Prints the given report to stdout.
   void print(const Report &report) {
