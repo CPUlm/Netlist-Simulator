@@ -19,15 +19,9 @@ Parser::Parser(ReportManager &report_manager, Lexer &lexer) : m_report_manager(r
   m_lexer.tokenize(m_token);
 }
 
-std::optional<Program> Parser::parse_program() {
-  if (!parse_inputs())
-    return std::nullopt;
-  if (!parse_outputs())
-    return std::nullopt;
-  if (!parse_variables())
-    return std::nullopt;
-  if (!parse_equations())
-    return std::nullopt;
+std::shared_ptr<Program> Parser::parse_program() {
+  if (!(parse_inputs() && parse_outputs() && parse_variables() && parse_equations()))
+    return nullptr;
   return m_program_builder.build();
 }
 
@@ -215,8 +209,13 @@ bool Parser::parse_variables() {
             return false;
           }
 
+          unsigned flags = RIF_NONE;
+          if (it->second.is_input)
+            flags |= RIF_INPUT;
+          if (it->second.is_output)
+            flags |= RIF_OUTPUT;
           already_defined_variables.insert(variable_name);
-          it->second.reg = m_program_builder.add_register(size_in_bits, std::string{variable_name});
+          it->second.reg = m_program_builder.add_register(size_in_bits, std::string{variable_name}, flags);
           return true;
         }
 

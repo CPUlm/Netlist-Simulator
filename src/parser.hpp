@@ -13,7 +13,7 @@ class Parser {
 public:
   explicit Parser(ReportManager &report_manager, Lexer &lexer);
 
-  [[nodiscard]] std::optional<Program> parse_program();
+  [[nodiscard]] std::shared_ptr<Program> parse_program();
 
 private:
   /// Consumes the current token and gets the next one.

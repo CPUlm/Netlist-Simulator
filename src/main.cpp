@@ -1,6 +1,6 @@
 #include "lexer.hpp"
 #include "parser.hpp"
-#include "simulator.hpp"
+#include "simulator/simulator.hpp"
 
 #include <fstream>
 
@@ -31,17 +31,17 @@ int main(int argc, const char *argv[]) {
   report_manager.register_file_info(argv[1], code);
   Lexer lexer(code.data());
   Parser parser(report_manager, lexer);
-  std::optional<Program> program = parser.parse_program();
+  std::shared_ptr<Program> program = parser.parse_program();
 
-  if (program.has_value()) {
-    Disassembler::disassemble(program.value());
+  if (program) {
+    Disassembler::disassemble(*program);
 
-    Simulator simulator(program.value());
-    simulator.set_register({ 1 }, 1);
+    Simulator simulator(program);
+    simulator.set_register({ 0 }, 1);
     simulator.set_register({ 1 }, 0);
-    simulator.print_registers();
+    simulator.print_inputs();
     simulator.execute();
-    simulator.print_registers();
+    simulator.print_outputs();
   }
 
   return EXIT_SUCCESS;
