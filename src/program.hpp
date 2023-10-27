@@ -177,11 +177,23 @@ struct RamInstruction : Instruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_ram(*this); }
 };
 
+enum RegisterInfoFlag {
+  RIF_NONE = 0x0,
+  /// The register represents an input.
+  RIF_INPUT = 0x1,
+  /// The register represents an output.
+  RIF_OUTPUT = 0x2,
+  /// The register is an internal register used by the parser to implement
+  /// some functionalities. It doesn't correspond to a variable declared
+  /// in the `VAR` statement.
+  RIF_INTERNAL = 0x4,
+};
+
 /// Meta information about a program's register.
 struct RegisterInfo {
   std::string name = {};
   bus_size_t bus_size = 1;
-  reg_t reg = {};
+  unsigned flags = RIF_NONE;
 };
 
 /// A netlist program storing a sequence of instructions to be simulated.
@@ -247,7 +259,7 @@ private:
 /// Utility class to simplify the creation of a Program instance by the parser.
 class ProgramBuilder {
 public:
-  reg_t add_register(bus_size_t bus_size = 1, const std::string &name = {});
+  reg_t add_register(bus_size_t bus_size = 1, const std::string &name = {}, unsigned flags = 0);
 
   ConstInstruction &add_const(reg_t output, reg_value_t value);
   NotInstruction &add_not(reg_t output, reg_t input);
@@ -263,13 +275,13 @@ public:
   SelectInstruction &add_select(reg_t output, bus_size_t i, reg_t input);
   SliceInstruction &add_slice(reg_t output, bus_size_t start, bus_size_t end, reg_t input);
 
-  [[nodiscard]] Program build();
+  [[nodiscard]] std::shared_ptr<Program> build();
 
 private:
   [[nodiscard]] bool check_reg(reg_t reg) const;
 
 private:
-  Program m_program;
+  std::shared_ptr<Program> m_program = std::make_shared<Program>();
 };
 
 #endif

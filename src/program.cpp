@@ -9,14 +9,14 @@
  * class ProgramBuilder
  */
 
-reg_t ProgramBuilder::add_register(bus_size_t bus_size, const std::string &name) {
-  assert(m_program.registers.size() < UINT_LEAST32_MAX && "too many registers allocated");
+reg_t ProgramBuilder::add_register(bus_size_t bus_size, const std::string &name, unsigned flags) {
+  assert(m_program->registers.size() < UINT_LEAST32_MAX && "too many registers allocated");
 
-  reg_t reg = {static_cast<std::uint_least32_t>(m_program.registers.size())};
-  RegisterInfo &info = m_program.registers.emplace_back();
-  info.reg = reg;
+  reg_t reg = {static_cast<std::uint_least32_t>(m_program->registers.size())};
+  RegisterInfo &info = m_program->registers.emplace_back();
   info.name = name;
   info.bus_size = bus_size;
+  info.flags = flags;
   return reg;
 }
 
@@ -26,7 +26,7 @@ ConstInstruction &ProgramBuilder::add_const(reg_t output, reg_value_t value) {
   auto *inst = new ConstInstruction();
   inst->output = output;
   inst->value = value;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -36,7 +36,7 @@ NotInstruction &ProgramBuilder::add_not(reg_t output, reg_t input) {
   auto *inst = new NotInstruction();
   inst->output = output;
   inst->input = input;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -47,7 +47,7 @@ AndInstruction &ProgramBuilder::add_and(reg_t output, reg_t lhs, reg_t rhs) {
   inst->output = output;
   inst->lhs = lhs;
   inst->rhs = rhs;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -58,7 +58,7 @@ NandInstruction &ProgramBuilder::add_nand(reg_t output, reg_t lhs, reg_t rhs) {
   inst->output = output;
   inst->lhs = lhs;
   inst->rhs = rhs;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -69,7 +69,7 @@ OrInstruction &ProgramBuilder::add_or(reg_t output, reg_t lhs, reg_t rhs) {
   inst->output = output;
   inst->lhs = lhs;
   inst->rhs = rhs;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -80,7 +80,7 @@ NorInstruction &ProgramBuilder::add_nor(reg_t output, reg_t lhs, reg_t rhs) {
   inst->output = output;
   inst->lhs = lhs;
   inst->rhs = rhs;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -91,7 +91,7 @@ XorInstruction &ProgramBuilder::add_xor(reg_t output, reg_t lhs, reg_t rhs) {
   inst->output = output;
   inst->lhs = lhs;
   inst->rhs = rhs;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -102,7 +102,7 @@ XnorInstruction &ProgramBuilder::add_xnor(reg_t output, reg_t lhs, reg_t rhs) {
   inst->output = output;
   inst->lhs = lhs;
   inst->rhs = rhs;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -113,7 +113,7 @@ ConcatInstruction &ProgramBuilder::add_concat(reg_t output, reg_t lhs, reg_t rhs
   inst->output = output;
   inst->lhs = lhs;
   inst->rhs = rhs;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -123,7 +123,7 @@ RegInstruction &ProgramBuilder::add_reg(reg_t output, reg_t input) {
   auto *inst = new RegInstruction();
   inst->output = output;
   inst->input = input;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -135,7 +135,7 @@ MuxInstruction &ProgramBuilder::add_mux(reg_t output, reg_t choice, reg_t first,
   inst->choice = choice;
   inst->first = first;
   inst->second = second;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -146,7 +146,7 @@ SelectInstruction &ProgramBuilder::add_select(reg_t output, bus_size_t i, reg_t 
   inst->output = output;
   inst->i = i;
   inst->input = input;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
@@ -158,16 +158,16 @@ SliceInstruction &ProgramBuilder::add_slice(reg_t output, bus_size_t start, bus_
   inst->start = start;
   inst->end = end;
   inst->input = input;
-  m_program.instructions.push_back(inst);
+  m_program->instructions.push_back(inst);
   return *inst;
 }
 
-[[nodiscard]] Program ProgramBuilder::build() {
+[[nodiscard]] std::shared_ptr<Program> ProgramBuilder::build() {
   return std::move(m_program);
 }
 
 [[nodiscard]] bool ProgramBuilder::check_reg(reg_t reg) const {
-  return reg.index < m_program.registers.size();
+  return reg.index < m_program->registers.size();
 }
 
 /* --------------------------------------------------------
