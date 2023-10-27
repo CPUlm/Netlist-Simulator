@@ -5,6 +5,10 @@
 
 #include <cassert>
 
+// ========================================================
+// class SimulatorBackend
+// ========================================================
+
 /// A backend for the Netlist simulator.
 class SimulatorBackend {
 public:
@@ -51,7 +55,7 @@ public:
   ///
   /// \param reg The register to request. If \a reg does not exists, the behavior is undefined.
   /// \return The bits of the requested register stored in the lowest bit of the returned value.
-  [[nodiscard]] virtual reg_value_t get_register(reg_t reg) const { assert(false && "debugger API not supported"); }
+  [[nodiscard]] virtual reg_value_t get_register(reg_t reg) const { assert(false && "debugger API not supported"); return 0; }
   /// Sets the value of the given requested \a reg to \a value.
   ///
   /// \warning This function only works if has_debugger() returns true.
@@ -66,6 +70,10 @@ public:
   /// \warning This function only works if has_debugger() returns true.
   virtual void step() { assert(false && "debugger API not supported"); }
 };
+
+// ========================================================
+// class Simulator
+// ========================================================
 
 /// The Netlist simulator.
 class Simulator {
