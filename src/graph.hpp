@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 #include <algorithm>
 
 class HasCycle : public std::exception {};
