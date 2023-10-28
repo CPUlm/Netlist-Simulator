@@ -28,7 +28,7 @@ jobs:
       matrix:
         os: [ windows-latest, macos-latest, ubuntu-latest ]
         build_type: [ Release ]
-        c_compiler: [ gcc-11, gcc-12, gcc-13, clang-14, clang-15, cl ]
+        c_compiler: [ gcc-11, gcc-12, gcc-13, clang, clang-15, cl ] # clang is clang-14 by default in ubuntu & macos
         include:
           - os: windows-latest
             c_compiler: cl
@@ -43,8 +43,8 @@ jobs:
             cpp_compiler: g++-12
 
           - os: macos-latest
-            c_compiler: clang-14
-            cpp_compiler: clang++-14
+            c_compiler: clang
+            cpp_compiler: clang++
 
           - os: ubuntu-latest
             c_compiler: gcc-11
@@ -59,8 +59,8 @@ jobs:
             cpp_compiler: g++-13
 
           - os: ubuntu-latest
-            c_compiler: clang-14
-            cpp_compiler: clang++-14
+            c_compiler: clang
+            cpp_compiler: clang++
 
           - os: ubuntu-latest
             c_compiler: clang-15
@@ -77,7 +77,7 @@ jobs:
             c_compiler: gcc-13
 
           - os: windows-latest
-            c_compiler: clang-14
+            c_compiler: clang
 
           - os: windows-latest
             c_compiler: clang-15

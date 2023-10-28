@@ -6,7 +6,7 @@ template<typename T>
 [[nodiscard]] T parse_int(const Token &token, int base, ReportContext &c) {
   T v;
 
-  auto [ptr, ec] = std::from_chars<T>(token.spelling.begin(), token.spelling.end(), v, base);
+  auto [ptr, ec] = std::from_chars(token.spelling.begin(), token.spelling.end(), v, base);
   if (ec == std::errc::result_out_of_range) {
     if (base == 2) {
       c.report(ReportSeverity::ERROR)
