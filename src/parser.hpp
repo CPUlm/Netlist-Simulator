@@ -30,7 +30,7 @@ private:
   };
 
   /// Type alias (because it's a very long type) for a dictionary that maps a variable name to it's reference.
-  typedef std::unordered_map<std::string_view, VariableReference> var_ref_map;
+  using var_ref_map = std::unordered_map<std::string_view, VariableReference>;
 
   /// Consumes the current token and gets the next one.
   void consume() { m_lexer.tokenize(m_token); }

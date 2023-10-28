@@ -1,18 +1,19 @@
 #include "parser.hpp"
 #include <sstream>
 
-/// Parse the current token as a value in the given base.
-[[nodiscard]] value_t parse_int(const Token &token, int base, ReportContext &c) {
-  value_t v;
+/// Parse the current token as an integer in the given base. We use a template to process different integer types.
+template<typename T>
+[[nodiscard]] T parse_int(const Token &token, int base, ReportContext &c) {
+  T v;
 
-  const std::from_chars_result r = std::from_chars(token.spelling.begin(), token.spelling.end(), v, base);
-  if (r.ec == std::errc::result_out_of_range) {
+  auto [ptr, ec] = std::from_chars<T>(token.spelling.begin(), token.spelling.end(), v, base);
+  if (ec == std::errc::result_out_of_range) {
     if (base == 2) {
       c.report(ReportSeverity::ERROR)
           .with_location(token.position)
           .with_message("The value '{}' (interpreted in base {}) is too big to be parsed in the context. "
                         "Max value authorised : '{:b}'",
-                        token.spelling, base, std::numeric_limits<value_t>::max())
+                        token.spelling, base, std::numeric_limits<T>::max())
           .with_code(13)
           .build()
           .exit();
@@ -21,7 +22,7 @@
           .with_location(token.position)
           .with_message("The value '{}' (interpreted in base {}) is too big to be parsed in the context. "
                         "Max value authorised : '{:d}'",
-                        token.spelling, base, std::numeric_limits<value_t>::max())
+                        token.spelling, base, std::numeric_limits<T>::max())
           .with_code(13)
           .build()
           .exit();
@@ -30,7 +31,7 @@
           .with_location(token.position)
           .with_message("The value '{}' (interpreted in base {}) is too big to be parsed in the context. "
                         "Max value authorised : '{:x}'",
-                        token.spelling, base, std::numeric_limits<value_t>::max())
+                        token.spelling, base, std::numeric_limits<T>::max())
           .with_code(13)
           .build()
           .exit();
@@ -39,23 +40,23 @@
           .with_location(token.position)
           .with_message("The value '{}' (interpreted in base {}) is too big to be parsed in the context. "
                         "Max value authorised : '{:d}'",
-                        token.spelling, base, std::numeric_limits<value_t>::max())
+                        token.spelling, base, std::numeric_limits<T>::max())
           .with_code(13)
           .build()
           .exit();
     }
-  } else if (r.ec == std::errc::invalid_argument) {
+  } else if (ec == std::errc::invalid_argument) {
     c.report(ReportSeverity::ERROR)
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}", token.spelling, base)
         .with_code(50)
         .build()
         .exit();
-  } else if (r.ptr != token.spelling.end()) {
+  } else if (ptr != token.spelling.end()) {
     c.report(ReportSeverity::ERROR)
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}. Successfully parsed the value '{}' "
-                      "but unable to parse this part : '{}'", token.spelling, base, v, r.ptr)
+                      "but unable to parse this part : '{}'", token.spelling, base, v, ptr)
         .with_code(51)
         .build()
         .exit();
@@ -620,34 +621,7 @@ Expression::ptr Parser::parse_expression() {
 bus_size_t Parser::parse_bus_size() {
   token_assert(TokenKind::INTEGER);
 
-  bus_size_t bs;
-  // We parse in base 10 here.
-  const std::from_chars_result r = std::from_chars(m_token.spelling.begin(), m_token.spelling.end(), bs, 10);
-  if (r.ec == std::errc::result_out_of_range) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("The value '{}' (interpreted in base 10) is too big to be parsed in the context. "
-                      "Max value authorised : '{:d}'",
-                      m_token.spelling, std::numeric_limits<bus_size_t>::max())
-        .with_code(13)
-        .build()
-        .exit();
-  } else if (r.ec == std::errc::invalid_argument) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("Error parsing value '{}' in base 10", m_token.spelling)
-        .with_code(50)
-        .build()
-        .exit();
-  } else if (r.ptr != m_token.spelling.end()) {
-    m_context.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_message("Error parsing value '{}' in base 10. Successfully parsed the value '{}' "
-                      "but unable to parse this part : '{}'", m_token.spelling, bs, r.ptr)
-        .with_code(51)
-        .build()
-        .exit();
-  }
+  auto bs = parse_int<bus_size_t>(m_token, 10, m_context); // We parse in base 10 here.
 
   if (bs > max_bus_size) {
     m_context.report(ReportSeverity::ERROR)
@@ -674,7 +648,7 @@ std::optional<bus_size_t> Parser::parse_size_spec() {
 Constant::ptr Parser::parse_binary_digits() {
   token_assert(TokenKind::INTEGER);
 
-  value_t val = parse_int(m_token, 2, m_context); // We parse in base 2 here.
+  auto val = parse_int<value_t>(m_token, 2, m_context); // We parse in base 2 here.
   auto size = static_cast<bus_size_t>(m_token.spelling.size());
 
   consume();
@@ -686,7 +660,7 @@ Constant::ptr Parser::parse_binary_constant() {
   token_assert(TokenKind::BINARY_CONSTANT);
 
   const Token cst_tok = m_token; // We copy the token in case of no size specifier
-  value_t val = parse_int(cst_tok, 2, m_context); // We parse in base 2 here
+  auto val = parse_int<value_t>(cst_tok, 2, m_context); // We parse in base 2 here
   consume();
 
   auto size = parse_size_spec();
@@ -712,7 +686,7 @@ Constant::ptr Parser::parse_binary_constant() {
 Constant::ptr Parser::parse_decimal_constant() {
   token_assert(TokenKind::DECIMAL_CONSTANT);
 
-  value_t val = parse_int(m_token, 10, m_context); // We parse in base 10 here
+  auto val = parse_int<value_t>(m_token, 10, m_context); // We parse in base 10 here
   consume();
   auto size = parse_size_spec();
 
@@ -743,7 +717,7 @@ Constant::ptr Parser::parse_hexadecimal_constant() {
   token_assert(TokenKind::HEXADECIMAL_CONSTANT);
 
   const Token cst_tok = m_token; // We copy the token in case of no size specifier
-  value_t val = parse_int(m_token, 16, m_context); // We parse in base 16 here
+  auto val = parse_int<value_t>(m_token, 16, m_context); // We parse in base 16 here
   consume();
 
   auto size = parse_size_spec();

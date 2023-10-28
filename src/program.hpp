@@ -14,9 +14,9 @@
 #define delete_copy_ctr(class) class(class &) = delete;\
 class(const class &) = delete;
 
-typedef int bus_size_t;
-typedef std::uint_least64_t value_t;
-typedef std::string_view ident_t;
+using bus_size_t = int;
+using value_t = std::uint_least64_t;
+using ident_t = std::string_view;
 
 constexpr bus_size_t max_bus_size = sizeof(value_t) * 8;
 
@@ -128,7 +128,7 @@ private:
 /// The base class to all expressions.
 class Expression : public Bus {
 public:
-  typedef std::unique_ptr<Expression> ptr;
+  using ptr = std::unique_ptr<Expression>;
 
   enum class Kind {
     ARG, REG, NOT, BINOP, MUX, ROM, RAM, CONCAT, SLICE, SELECT
@@ -423,7 +423,7 @@ class Parser;
 
 class Program {
 public:
-  typedef std::unique_ptr<Program> ptr;
+  using ptr = std::unique_ptr<Program>;
 
   [[nodiscard]] const std::vector<Variable::ptr> &get_inputs() const noexcept { return m_input; };
 
