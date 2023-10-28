@@ -3,6 +3,7 @@
 
 #include <string_view>
 #include <unordered_map>
+#include <cstdint>
 
 enum class TokenKind {
   /// End-Of-Input, the last token returned by the lexer.

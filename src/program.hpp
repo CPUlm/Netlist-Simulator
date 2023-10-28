@@ -8,6 +8,8 @@
 #include <cassert>
 #include <unordered_map>
 #include <limits>
+#include <string>
+#include <cstdint>
 
 #define delete_copy_ctr(class) class(class &) = delete;\
 class(const class &) = delete;
