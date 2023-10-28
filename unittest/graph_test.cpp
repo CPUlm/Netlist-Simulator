@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <algorithm>
 
 #include "graph.hpp"
 
@@ -11,12 +10,12 @@ const std::vector<std::vector<int>> g4 = {{3}, {0, 2, 4}, {3}, {}, {6}, {1, 4, 7
 Graph<int> make(const std::vector<std::vector<int>> &graph) {
   Graph<int> g;
   for (int i = 0; i < graph.size(); i++) {
-    add_node(g, i);
+    g.add_node(i);
   }
 
   for (int i = 0; i < graph.size(); i++) {
     for (int j = 0; j < graph[i].size(); ++j) {
-      add_edge(g, i, graph[i][j]);
+      g.add_edge(i, graph[i][j]);
     }
   }
 
@@ -24,23 +23,24 @@ Graph<int> make(const std::vector<std::vector<int>> &graph) {
 }
 
 bool check_topo_order(Graph<int> &g) {
-  auto topo_order = topological(g);
-  if (topo_order.size() != g.nodes.size()) {
+  auto topo_order = g.topological();
+  if (topo_order.size() != g.size()) {
     return false;
   }
 
   if (!std::all_of(topo_order.begin(),
                    topo_order.end(),
-                   [&g](int i) -> bool { return 0 <= i && i < g.nodes.size(); })) {
+                   [&g](int i) -> bool { return 0 <= i && i < g.size(); })) {
     return false;
   }
 
-  std::vector<std::optional<int>> inverse_topo_order(g.nodes.size(), std::nullopt);
-  for (int i = 0; i < g.nodes.size(); ++i) {
+  std::vector<std::optional<int>> inverse_topo_order(g.size(), std::nullopt);
+  for (int i = 0; i < g.size(); ++i) {
     inverse_topo_order[topo_order[i]] = i;
   }
 
-  return std::all_of(g.nodes.begin(), g.nodes.end(), [&inverse_topo_order](Node<int> &src) -> bool {
+  return std::all_of(g.begin(), g.end(), [&inverse_topo_order](const auto &pair) -> bool {
+    const Node<int> &src = pair.second;
     return std::all_of(src.link_to.begin(), src.link_to.end(), [&src, &inverse_topo_order](Node<int> &dst) -> bool {
       auto src_inv = inverse_topo_order[src.label];
       auto dst_inv = inverse_topo_order[dst.label];
@@ -60,19 +60,15 @@ public:
 };
 
 TEST_F(GraphTest, has_cycle) {
-#if  0
-  EXPECT_TRUE(has_cycle(graph1));
-  EXPECT_TRUE(has_cycle(graph2));
-  EXPECT_FALSE(has_cycle(graph3));
-  EXPECT_FALSE(has_cycle(graph4));
-#endif
+  EXPECT_TRUE(graph1.has_cycle());
+  EXPECT_TRUE(graph2.has_cycle());
+  EXPECT_FALSE(graph3.has_cycle());
+  EXPECT_FALSE(graph4.has_cycle());
 }
 
 TEST_F(GraphTest, topological) {
-#if  0
   EXPECT_THROW(check_topo_order(graph1), HasCycle);
   EXPECT_THROW(check_topo_order(graph2), HasCycle);
   EXPECT_TRUE(check_topo_order(graph3));
   EXPECT_TRUE(check_topo_order(graph4));
-#endif
 }

@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <vector>
+#include <algorithm>
 
 class HasCycle : public std::exception {};
 
@@ -12,66 +13,119 @@ enum Mark {
   Visited,
 };
 
-template <class T> struct Node {
-  T label;
+template<class T> class Node {
+public:
+  using NodeRefVector = std::vector<std::reference_wrapper<Node<T>>>;
+
+  const T label;
   Mark mark;
-  std::vector<std::reference_wrapper<Node<T>>> link_to;
-  std::vector<std::reference_wrapper<Node<T>>> linked_by;
+  NodeRefVector link_to;
+  NodeRefVector linked_by;
+
+  explicit Node(const T &label) : label(label), mark(NotVisited), link_to(), linked_by() {}
+
+  // Delete Node Copy Constructors
+  Node(Node &) = delete;
+  Node(const Node &) = delete;
 };
 
-template <class T> struct Graph {
-  std::vector<Node<T>> nodes;
-};
+template<class T>
+class Graph {
+public:
+  using iterator = std::unordered_map<T, Node<T>>::const_iterator;
+  using LabelList = std::vector<std::reference_wrapper<const T>>;
 
-template <class T> Graph<T> mk_graph() { return Graph<T>(); }
+  void add_node(const T &label) noexcept {
+    nodes.emplace(std::piecewise_construct, std::forward_as_tuple(label), std::forward_as_tuple(label));
+  }
 
-template <class T> void add_node(Graph<T> &graph, const T &label) {
-  graph.nodes.push_back({label, NotVisited, {}, {}});
-}
-
-template <class T> Node<T> &node_of_label(Graph<T> &graph, const T &label) {
-  for (Node<T> &node : graph.nodes) {
-    if (node.label == label) {
-      return node;
+  void add_edge(const T &src, const T &dest) {
+    try {
+      Node<int> &n1 = nodes.at(src);
+      Node<int> &n2 = nodes.at(dest);
+      n1.link_to.emplace_back(n2);
+      n2.linked_by.emplace_back(n1);
+    } catch (std::runtime_error &e) {
+      throw std::runtime_error("Tried to add an edge between non-existing nodes.");
     }
   }
 
-  throw std::runtime_error("Element not found.");
-}
+  [[nodiscard]] bool has_cycle() noexcept {
+    clear_marks();
 
-template <class T> void add_edge(Graph<T> &graph, const T &src, const T &dest) {
-  try {
-    Node<T> &n1 = node_of_label(graph, src);
-    Node<T> &n2 = node_of_label(graph, dest);
-    n1.link_to.emplace_back(n2);
-    n2.linked_by.emplace_back(n1);
-  } catch (std::runtime_error &e) {
-    throw std::runtime_error(
-        "Tried to add an edge between non-existing nodes.");
+    for (auto &[_, n] : nodes) {
+      if (n.mark == NotVisited && dfs_cycled(n)) {
+        return true;
+      }
+    }
+
+    return false;
   }
-}
 
-template <class T> void clear_marks(Graph<T> &graph) {
-  for (Node<T> &node : graph.nodes) {
-    node.mark = NotVisited;
+  LabelList topological() {
+    clear_marks();
+    LabelList l;
+
+    for (auto &[_, n] : nodes) {
+      if (n.mark == NotVisited) {
+        topological_dfs(n, l);
+      }
+    }
+
+    std::reverse(l.begin(), l.end());
+    return l;
   }
-}
 
-template <class T> std::vector<Node<T> &> find_roots(Graph<T> &graph) {
-  std::vector<Node<T> &> result = {};
-  for (Node<T> &node : graph.nodes) {
-    if (node.linked_by.empty()) {
-      result.emplace_back(node);
+  [[nodiscard]] size_t size() const noexcept {
+    return nodes.size();
+  }
+
+  [[nodiscard]] iterator begin() const noexcept { return nodes.begin(); }
+
+  [[nodiscard]] iterator end() const noexcept { return nodes.end(); }
+
+private:
+  void clear_marks() noexcept {
+    for (auto &[_, node] : nodes) {
+      node.mark = NotVisited;
     }
   }
 
-  return result;
-}
+  [[nodiscard]] bool dfs_cycled(Node<T> &n) { // NOLINT(*-no-recursion)
+    n.mark = InProgress;
 
-template <class T> bool has_cycle(Graph<T> &graph) { return false; }
+    for (Node<int> &child : n.link_to) {
+      if (child.mark == InProgress) {
+        return true;
+      }
 
-// Must throw 'HasCycle' exception when given graph is cyclic. (Needed to pass
-// tests)
-template <class T> std::vector<T> topological(Graph<T> &graph) { return {}; }
+      if (child.mark == NotVisited && dfs_cycled(child)) {
+        return true;
+      }
+    }
+
+    n.mark = Visited;
+    return false;
+  }
+
+  void topological_dfs(Node<T> &n, LabelList &l) { // NOLINT(*-no-recursion)
+    n.mark = InProgress;
+
+    for (Node<int> &child : n.link_to) {
+      if (child.mark == InProgress) {
+        throw HasCycle();
+      }
+
+      if (child.mark == NotVisited) {
+        topological_dfs(child, l);
+      }
+    }
+
+    n.mark = Visited;
+    l.emplace_back(n.label);
+  }
+
+  std::unordered_map<T, Node<T>> nodes;
+};
 
 #endif // NETLIST_GRAPH_HPP
