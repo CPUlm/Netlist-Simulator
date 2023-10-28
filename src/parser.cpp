@@ -128,11 +128,11 @@ Program::ptr Parser::parse_program() {
   for (auto &decl_pair : vars) {
     const Variable::ptr &declared_var = decl_pair.second;
 
-    if (in_refs.contains(declared_var->get_name())) {
+    if (in_refs.count(declared_var->get_name()) > 0) {
       continue; // 'declared_var' is a input.
     }
 
-    if (p->m_eq.contains(declared_var)) {
+    if (p->m_eq.count(declared_var) > 0) {
       continue; // 'declared_var' has an equation
     }
 
@@ -151,7 +151,7 @@ Program::ptr Parser::parse_program() {
   for (auto &ref_pair : in_refs) {
     const Variable::ptr &input_var = vars.at(ref_pair.first);
 
-    if (p->m_eq.contains(input_var)) {
+    if (p->m_eq.count(input_var) > 0) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(ref_pair.second.position)
           .with_message("Input variable '{}' have an associated equation. You must choose the state of the variable : "
@@ -193,7 +193,7 @@ Program::ptr Parser::parse_program() {
 }
 
 void Parser::token_assert(const std::set<TokenKind> &token_set) const {
-  if (!token_set.contains(m_token.kind)) {
+  if (token_set.count(m_token.kind) == 0) {
     unexpected_token(token_set);
   }
 }
@@ -254,7 +254,7 @@ Parser::var_ref_map Parser::parse_inputs_references() {
   while (m_token.kind != TokenKind::KEY_OUTPUT) {
     token_assert(TokenKind::IDENTIFIER);
 
-    if (var.contains(m_token.spelling)) {
+    if (var.count(m_token.spelling) > 0) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
           .with_message(
@@ -287,7 +287,7 @@ Parser::var_ref_map Parser::parse_outputs_references() {
 
   while (m_token.kind != TokenKind::KEY_VAR) {
     token_assert(TokenKind::IDENTIFIER);
-    if (var.contains(m_token.spelling)) {
+    if (var.count(m_token.spelling) > 0) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
           .with_message(
@@ -331,7 +331,7 @@ void Parser::parse_variable_declaration() {
 
     v.size = size.value();
 
-    if (var_decl.contains(v.spelling)) {
+    if (var_decl.count(v.spelling) > 0) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(v.position)
           .with_message("The variable '{}' has already been declared at {}.",
@@ -358,7 +358,7 @@ void Parser::build_intput_output_list(Program::ptr &p, const var_ref_map &in_ref
   for (auto &in_pair : in_refs) {
     // We only iterate over the VariableReference value of the hashtable.
     const VariableReference &i_ref = in_pair.second;
-    if (!vars.contains(i_ref.spelling)) {
+    if (vars.count(i_ref.spelling) == 0) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(i_ref.position)
           .with_message(
@@ -375,7 +375,7 @@ void Parser::build_intput_output_list(Program::ptr &p, const var_ref_map &in_ref
   for (auto &out_pair : out_refs) {
     // We only iterate over the VariableReference value of the hashtable.
     const VariableReference &o_ref = out_pair.second;
-    if (!vars.contains(o_ref.spelling)) {
+    if (vars.count(o_ref.spelling) == 0) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(o_ref.position)
           .with_message(
@@ -396,7 +396,7 @@ void Parser::parse_equations(Program::ptr &p) {
 
   while (m_token.kind != TokenKind::EOI) {
     token_assert(TokenKind::IDENTIFIER);
-    if (!vars.contains(m_token.spelling)) {
+    if (vars.count(m_token.spelling) == 0) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
           .with_message("Assigment of undefined variable '{}'",
@@ -406,7 +406,7 @@ void Parser::parse_equations(Program::ptr &p) {
           .exit();
     }
     const Variable::ptr &assigment_var = vars.at(m_token.spelling);
-    if (p->m_eq.contains(assigment_var)) {
+    if (p->m_eq.count(assigment_var) > 0) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
           .with_message("Multiple equations for variable '{}'", m_token.spelling)
@@ -744,7 +744,7 @@ Constant::ptr Parser::parse_hexadecimal_constant() {
 Variable::ptr Parser::parse_variable() {
   token_assert(TokenKind::IDENTIFIER);
 
-  if (!vars.contains(m_token.spelling)) {
+  if (vars.count(m_token.spelling) == 0) {
     m_context.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
         .with_message("Undefined variable '{}' in expression.", m_token.spelling)

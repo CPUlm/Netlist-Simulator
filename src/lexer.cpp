@@ -213,7 +213,7 @@ void Lexer::tokenize_identifier(Token &token) {
   const std::string uppercase_keyword =
       str_toupper(std::move(std::string(token.spelling)));
 
-  if (spelling2keyword.contains(uppercase_keyword)) {
+  if (spelling2keyword.count(uppercase_keyword) > 0) {
     token.kind = spelling2keyword.at(token.spelling);
   } else {
     token.kind = TokenKind::IDENTIFIER;
