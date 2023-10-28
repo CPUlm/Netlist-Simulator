@@ -2,104 +2,99 @@
 
 #include "parser.hpp"
 
-TEST(ParserTest, basic_program) {
-  ReportManager ctx;
-  Lexer lexer("INPUT a\nOUTPUT b\nVAR a, b\nIN\nb=NOT a");
+class ParserTest : public ::testing::Test {
+public:
+  ReportContext ctx = ReportContext("file", false);
+};
+
+template<class T>
+const T &expr_cast(const Expression::ptr &expr) {
+  return *static_cast<const T *>(expr.get());
+}
+
+template<class T>
+std::shared_ptr<const T> arg_cast(const Argument::ptr &arg) {
+  return std::static_pointer_cast<const T>(arg);
+}
+
+TEST_F(ParserTest, trivial_program) {
+  Lexer lexer(ctx, "INPUT\nOUTPUT\nVAR\nIN");
   Parser parser(ctx, lexer);
-  Program program = parser.parse_program();
+  const Program::ptr p = parser.parse_program();
 
-  EXPECT_EQ(program.get_input_names(), std::vector({std::string_view("a")}));
-  EXPECT_EQ(program.get_output_names(), std::vector({std::string_view("b")}));
-
-  const auto &values = program.get_values();
-  ASSERT_EQ(values.size(), 2);
-  EXPECT_EQ(values[0]->get_kind(), Value::Kind::INPUT);
-  EXPECT_EQ(values[0]->get_name(), "a");
-  EXPECT_EQ(values[1]->get_kind(), Value::Kind::EQUATION);
-  EXPECT_EQ(values[1]->get_name(), "b");
-
-  const auto &equations = program.get_equations();
-  ASSERT_EQ(equations.size(), 1);
-
-  const auto *equation = equations[0];
-  EXPECT_EQ(equation, values[1].get());
-  EXPECT_EQ(equation->is_output(), true);
-
-  const auto *expr = equation->get_expression();
-  EXPECT_EQ(expr->get_kind(), Expression::Kind::NOT);
-  EXPECT_EQ(static_cast<const NotExpression *>(expr)->get_value(),
-            values[0].get());
+  EXPECT_EQ(p->get_inputs().size(), 0); // No Input
+  EXPECT_EQ(p->get_outputs().size(), 0); // No Output
+  EXPECT_EQ(p->get_equations().size(), 0); // No equations
 }
 
-TEST(ParserTest, multiple_inputs) {
-  ReportManager ctx;
-  Lexer lexer("INPUT a, b, c\nOUTPUT z\nVAR a, b, c, z\nIN\nz=NOT a");
+TEST_F(ParserTest, output_has_value_defined) {
+  Lexer lexer(ctx, "INPUT x\nOUTPUT x, y\nVAR x, y\nIN y = 1");
   Parser parser(ctx, lexer);
-  Program program = parser.parse_program();
+  const Program::ptr p = parser.parse_program();
 
-  EXPECT_EQ(program.get_input_names(),
-            std::vector({std::string_view("a"), std::string_view("b"),
-                         std::string_view("c")}));
+  ASSERT_EQ(p->get_inputs().size(), 1); // One Input
+
+  const Variable::ptr &x = p->get_inputs()[0];
+  EXPECT_EQ(x->get_name(), "x");
+  EXPECT_EQ(x->get_bus_size(), 1);
+  EXPECT_EQ(x->get_kind(), Argument::Kind::VARIABLE);
+  EXPECT_EQ(x->get_repr(), "x");
+
+  ASSERT_EQ(p->get_equations().size(), 1); // One Equation
+
+  const auto &eq = p->get_equations().begin();
+  const Variable::ptr &y = eq->first; // The first variable of the equation
+  EXPECT_EQ(y->get_name(), "y");
+  EXPECT_EQ(y->get_bus_size(), 1);
+  EXPECT_EQ(y->get_kind(), Argument::Kind::VARIABLE);
+  EXPECT_EQ(y->get_repr(), "y");
+
+  const Expression::ptr &expr = eq->second;
+  EXPECT_EQ(expr->get_kind(), Expression::Kind::ARG);
+  EXPECT_EQ(expr->get_bus_size(), 1);
+  const auto &arg_expr = expr_cast<ArgExpression>(eq->second);
+
+  const Argument::ptr &arg = arg_expr.get_argument();
+  EXPECT_EQ(arg->get_kind(), Argument::Kind::CONSTANT);
+  EXPECT_EQ(arg->get_bus_size(), 1);
+  EXPECT_EQ(arg->get_repr(), "1");
+
+  const Constant::ptr cst = arg_cast<Constant>(arg);
+  EXPECT_EQ(cst->get_value(), 1);
+
+  ASSERT_EQ(p->get_outputs().size(), 2); // Two Output
+  // x is an output
+  ASSERT_NE(std::find(p->get_outputs().begin(), p->get_outputs().end(), x), p->get_outputs().end());
+  // y is an output
+  ASSERT_NE(std::find(p->get_outputs().begin(), p->get_outputs().end(), y), p->get_outputs().end());
+
 }
 
-TEST(ParserTest, multiple_outputs) {
-  ReportManager ctx;
-  Lexer lexer("INPUT a\nOUTPUT b, c, d\nVAR a, b, c, d\nIN\nb=NOT a");
+TEST_F(ParserTest, variable_size) {
+  Lexer lexer(ctx, "INPUT x, y, z\nOUTPUT\nVAR x, y:1, z:5\nIN");
   Parser parser(ctx, lexer);
-  Program program = parser.parse_program();
+  const Program::ptr p = parser.parse_program();
 
-  EXPECT_EQ(program.get_output_names(),
-            std::vector({std::string_view("b"), std::string_view("c"),
-                         std::string_view("d")}));
+  ASSERT_EQ(p->get_inputs().size(), 3); // 3 Inputs
+
+  for (const Variable::ptr &v : p->get_inputs()) {
+    if (v->get_name() == "x") {
+      ASSERT_EQ(v->get_repr(), "x");
+      ASSERT_EQ(v->get_bus_size(), 1);
+    } else if (v->get_name() == "y") {
+      ASSERT_EQ(v->get_repr(), "y");
+      ASSERT_EQ(v->get_bus_size(), 1);
+    } else if (v->get_name() == "z") {
+      ASSERT_EQ(v->get_repr(), "z");
+      ASSERT_EQ(v->get_bus_size(), 5);
+    } else {
+      FAIL() << "No variable other than 'x', 'y' or 'z'.";
+    }
+  }
+
+  ASSERT_EQ(p->get_outputs().size(), 0); // No Output
+  ASSERT_EQ(p->get_equations().size(), 0); // No Equations
 }
 
-TEST(ParserTest, not_expr) {
-  ReportManager ctx;
-  Lexer lexer("INPUT a\nOUTPUT out\nVAR a, out\nIN\nout=NOT a");
-  Parser parser(ctx, lexer);
-  Program program = parser.parse_program();
-
-  const auto &values = program.get_values();
-  ASSERT_EQ(values.size(), 2);
-  const auto *a = values[0].get();
-
-  const auto &equations = program.get_equations();
-  ASSERT_EQ(equations.size(), 1);
-
-  const auto *equation = equations[0];
-  const auto *expr = equation->get_expression();
-  EXPECT_EQ(equation->get_name(), "out");
-  EXPECT_EQ(expr->get_kind(), Expression::Kind::NOT);
-  EXPECT_EQ(static_cast<const NotExpression *>(expr)->get_value(), a);
-}
-
-void binary_expr_test(BinaryOp binop, const char *binop_spelling) {
-  ReportManager ctx;
-  const auto input = std::string("INPUT a, b\nOUTPUT out\nVAR a, b, out\nIN\nout=") + binop_spelling + " a b";
-  Lexer lexer(input.c_str());
-  Parser parser(ctx, lexer);
-  Program program = parser.parse_program();
-
-  const auto &values = program.get_values();
-  ASSERT_EQ(values.size(), 3);
-  const auto *a = values[0].get();
-  const auto *b = values[1].get();
-
-  const auto &equations = program.get_equations();
-  ASSERT_EQ(equations.size(), 1);
-
-  const auto *equation = equations[0];
-  const auto *expr = equation->get_expression();
-  EXPECT_EQ(equation->get_name(), "out");
-  EXPECT_EQ(expr->get_kind(), Expression::Kind::BINARY);
-  EXPECT_EQ(static_cast<const BinaryExpression *>(expr)->get_operator(), binop);
-  EXPECT_EQ(static_cast<const BinaryExpression *>(expr)->get_lhs(), a);
-  EXPECT_EQ(static_cast<const BinaryExpression *>(expr)->get_rhs(), b);
-}
-
-TEST(ParserTest, binary_expr) {
-  binary_expr_test(BinaryOp::AND, "AND");
-  binary_expr_test(BinaryOp::OR, "OR");
-  binary_expr_test(BinaryOp::NAND, "NAND");
-  binary_expr_test(BinaryOp::XOR, "XOR");
-}
+// TODO : Add tests on all Parser's Errors
+// TODO : Add tests on equations...
