@@ -2,12 +2,12 @@
 #include <sstream>
 
 /// Parse the current token as an integer in the given base. We use a template to process different integer types.
-template<class T>
+template<typename T>
 [[nodiscard]] T parse_int(const Token &token, int base, ReportContext &c) {
   T v;
 
-  auto [ptr, ec] = std::from_chars(token.spelling.begin(), token.spelling.end(), v, base);
-  if (ec == std::errc::result_out_of_range) {
+  const std::from_chars_result r = std::from_chars<T>(token.spelling.begin(), token.spelling.end(), v, base);
+  if (r.ec == std::errc::result_out_of_range) {
     if (base == 2) {
       c.report(ReportSeverity::ERROR)
           .with_location(token.position)
@@ -45,18 +45,18 @@ template<class T>
           .build()
           .exit();
     }
-  } else if (ec == std::errc::invalid_argument) {
+  } else if (r.ec == std::errc::invalid_argument) {
     c.report(ReportSeverity::ERROR)
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}", token.spelling, base)
         .with_code(50)
         .build()
         .exit();
-  } else if (ptr != token.spelling.end()) {
+  } else if (r.ptr != token.spelling.end()) {
     c.report(ReportSeverity::ERROR)
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}. Successfully parsed the value '{}' "
-                      "but unable to parse this part : '{}'", token.spelling, base, v, ptr)
+                      "but unable to parse this part : '{}'", token.spelling, base, v, r.ptr)
         .with_code(51)
         .build()
         .exit();
