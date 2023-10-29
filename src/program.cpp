@@ -122,14 +122,14 @@ void Disassembler::Detail::visit_xnor(const XnorInstruction &inst) {
 
 void Disassembler::Detail::visit_select(const SelectInstruction &inst) {
   print_inst_label("SELECT", inst.output);
+  out << inst.i << " ";
   print_reg(inst.input);
-  // TODO: print SELECT instruction
 }
 
 void Disassembler::Detail::visit_slice(const SliceInstruction &inst) {
   print_inst_label("SLICE", inst.output);
+  out << inst.start << " " << inst.end << " ";
   print_reg(inst.input);
-  // TODO: print SLICE instruction
 }
 
 void Disassembler::Detail::visit_rom(const RomInstruction &inst) {
