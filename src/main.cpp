@@ -171,10 +171,10 @@ int main(int argc, const char *argv[]) {
     if (options.dependency_graph) {
       graph.dump_dot();
     } else if (options.schedule) {
-      graph.schedule();
+      graph.schedule(report_manager);
       Disassembler::disassemble(program);
     } else {
-      graph.schedule();
+      graph.schedule(report_manager);
       Simulator simulator(program);
       simulator.set_register({0}, 0b101);
       simulator.set_register({1}, 0b00);

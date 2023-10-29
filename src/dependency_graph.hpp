@@ -2,6 +2,7 @@
 #define NETLIST_SRC_DEPENDENCY_GRAPH_HPP
 
 #include "program.hpp"
+#include "report.hpp"
 
 // ========================================================
 // class DependencyGraph
@@ -28,7 +29,7 @@ public:
 
   /// Reorder the instructions of the graph's program so all all dependencies
   /// are respected. This function corresponds to the first questions of the Tutorial.
-  void schedule();
+  void schedule(ReportManager& report_manager);
 
   /// Same as dump_dot(std::ostream&) with the std::cout argument.
   void dump_dot();
@@ -44,7 +45,7 @@ private:
 
   /// Computes a topological sort of the dependency graph. The topological sort
   /// is computed using a DFS.
-  [[nodiscard]] std::vector<reg_t> topological_sort() const;
+  [[nodiscard]] std::vector<reg_t> topological_sort(ReportManager& report_manager) const;
 
 private:
   struct Builder;

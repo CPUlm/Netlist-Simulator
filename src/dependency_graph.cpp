@@ -139,6 +139,7 @@ enum class VertexState {
 // Helper class to implement the DFS needed for the topological sort of
 // the dependency graph.
 struct DFSVisitor {
+  ReportManager &report_manager;
   const std::vector<std::vector<reg_t>> &adjacency_list;
   std::vector<VertexState> states;
   std::vector<reg_t> topological_sort;
@@ -149,7 +150,13 @@ struct DFSVisitor {
 
     if (states[reg.index] == VertexState::IN_PROGRESS) {
       // We got a cycle.
+      report_manager.report(ReportSeverity::ERROR)
+          .with_message("cycle detected in the dependency graph")
+          .finish()
+          .exit();
     }
+
+    states[reg.index] = VertexState::IN_PROGRESS;
 
     const auto &dependencies = adjacency_list[reg.index];
     for (reg_t dependency : dependencies)
@@ -160,7 +167,7 @@ struct DFSVisitor {
   }
 };
 
-void DependencyGraph::schedule() {
+void DependencyGraph::schedule(ReportManager &report_manager) {
   // The output register corresponds to the "label" of the equation.
   // So we do a mapping from the output register and its corresponding instruction.
   // Because a register may be written to multiple times, there can be many
@@ -174,7 +181,7 @@ void DependencyGraph::schedule() {
   new_order.reserve(m_program->instructions.size());
 
   // Reorder instructions using the topological sort.
-  for (auto reg : topological_sort()) {
+  for (auto reg : topological_sort(report_manager)) {
     auto range = reg_instruction_mapping.equal_range(reg);
     for (auto it = range.first; it != range.second; ++it)
       new_order.push_back(it->second);
@@ -227,20 +234,14 @@ void DependencyGraph::add_dependency(reg_t from, reg_t to) {
   edges.push_back(to);
 }
 
-std::vector<reg_t> DependencyGraph::topological_sort() const {
-  DFSVisitor visitor = {m_adjacency_list, std::vector(m_adjacency_list.size(), VertexState::NOT_VISITED), {}};
+std::vector<reg_t> DependencyGraph::topological_sort(ReportManager &report_manager) const {
+  DFSVisitor visitor = {
+      report_manager, m_adjacency_list, std::vector(m_adjacency_list.size(), VertexState::NOT_VISITED), {}};
 
   for (std::uint_least32_t i = 0; i < m_program->registers.size(); ++i) {
     const auto &reg_info = m_program->registers[i];
     if (!(reg_info.flags & RIF_OUTPUT))
       continue;
-
-    if (visitor.states[i] == VertexState::VISITED)
-      continue;
-
-    if (visitor.states[i] == VertexState::NOT_VISITED) {
-      // We got a cycle.
-    }
 
     visitor.visit({i});
   }
