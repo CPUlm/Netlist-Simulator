@@ -21,6 +21,12 @@ cmake --build .
 Of course, there are many other ways to do it. 
 Furthermore, CMake is able to use Make files or Ninja files, etc. 
 
+### The targets provided by the CMake file
+
+- `netlist`: the main Netlist program
+- `netlist_test`: the unit tests
+- `netlist_doc`: the Doxygen documentation generation target
+
 ## Dependencies
 
 The project uses C++20. Please use a modern C++ compiler. Something like Visual Studio 2019, GCC 13 or Clang 14 will work.
