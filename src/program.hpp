@@ -53,6 +53,10 @@ struct ConstInstructionVisitor {
   virtual void visit_ram(const RamInstruction &inst) {}
 };
 
+/// \addtogroup instruction The supported instructions
+/// The list of all supported instructions by the Netlist parser and simulator.
+/// @{
+
 /// Base class for all instructions.
 struct Instruction {
   reg_t output = {};
@@ -171,6 +175,10 @@ struct RamInstruction : Instruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_ram(*this); }
 };
 
+/// @}
+
+/// Possible flags for a register.
+/// \see RegisterInfo
 enum RegisterInfoFlag {
   RIF_NONE = 0x0,
   /// The register represents an input.
@@ -185,12 +193,16 @@ enum RegisterInfoFlag {
 
 /// Meta information about a program's register.
 struct RegisterInfo {
+  /// The register's name (for debugging purposes). If the name is unknown,
+  /// an empty string can be used.
   std::string name = {};
+  /// The size of the register. Must be in the range [1,64].
   bus_size_t bus_size = 1;
+  /// \see RegisterInfoFlag
   unsigned flags = RIF_NONE;
 };
 
-/// A netlist program storing a sequence of instructions to be simulated.
+/// A Netlist program represented by a sequence of instructions to be simulated and a set of registers.
 struct Program {
   std::vector<RegisterInfo> registers;
   std::vector<Instruction *> instructions;
@@ -208,8 +220,7 @@ struct Program {
 /// The Netlist program disassembler. This class takes a program and then outputs
 /// a textual representation to the given output stream.
 ///
-/// The output is intended to contain the maximum information and it is mean
-/// for debugging purposes.
+/// The output is intended to contain the maximum information.
 class Disassembler {
 public:
   /// Disassembles a single instruction and prints it to std::cout.
@@ -223,6 +234,7 @@ public:
   static void disassemble(const std::shared_ptr<Program> &program, std::ostream &out);
 
 private:
+  /// \internal
   struct Detail : ConstInstructionVisitor {
     std::shared_ptr<Program> program;
     std::ostream &out;
@@ -256,7 +268,8 @@ private:
 ///
 /// This can be quite useful to create unit tests.
 ///
-/// \example For a program representing the following Netlist code:
+/// **For example:**
+/// If you have a program representing the following Netlist code:
 /// ```
 /// INPUT a
 /// OUTPUT b
@@ -279,6 +292,7 @@ public:
   static void generate(const std::shared_ptr<Program> &program, std::ostream &out);
 
 private:
+  /// \internal
   struct Detail : ConstInstructionVisitor {
     std::shared_ptr<Program> program;
     std::ostream &out;
@@ -287,7 +301,7 @@ private:
 
     void prepare(const std::shared_ptr<Program> &program);
 
-    std::string get_reg_name(reg_t reg) const;
+    [[nodiscard]] std::string get_reg_name(reg_t reg) const;
 
     void visit_const(const ConstInstruction &inst) override;
     void visit_not(const NotInstruction &inst) override;
@@ -307,7 +321,27 @@ private:
   };
 };
 
-/// Utility class to simplify the creation of a Program instance by the parser.
+/// Utility class to simplify the creation of a Program instance.
+///
+/// To create an instance of Program representing the following Netlist code:
+/// ```
+/// INPUT a, b
+/// OUTPUT c, s
+/// VAR a, b, c, s
+/// c = AND a b
+/// s = XOR a b
+/// ```
+/// You can use the following C++ code:
+/// ```
+/// ProgramBuilder builder;
+/// const reg_t a = builder.add_register(1, "a", RIF_INPUT);
+/// const reg_t b = builder.add_register(1, "b", RIF_INPUT);
+/// const reg_t c = builder.add_register(1, "c", RIF_OUTPUT);
+/// const reg_t s = builder.add_register(1, "d", RIF_OUTPUT);
+/// builder.add_and(c, a, b);
+/// builder.add_xor(s, a, b);
+/// std::shared_ptr<Program> program = builder.build();
+/// ```
 class ProgramBuilder {
 public:
   reg_t add_register(bus_size_t bus_size = 1, const std::string &name = {}, unsigned flags = 0);

@@ -12,6 +12,11 @@
 
 #include <fmt/format.h>
 
+/// \addtogroup report The Report API
+/// All the mechanisms to report errors and warnings to the user.
+/// @{
+
+/// \brief All the different supported colors for spans in reports.
 enum class ReportColor {
   NONE,
   RED,
@@ -22,7 +27,7 @@ enum class ReportColor {
   CYAN,
 };
 
-/// Utility class to generate different colors for the spans of a report.
+/// \brief Utility class to generate different colors for the spans of a report.
 class ReportColorGenerator {
 public:
   /// Returns the next unused color. Once all colors were used at least once,
@@ -34,16 +39,27 @@ private:
   uint32_t m_current_idx = 0;
 };
 
+/// \brief A source code span with an optional label and color.
 struct LabelledSpan {
+  /// Can be empty if there is no label.
   std::string label;
   SourceRange span = {};
   ReportColor color = ReportColor::NONE;
 };
 
+/// \brief The different report severities supported.
 enum class ReportSeverity { WARNING, ERROR };
 
 class ReportManager;
 
+/// \brief A single report.
+///
+/// You should never create a report yourself. Instead, use directly the ReportManager
+/// class and the ReportManager::report() method which returns an instance of a
+/// ReportBuilder. Once the report is build, you can either ignore it, call print()
+/// or exit() depending on what you want.
+///
+/// \see ReportBuilder and ReportManager
 struct Report {
   ReportManager &manager;
   ReportSeverity severity = ReportSeverity::ERROR;
@@ -66,6 +82,12 @@ struct Report {
   void exit(int error_code);
 };
 
+/// \brief An utility class to help building a report.
+///
+/// As for Report, you should never create yourself an instance of this class.
+/// Instead, use the ReportManager class and the ReportManager::report() method.
+///
+/// \see ReportManager
 class ReportBuilder {
 public:
   explicit ReportBuilder(ReportSeverity severity, ReportManager &m_manager)
@@ -201,6 +223,7 @@ private:
   Report m_report;
 };
 
+/// \brief The main class for the report mechanism.
 class ReportManager {
 public:
   void register_file_info(std::string_view file_name,
@@ -233,5 +256,7 @@ private:
   LineMap m_line_map;
   bool m_line_map_filled;
 };
+
+/// @}
 
 #endif // NETLIST_REPORT_HPP

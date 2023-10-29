@@ -7,10 +7,11 @@
 // class DependencyGraph
 // ========================================================
 
-/// Represents a dependency graph for the a Netlist program.
+/// \brief Represents a dependency graph for the a Netlist program.
+///
 /// Notably, it is in this class that the scheduling is done.
 ///
-/// \example
+/// For example:
 /// ```
 /// std::shared_ptr<Program> program = ...;
 /// DependencyGraph graph = DependencyGraph::build(program);

@@ -9,6 +9,18 @@
 #include <unordered_map>
 #include <unordered_set>
 
+/// \addtogroup parser The lexical and syntax analysis
+/// @{
+
+/// \brief The syntax analyser for the Netlist language.
+///
+/// The parser takes a Lexer as input and returns a parsed Netlist Program.
+/// If any error is found, a null program is returned. Furthermore, the parser
+/// stops at the first error encountered. All errors and warnings are emitted
+/// using the report API via the given ReportManager instance.
+///
+/// If you are curious, the parser is implemented internally using the recursive
+/// descent algorithm.
 class Parser {
 public:
   explicit Parser(ReportManager &report_manager, Lexer &lexer);
@@ -65,5 +77,7 @@ private:
 
   std::unordered_map<std::string_view, VariableInfo> m_variables;
 };
+
+/// @}
 
 #endif // NETLIST_PARSER_HPP

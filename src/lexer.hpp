@@ -3,16 +3,20 @@
 
 #include "token.hpp"
 
-/// The (super-simple) lexical analyser for the netlist language.
+/// \ingroup parser
+/// \brief The (super-simple) lexical analyser for the Netlist language.
 ///
 /// This class converts a sequence of bytes (representing the source code in
-/// the ASCII or UTF-8 encoding) into a stream of Tokens.
+/// the ASCII or UTF-8 encoding) into a stream of Token.
+///
+/// The Lexer is lazy, it only generates tokens as the user/parser request.
 class Lexer {
 public:
   explicit Lexer(const char *input);
 
   /// Returns the next scanned token in the source code and advances the
   /// internal position of the lexer.
+  ///
   /// When the end of input is reached then a EOI (End-Of-Input) token is
   /// generated, and all further calls will do the same.
   void tokenize(Token &token);

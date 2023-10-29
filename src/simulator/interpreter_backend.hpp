@@ -7,7 +7,8 @@
 // class InterpreterBackend
 // ========================================================
 
-/// A very simple implementation of the SimulatorBackend API using a naive
+/// \ingroup simulator
+/// \brief A very simple implementation of the SimulatorBackend API using a naive
 /// interpreter pattern.
 ///
 /// This is intended as a base and reference implementation of the SimulatorBackend

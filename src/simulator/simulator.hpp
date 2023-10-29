@@ -5,11 +5,19 @@
 
 #include <cassert>
 
+/// \addtogroup simulator The simulator
+/// @{
+
 // ========================================================
 // class SimulatorBackend
 // ========================================================
 
-/// A backend for the Netlist simulator.
+/// \brief The interface for Netlist simulator's backends.
+///
+/// To actually call the simulator, please use the more complete and user-friendly
+/// Simulator interface.
+///
+/// \see Simulator
 class SimulatorBackend {
 public:
   virtual ~SimulatorBackend() = default;
@@ -21,7 +29,7 @@ public:
   // The simulator API
   // ------------------------------------------------------
 
-  /// Prepares the given Netlist program for further simulation.
+  /// \brief Prepares the given Netlist program for further simulation.
   ///
   /// This function may be used to compile the given program to machine code
   /// or do any optimizations for an interpreter.
@@ -29,7 +37,7 @@ public:
   /// \param program
   /// \return False in case of failure.
   virtual bool prepare(const std::shared_ptr<Program> &program) = 0;
-  /// Simulates a Netlist program.
+  /// \brief Simulates a Netlist program.
   ///
   /// How the Netlist program is effectively simulated is implementation defined.
   /// Internally, the program may be interpreted or compiled to machine code and then
@@ -45,18 +53,19 @@ public:
   // The debugger API
   // ------------------------------------------------------
 
-  /// Does this backend support the debugger API of the simulator?
+  /// \brief Does this backend support the debugger API of the simulator?
+  ///
   /// By default, this function returns false.
   [[nodiscard]] virtual bool has_debugger() const { return false; }
 
-  /// Returns the value of the given requested \a reg.
+  /// \brief Returns the value of the given requested \a reg.
   ///
   /// \warning This function only works if has_debugger() returns true.
   ///
   /// \param reg The register to request. If \a reg does not exists, the behavior is undefined.
   /// \return The bits of the requested register stored in the lowest bit of the returned value.
   [[nodiscard]] virtual reg_value_t get_register(reg_t reg) const { assert(false && "debugger API not supported"); return 0; }
-  /// Sets the value of the given requested \a reg to \a value.
+  /// \brief Sets the value of the given requested \a reg to \a value.
   ///
   /// \warning This function only works if has_debugger() returns true.
   ///
@@ -65,7 +74,7 @@ public:
   ///              stored in \a reg are considered. Others are discarded.
   virtual void set_register(reg_t reg, reg_value_t value) { assert(false && "debugger API not supported"); }
 
-  /// Simulates a single instruction in the Netlist program.
+  /// \brief Simulates a single instruction in the Netlist program.
   ///
   /// \warning This function only works if has_debugger() returns true.
   virtual void step() { assert(false && "debugger API not supported"); }
@@ -75,12 +84,17 @@ public:
 // class Simulator
 // ========================================================
 
-/// The Netlist simulator.
+/// \brief The Netlist simulator interface.
+///
+/// The actual simulator logic is implemented inside an implementation of the
+/// interface SimulatorBackend.
+///
+/// \see SimulatorBackend
 class Simulator {
 public:
   explicit Simulator(const std::shared_ptr<Program> &program);
 
-  /// Returns the current program being simulated.
+  /// \brief Returns the current program being simulated.
   [[nodiscard]] std::shared_ptr<Program> get_program() const { return m_program; }
 
   // ------------------------------------------------------
@@ -90,22 +104,22 @@ public:
   // ------------------------
   // The registers API
 
-  /// Returns the total count of registers available (and registered in the bytecode).
+  /// \brief Returns the total count of registers available (and registered in the bytecode).
   [[nodiscard]] size_t get_register_count() const { return m_program->registers.size(); }
-  /// Returns true if the given register index is valid and refers to a real register
+  /// \brief Returns true if the given register index is valid and refers to a real register
   /// in the current Netlist program.
   [[nodiscard]] bool is_valid_register(reg_t reg) const { return reg.index < get_register_count(); }
-  /// Shorthand for `get_backend()->get_register(reg)`.
+  /// \brief Shorthand for `get_backend()->get_register(reg)`.
   [[nodiscard]] reg_value_t get_register(reg_t reg) const;
-  /// Shorthand for `get_backend()->set_register(reg, value)`.
+  /// \brief Shorthand for `get_backend()->set_register(reg, value)`.
   void set_register(reg_t reg, reg_value_t value);
-  /// Prints the given register value to the standard output.
+  /// \brief Prints the given register value to the standard output.
   ///
   /// \warning This need debugger support from the backend.
   ///
   /// \param reg The register to print, behavior is undefined if the register doesn't exist.
   void print_register(reg_t reg);
-  /// Prints the registers in the given range to the standard output.
+  /// \brief Prints the registers in the given range to the standard output.
   ///
   /// \warning This need debugger support from the backend.
   ///
@@ -113,11 +127,11 @@ public:
   /// \param registers_end The last register index to print, inclusive.
   void print_registers(std::uint_least32_t registers_start = 0, std::uint_least32_t registers_end = UINT_LEAST32_MAX);
 
-  /// Prints the inputs to the standard output.
+  /// \brief Prints the inputs to the standard output.
   ///
   /// \warning This need debugger support from the backend.
   void print_inputs();
-  /// Prints the outputs to the standard output.
+  /// \brief Prints the outputs to the standard output.
   ///
   /// \warning This need debugger support from the backend.
   void print_outputs();
@@ -126,14 +140,15 @@ public:
   // The Simulator API
   // ------------------------------------------------------
 
-  /// Executes all instructions until a breakpoint is found. If the end
-  /// of the Netlist program is reached, then restart simulating from start
-  /// \a cycles - 1 count.
+  /// Simulates the Netlist program for \a n cycles.
   ///
   /// You can call this function even if the simulator is actually stopped at
   /// a breakpoint. In that case, the execution is just resumed.
-  void execute(size_t cycles = 1);
-  /// Executes a single step of the simulation.
+  void execute(size_t n = 1);
+  /// \brief Executes a single step of the simulation.
+  ///
+  /// \warning This function only works if the currently used backend supports
+  /// the debugger API.
   ///
   /// You can call this function even if the simulator is actually stopped at
   /// a breakpoint. In that case, the execution is just resumed.
@@ -146,5 +161,7 @@ private:
   std::shared_ptr<Program> m_program;
   std::unique_ptr<SimulatorBackend> m_backend;
 };
+
+/// @}
 
 #endif // NETLIST_SRC_SIMULATOR_HPP
