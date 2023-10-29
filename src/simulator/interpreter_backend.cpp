@@ -41,6 +41,10 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
 
   void visit_const(const ConstInstruction &inst) override { registers_value[inst.output.index] = inst.value; }
 
+  void visit_load(const LoadInstruction &inst) override {
+    registers_value[inst.output.index] = registers_value[inst.input.index];
+  }
+
   void visit_not(const NotInstruction &inst) override {
     registers_value[inst.output.index] = ~(registers_value[inst.input.index]);
   }
@@ -116,6 +120,14 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   void visit_select(const SelectInstruction &inst) override {
     const auto value = registers_value[inst.input.index];
     registers_value[inst.output.index] = (value >> inst.i) & 0b1;
+  }
+
+  void visit_rom(const RomInstruction &rom) {
+    // TODO
+  }
+
+  void visit_ram(const RamInstruction &rom) {
+    // TODO
   }
 };
 

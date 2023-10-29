@@ -44,6 +44,7 @@ private:
   bool parse_expression(reg_t output_reg);
   std::optional<reg_t> parse_register();
   bool parse_const_expression(reg_t output_reg);
+  bool parse_load_expression(reg_t output_reg);
   bool parse_not_expression(reg_t output_reg);
   bool parse_reg_expression(reg_t output_reg);
   bool parse_binary_expression(reg_t output_reg);

@@ -296,6 +296,7 @@ bool Parser::parse_equation() {
 /// Grammar:
 /// ```
 /// expression := const-expression
+///             | load-expression
 ///             | not-expression
 ///             | reg-expression
 ///             | binary-expression
@@ -310,6 +311,8 @@ bool Parser::parse_expression(reg_t output_reg) {
   switch (m_token.kind) {
   case TokenKind::INTEGER:
     return parse_const_expression(output_reg);
+  case TokenKind::IDENTIFIER:
+    return parse_load_expression(output_reg);
   case TokenKind::KEY_NOT:
     return parse_not_expression(output_reg);
   case TokenKind::KEY_REG:
@@ -382,6 +385,21 @@ bool Parser::parse_const_expression(reg_t output_reg) {
   consume(); // eat INTEGER
 
   m_program_builder.add_const(output_reg, value);
+  return true;
+}
+
+/// Grammar:
+/// ```
+/// load-expression := <register>
+/// ```
+bool Parser::parse_load_expression(reg_t output_reg) {
+  assert(m_token.kind == TokenKind::IDENTIFIER);
+
+  const auto input_reg = parse_register();
+  if (!input_reg.has_value())
+    return false;
+
+  m_program_builder.add_load(output_reg, input_reg.value());
   return true;
 }
 

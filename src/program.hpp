@@ -17,6 +17,7 @@ struct reg_t {
 };
 
 struct ConstInstruction;
+struct LoadInstruction;
 struct NotInstruction;
 struct RegInstruction;
 struct MuxInstruction;
@@ -36,21 +37,22 @@ struct RamInstruction;
 struct ConstInstructionVisitor {
   virtual ~ConstInstructionVisitor() = default;
 
-  virtual void visit_const(const ConstInstruction &inst) {}
-  virtual void visit_not(const NotInstruction &inst) {}
-  virtual void visit_reg(const RegInstruction &inst) {}
-  virtual void visit_mux(const MuxInstruction &inst) {}
-  virtual void visit_concat(const ConcatInstruction &inst) {}
-  virtual void visit_and(const AndInstruction &inst) {}
-  virtual void visit_nand(const NandInstruction &inst) {}
-  virtual void visit_or(const OrInstruction &inst) {}
-  virtual void visit_nor(const NorInstruction &inst) {}
-  virtual void visit_xor(const XorInstruction &inst) {}
-  virtual void visit_xnor(const XnorInstruction &inst) {}
-  virtual void visit_select(const SelectInstruction &inst) {}
-  virtual void visit_slice(const SliceInstruction &inst) {}
-  virtual void visit_rom(const RomInstruction &inst) {}
-  virtual void visit_ram(const RamInstruction &inst) {}
+  virtual void visit_const(const ConstInstruction &inst) = 0;
+  virtual void visit_load(const LoadInstruction &inst) = 0;
+  virtual void visit_not(const NotInstruction &inst) = 0;
+  virtual void visit_reg(const RegInstruction &inst) = 0;
+  virtual void visit_mux(const MuxInstruction &inst) = 0;
+  virtual void visit_concat(const ConcatInstruction &inst) = 0;
+  virtual void visit_and(const AndInstruction &inst) = 0;
+  virtual void visit_nand(const NandInstruction &inst) = 0;
+  virtual void visit_or(const OrInstruction &inst) = 0;
+  virtual void visit_nor(const NorInstruction &inst) = 0;
+  virtual void visit_xor(const XorInstruction &inst) = 0;
+  virtual void visit_xnor(const XnorInstruction &inst) = 0;
+  virtual void visit_select(const SelectInstruction &inst) = 0;
+  virtual void visit_slice(const SliceInstruction &inst) = 0;
+  virtual void visit_rom(const RomInstruction &inst) = 0;
+  virtual void visit_ram(const RamInstruction &inst) = 0;
 };
 
 /// \addtogroup instruction The supported instructions
@@ -72,6 +74,13 @@ struct ConstInstruction : Instruction {
   reg_value_t value = 0;
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_const(*this); }
+};
+
+/// The `output = input` instruction.
+struct LoadInstruction : Instruction {
+  reg_t input = {};
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_load(*this); }
 };
 
 /// The `output = NOT input` instruction.
@@ -101,6 +110,8 @@ struct MuxInstruction : Instruction {
 struct ConcatInstruction : Instruction {
   reg_t lhs = {};
   reg_t rhs = {};
+  // How many bits should LHS be shifted? This corresponds to the bus size of RHS.
+  bus_size_t offset = 0;
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_concat(*this); }
 };
@@ -235,7 +246,7 @@ public:
 
 private:
   /// \internal
-  struct Detail : ConstInstructionVisitor {
+  struct Detail final : ConstInstructionVisitor {
     std::shared_ptr<Program> program;
     std::ostream &out;
 
@@ -246,6 +257,7 @@ private:
     void print_binary_inst(const char *opcode, const BinaryInstruction &inst);
 
     void visit_const(const ConstInstruction &inst) override;
+    void visit_load(const LoadInstruction &inst) override;
     void visit_not(const NotInstruction &inst) override;
     void visit_reg(const RegInstruction &inst) override;
     void visit_mux(const MuxInstruction &inst) override;
@@ -293,7 +305,7 @@ public:
 
 private:
   /// \internal
-  struct Detail : ConstInstructionVisitor {
+  struct Detail final : ConstInstructionVisitor {
     std::shared_ptr<Program> program;
     std::ostream &out;
 
@@ -304,6 +316,7 @@ private:
     [[nodiscard]] std::string get_reg_name(reg_t reg) const;
 
     void visit_const(const ConstInstruction &inst) override;
+    void visit_load(const LoadInstruction &inst) override;
     void visit_not(const NotInstruction &inst) override;
     void visit_reg(const RegInstruction &inst) override;
     void visit_mux(const MuxInstruction &inst) override;
@@ -347,6 +360,7 @@ public:
   reg_t add_register(bus_size_t bus_size = 1, const std::string &name = {}, unsigned flags = 0);
 
   ConstInstruction &add_const(reg_t output, reg_value_t value);
+  LoadInstruction &add_load(reg_t output, reg_t input);
   NotInstruction &add_not(reg_t output, reg_t input);
   AndInstruction &add_and(reg_t output, reg_t lhs, reg_t rhs);
   NandInstruction &add_nand(reg_t output, reg_t lhs, reg_t rhs);

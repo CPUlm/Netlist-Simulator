@@ -14,6 +14,8 @@ struct DependencyGraph::Builder : ConstInstructionVisitor {
 
   explicit Builder(DependencyGraph &g) : graph(g) {}
 
+  void visit_const(const ConstInstruction &inst) override {}
+  void visit_load(const LoadInstruction &inst) override;
   void visit_not(const NotInstruction &inst) override;
   void visit_reg(const RegInstruction &inst) override;
   void visit_mux(const MuxInstruction &inst) override;
@@ -29,6 +31,10 @@ struct DependencyGraph::Builder : ConstInstructionVisitor {
   void visit_rom(const RomInstruction &inst) override;
   void visit_ram(const RamInstruction &inst) override;
 };
+
+void DependencyGraph::Builder::visit_load(const LoadInstruction &inst) {
+  graph.add_dependency(inst.output, inst.input);
+}
 
 void DependencyGraph::Builder::visit_not(const NotInstruction &inst) {
   graph.add_dependency(inst.output, inst.input);

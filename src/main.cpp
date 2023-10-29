@@ -176,8 +176,8 @@ int main(int argc, const char *argv[]) {
     } else {
       graph.schedule();
       Simulator simulator(program);
-      simulator.set_register({0}, 1);
-      simulator.set_register({1}, 0);
+      simulator.set_register({0}, 0b101);
+      simulator.set_register({1}, 0b00);
       simulator.print_inputs();
       simulator.execute();
       simulator.print_outputs();

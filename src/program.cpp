@@ -64,6 +64,12 @@ void Disassembler::Detail::visit_const(const ConstInstruction &inst) {
   out << inst.value;
 }
 
+void Disassembler::Detail::visit_load(const LoadInstruction &inst) {
+  print_reg(inst.output);
+  out << " = ";
+  print_reg(inst.input);
+}
+
 void Disassembler::Detail::visit_not(const NotInstruction &inst) {
   print_inst_label("NOT", inst.output);
   print_reg(inst.input);
@@ -180,6 +186,12 @@ void BuilderCodeGenerator::Detail::visit_const(const ConstInstruction &inst) {
   out << fmt::format("builder.add_const({}, {});", output, inst.value);
 }
 
+void BuilderCodeGenerator::Detail::visit_load(const LoadInstruction &inst) {
+  const auto output = get_reg_name(inst.output);
+  const auto input = get_reg_name(inst.input);
+  out << fmt::format("builder.add_load({}, {});", output, input);
+}
+
 void BuilderCodeGenerator::Detail::visit_not(const NotInstruction &inst) {
   const auto output = get_reg_name(inst.output);
   const auto input = get_reg_name(inst.input);
@@ -290,6 +302,16 @@ ConstInstruction &ProgramBuilder::add_const(reg_t output, reg_value_t value) {
   auto *inst = new ConstInstruction();
   inst->output = output;
   inst->value = value;
+  m_program->instructions.push_back(inst);
+  return *inst;
+}
+
+LoadInstruction &ProgramBuilder::add_load(reg_t output, reg_t input) {
+  assert(check_reg(output) && check_reg(input));
+
+  auto *inst = new LoadInstruction();
+  inst->output = output;
+  inst->input = input;
   m_program->instructions.push_back(inst);
   return *inst;
 }
