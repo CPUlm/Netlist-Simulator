@@ -86,6 +86,17 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     registers_value[inst.output.index] = previous_value;
   }
 
+  void visit_mux(const MuxInstruction &inst) override {
+    const auto choice = registers_value[inst.choice.index];
+    const auto first = registers_value[inst.first.index];
+    const auto second = registers_value[inst.second.index];
+    if (choice) {
+      registers_value[inst.output.index] = first;
+    } else {
+      registers_value[inst.output.index] = second;
+    }
+  }
+
   void visit_slice(const SliceInstruction &inst) override {
     // The `+ 1` is because both end and first are inclusives.
     const auto bit_width = inst.end - inst.start + 1;
