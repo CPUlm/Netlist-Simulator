@@ -2,18 +2,16 @@ cmake_minimum_required(VERSION 3.16)
 
 project(netlist)
 
+# C++20
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_subdirectory(fmt)
-
-add_library(netlistlib
+add_library(netlist_lib
         src/lexer.hpp
         src/token.hpp
         src/lexer.cpp
         src/keywords.hpp
-        src/graph.hpp
         src/parser.hpp
         src/parser.cpp
         src/line_map.hpp
@@ -29,14 +27,21 @@ add_library(netlistlib
         src/dependency_graph.cpp
 )
 
-target_link_libraries(netlistlib PUBLIC fmt::fmt)
+add_subdirectory(fmt)
+target_link_libraries(netlist_lib PUBLIC fmt::fmt)
 
 add_executable(netlist
         src/main.cpp
 )
 
-target_link_libraries(netlist PUBLIC netlistlib)
-target_include_directories(netlistlib PUBLIC src/)
+target_link_libraries(netlist PUBLIC netlist_lib)
+target_include_directories(netlist_lib PUBLIC src/)
+
+# Automatic Doxygen documentation generation.
+find_package(Doxygen COMPONENTS dot)
+if (DOXYGEN_FOUND)
+  add_custom_target(netlist_doc DEPENDS Doxygen::doxygen COMMAND Doxygen::doxygen doc/Doxyfile WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif ()
 
 # gperf (GNU perfect hash function generator)
 # It is only required if the keywords.def file is modified.

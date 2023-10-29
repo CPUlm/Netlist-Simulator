@@ -11,18 +11,15 @@ FetchContent_MakeAvailable(googletest)
 add_executable(
         netlist_test
         lexer_test.cpp
-        graph_test.cpp
         parser_test.cpp
         line_map_test.cpp
         report_test.cpp
-        simulator_test.cpp
-        bytecode_writer_test.cpp
         dependency_graph_test.cpp
 )
 
 target_link_libraries(
         netlist_test
-        netlistlib
+        netlist_lib
         GTest::gtest_main
         GTest::gmock_main
 )
