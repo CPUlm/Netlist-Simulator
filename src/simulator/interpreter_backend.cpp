@@ -81,6 +81,12 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     registers_value[inst.output.index] = ~(lhs ^ rhs);
   }
 
+  void visit_concat(const ConcatInstruction &inst) override {
+    const auto lhs = registers_value[inst.lhs.index];
+    const auto rhs = registers_value[inst.rhs.index];
+    registers_value[inst.output.index] = (lhs << inst.offset) | rhs;
+  }
+
   void visit_reg(const RegInstruction &inst) override {
     const auto previous_value = previous_registers_value[inst.input.index];
     registers_value[inst.output.index] = previous_value;

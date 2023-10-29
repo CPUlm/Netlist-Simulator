@@ -377,6 +377,7 @@ ConcatInstruction &ProgramBuilder::add_concat(reg_t output, reg_t lhs, reg_t rhs
   inst->output = output;
   inst->lhs = lhs;
   inst->rhs = rhs;
+  inst->offset = m_program->registers[rhs.index].bus_size;
   m_program->instructions.push_back(inst);
   return *inst;
 }
