@@ -73,3 +73,7 @@ _deps
 
 .history
 .ionide
+
+### Doxygen ###
+html/
+latex/

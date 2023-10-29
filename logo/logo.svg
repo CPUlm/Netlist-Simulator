@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="110.35227mm"
+   height="16.234604mm"
+   viewBox="0 0 110.35227 16.234604"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3 (0e150ed6c4, 2023-07-21)"
+   sodipodi:docname="logo_inkscape.svg"
+   inkscape:export-filename="logo.svg"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showguides="true"
+     inkscape:zoom="5.6568542"
+     inkscape:cx="166.17009"
+     inkscape:cy="108.4525"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <sodipodi:guide
+       position="66.680745,221.44754"
+       orientation="1,0"
+       id="guide2"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="51.748547,229.21047"
+       orientation="1,0"
+       id="guide3"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="70.703059,225.13626"
+       orientation="1,0"
+       id="guide4"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-24.282355,-13.62974)">
+    <g
+       id="use1"
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:2.96651;stroke-dasharray:none;stroke-opacity:1"
+       transform="matrix(0.17831071,0,0,0.16316678,29.482128,8.9767554)">
+      <title
+         id="title2">And Gate</title>
+      <path
+         d="M 25,70 V 60 50 40 30 h 30 c 11.045695,0 20,8.954305 20,20 0,11.045695 -8.954305,20 -20,20 z"
+         id="path3" />
+    </g>
+    <g
+       id="use1-2"
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:3.13488;stroke-dasharray:none;stroke-opacity:1"
+       transform="matrix(0.15918642,0,0,0.16366389,30.903575,18.151338)">
+      <title
+         id="title1">Xor Gate</title>
+      <path
+         d="M 24.65625,70 H 45 C 65,70 75,50 75,50 75,50 70,30 45,30 H 24.65625 c 1.789926,3.094188 3.151364,6.453471 4.0625,10 C 29.54012,43.197121 30,46.545819 30,50 c 0,3.454181 -0.45988,6.802879 -1.28125,10 -0.911136,3.546529 -2.272574,6.905812 -4.0625,10 z"
+         id="path1"
+         style="stroke-width:3.13488;stroke-dasharray:none" />
+      <path
+         d="M 18.65625,70 C 22.629549,64.322431 25,57.455703 25,50 25,42.544297 22.629549,35.677569 18.65625,30"
+         id="path2"
+         style="stroke-width:3.13488;stroke-dasharray:none" />
+    </g>
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.429;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3"
+       width="9.2724743"
+       height="0.37090015"
+       x="24.496857"
+       y="15.404858" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.429;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3-4"
+       width="2.5088465"
+       height="0.37090015"
+       x="42.999249"
+       y="16.956913" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.429;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3-4-0"
+       width="2.7184651"
+       height="0.37090015"
+       x="42.787197"
+       y="26.128674" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.429;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3-6"
+       width="9.2724743"
+       height="0.37090015"
+       x="24.496857"
+       y="18.838779" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.429;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3-6-8"
+       width="9.3440533"
+       height="0.37089899"
+       x="-24.985088"
+       y="31.288883"
+       transform="rotate(-90)" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.429;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3-6-8-6"
+       width="9.3900537"
+       height="0.37089899"
+       x="-28.450077"
+       y="29.031628"
+       transform="rotate(-90)" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.429;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3-6-0"
+       width="3.159564"
+       height="0.37090015"
+       x="31.419174"
+       y="24.616123" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.429;stroke-dasharray:none;stroke-opacity:1"
+       id="rect3-6-0-4"
+       width="5.3880157"
+       height="0.37090015"
+       x="29.165524"
+       y="28.076641" />
+    <text
+       xml:space="preserve"
+       style="font-size:19.7556px;fill:#000000;stroke:none;stroke-width:0.264583;stroke-opacity:1"
+       x="49.902836"
+       y="28.380123"
+       id="text4"><tspan
+         sodipodi:role="line"
+         id="tspan4"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:19.7556px;font-family:'Text Me One';-inkscape-font-specification:'Text Me One';stroke-width:0.264583"
+         x="49.902836"
+         y="28.380123">NETLIST++</tspan></text>
+  </g>
+</svg>
