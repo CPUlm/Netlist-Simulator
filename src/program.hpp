@@ -12,6 +12,8 @@ using bus_size_t = std::uint_least32_t;
 /// A register name to be used in a Netlist program.
 struct reg_t {
   std::uint_least32_t index = UINT_LEAST32_MAX;
+
+  [[nodiscard]] auto operator<=>(const reg_t &) const = default;
 };
 
 struct ConstInstruction;
@@ -53,6 +55,8 @@ struct ConstInstructionVisitor {
 
 /// Base class for all instructions.
 struct Instruction {
+  reg_t output = {};
+
   Instruction() = default;
   virtual ~Instruction() = default;
 
@@ -61,7 +65,6 @@ struct Instruction {
 
 /// The `output = constant` instruction.
 struct ConstInstruction : Instruction {
-  reg_t output = {};
   reg_value_t value = 0;
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_const(*this); }
@@ -69,7 +72,6 @@ struct ConstInstruction : Instruction {
 
 /// The `output = NOT input` instruction.
 struct NotInstruction : Instruction {
-  reg_t output = {};
   reg_t input = {};
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_not(*this); }
@@ -77,7 +79,6 @@ struct NotInstruction : Instruction {
 
 /// The `output = REG input` instruction.
 struct RegInstruction : Instruction {
-  reg_t output = {};
   reg_t input = {};
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_reg(*this); }
@@ -85,7 +86,6 @@ struct RegInstruction : Instruction {
 
 /// The `output = MUX choice first second` instruction.
 struct MuxInstruction : Instruction {
-  reg_t output = {};
   reg_t choice = {};
   reg_t first = {};
   reg_t second = {};
@@ -95,7 +95,6 @@ struct MuxInstruction : Instruction {
 
 /// The `output = CONCAT lhs rhs` instruction.
 struct ConcatInstruction : Instruction {
-  reg_t output = {};
   reg_t lhs = {};
   reg_t rhs = {};
 
@@ -104,7 +103,6 @@ struct ConcatInstruction : Instruction {
 
 /// Base class for all binary instructions such as `AND` or `XOR`.
 struct BinaryInstruction : Instruction {
-  reg_t output = {};
   reg_t lhs = {};
   reg_t rhs = {};
 };
@@ -141,7 +139,6 @@ struct XnorInstruction : BinaryInstruction {
 
 /// The `output = SELECT i input` instruction.
 struct SelectInstruction : Instruction {
-  reg_t output = {};
   reg_t input = {};
   bus_size_t i = 0;
 
@@ -150,7 +147,6 @@ struct SelectInstruction : Instruction {
 
 /// The `output = SLICE first end input` instruction.
 struct SliceInstruction : Instruction {
-  reg_t output = {};
   reg_t input = {};
   bus_size_t start = 0;
   bus_size_t end = 0;
@@ -160,7 +156,6 @@ struct SliceInstruction : Instruction {
 
 /// The `output = ROM read_addr` instruction.
 struct RomInstruction : Instruction {
-  reg_t output = {};
   reg_t read_addr = {};
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_rom(*this); }
@@ -168,7 +163,6 @@ struct RomInstruction : Instruction {
 
 /// The `output = RAM read_addr write_enable write_addr write_data` instruction.
 struct RamInstruction : Instruction {
-  reg_t output = {};
   reg_t read_addr = {};
   reg_t write_enable = {};
   reg_t write_addr = {};
@@ -224,19 +218,76 @@ public:
   static void disassemble(const Instruction &instruction, std::ostream &out);
 
   /// Disassembles all the program and prints it to std::cout.
-  static void disassemble(const Program &program);
+  static void disassemble(const std::shared_ptr<Program> &program);
   /// Disassembles all the program and prints it to the given output stream.
-  static void disassemble(const Program &program, std::ostream &out);
+  static void disassemble(const std::shared_ptr<Program> &program, std::ostream &out);
 
 private:
-  struct Printer : ConstInstructionVisitor {
+  struct Detail : ConstInstructionVisitor {
+    std::shared_ptr<Program> program;
     std::ostream &out;
 
-    explicit Printer(std::ostream &out) : ConstInstructionVisitor(), out(out) {}
+    explicit Detail(std::ostream &out) : ConstInstructionVisitor(), out(out) {}
 
     void print_reg(reg_t reg);
     void print_inst_label(const char *opcode, reg_t output);
     void print_binary_inst(const char *opcode, const BinaryInstruction &inst);
+
+    void visit_const(const ConstInstruction &inst) override;
+    void visit_not(const NotInstruction &inst) override;
+    void visit_reg(const RegInstruction &inst) override;
+    void visit_mux(const MuxInstruction &inst) override;
+    void visit_concat(const ConcatInstruction &inst) override;
+    void visit_and(const AndInstruction &inst) override;
+    void visit_nand(const NandInstruction &inst) override;
+    void visit_or(const OrInstruction &inst) override;
+    void visit_nor(const NorInstruction &inst) override;
+    void visit_xor(const XorInstruction &inst) override;
+    void visit_xnor(const XnorInstruction &inst) override;
+    void visit_select(const SelectInstruction &inst) override;
+    void visit_slice(const SliceInstruction &inst) override;
+    void visit_rom(const RomInstruction &inst) override;
+    void visit_ram(const RamInstruction &inst) override;
+  };
+};
+
+/// Utility class that generates C++ code using the ProgramBuilder API
+/// to recreate the given program.
+///
+/// This can be quite useful to create unit tests.
+///
+/// \example For a program representing the following Netlist code:
+/// ```
+/// INPUT a
+/// OUTPUT b
+/// VAR a: 2, b, c
+/// c = SELECT 1 a
+/// b = AND a c
+/// ```
+/// The following C++ code will be generated:
+/// ```
+/// ProgramBuilder builder;
+/// const auto a = builder.add_register(2, "a", 1);
+/// const auto b = builder.add_register(1, "b", 2);
+/// const auto c = builder.add_register(1, "c", 0);
+/// builder.add_select(c, 1, a);
+/// builder.add_and(b, a, c);
+/// ```
+class BuilderCodeGenerator {
+public:
+  static void generate(const std::shared_ptr<Program> &program);
+  static void generate(const std::shared_ptr<Program> &program, std::ostream &out);
+
+private:
+  struct Detail : ConstInstructionVisitor {
+    std::shared_ptr<Program> program;
+    std::ostream &out;
+
+    explicit Detail(std::ostream &out) : ConstInstructionVisitor(), out(out) {}
+
+    void prepare(const std::shared_ptr<Program> &program);
+
+    std::string get_reg_name(reg_t reg) const;
 
     void visit_const(const ConstInstruction &inst) override;
     void visit_not(const NotInstruction &inst) override;
