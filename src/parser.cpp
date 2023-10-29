@@ -6,7 +6,7 @@
 template<typename T>
 [[nodiscard]] T parse_int(const Token &token, int base, ReportContext &c) {
   T v;
-  const char* data = token.spelling.data();
+  const char *data = token.spelling.data();
 
   auto [ptr, ec] = std::from_chars(data, data + token.spelling.size(), v, base);
   if (ec == std::errc::result_out_of_range) {
@@ -371,7 +371,7 @@ void Parser::build_intput_output_list(Program::ptr &p, const var_ref_map &in_ref
           .exit();
     }
 
-    p->m_input.emplace_back(vars.at(i_ref.spelling));
+    p->m_input.emplace(vars.at(i_ref.spelling));
   }
 
   for (auto &out_pair : out_refs) {
@@ -388,7 +388,7 @@ void Parser::build_intput_output_list(Program::ptr &p, const var_ref_map &in_ref
           .exit();
     }
 
-    p->m_output.emplace_back(vars.at(o_ref.spelling));
+    p->m_output.emplace(vars.at(o_ref.spelling));
   }
 }
 
@@ -559,7 +559,7 @@ Expression::ptr Parser::parse_expression() {
     const bus_size_t end = parse_bus_size();
     const Argument::ptr arg = parse_argument();
 
-    if (beg >= end) {
+    if (beg > end) {
       m_context.report(ReportSeverity::ERROR)
           .with_location(expr_pos)
           .with_message("The beginning of the interval ({}) must be less than the end of the interval ({}).", beg, end)

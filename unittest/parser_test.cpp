@@ -34,7 +34,7 @@ TEST_F(ParserTest, output_has_value_defined) {
 
   ASSERT_EQ(p->get_inputs().size(), 1); // One Input
 
-  const Variable::ptr &x = p->get_inputs()[0];
+  const Variable::ptr &x = *p->get_inputs().begin();
   EXPECT_EQ(x->get_name(), "x");
   EXPECT_EQ(x->get_bus_size(), 1);
   EXPECT_EQ(x->get_kind(), Argument::Kind::VARIABLE);

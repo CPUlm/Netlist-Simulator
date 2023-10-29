@@ -40,15 +40,18 @@ public:
     nodes.emplace(std::piecewise_construct, std::forward_as_tuple(label), std::forward_as_tuple(label));
   }
 
-  void add_edge(const T &src, const T &dest) {
-    try {
-      Node<int> &n1 = nodes.at(src);
-      Node<int> &n2 = nodes.at(dest);
-      n1.link_to.emplace_back(n2);
-      n2.linked_by.emplace_back(n1);
-    } catch (std::runtime_error &e) {
-      throw std::runtime_error("Tried to add an edge between non-existing nodes.");
+  void add_edge(const T &src, const T &dst) {
+    if (!nodes.contains(src)) {
+      add_node(src);
     }
+    if (!nodes.contains(dst)) {
+      add_node(dst);
+    }
+
+    Node<T> &n1 = nodes.at(src);
+    Node<T> &n2 = nodes.at(dst);
+    n1.link_to.emplace_back(n2);
+    n2.linked_by.emplace_back(n1);
   }
 
   [[nodiscard]] bool has_cycle() noexcept {
@@ -112,7 +115,7 @@ private:
   void topological_dfs(Node<T> &n, LabelList &l) { // NOLINT(*-no-recursion)
     n.mark = InProgress;
 
-    for (Node<int> &child : n.link_to) {
+    for (Node<T> &child : n.link_to) {
       if (child.mark == InProgress) {
         throw HasCycle();
       }

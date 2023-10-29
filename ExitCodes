@@ -1,32 +1,34 @@
-Lexer :
-- 002 : Unknown character
+Lexer:
+- 002: Unknown character
 
-Parser :
-- 013 : Value too big to fit in Type
-- 014 : A Variable is declared without a defined value (no equation and not an input)
-- 015 : Input with an equation
-- 016 : Unexpected Token found
-- 017 : Two arguments should have the same bus size
-- 018 : An argument should have the specified bus size.
-- 019 : An argument should have a bus size strictly greater than specified bus size.
-- 020 : A variable has already been marked as input
-- 021 : A variable has already been marked as output
-- 022 : A variable has already been declared
-- 023 : An input has not been declared
-- 024 : An output has not been declared
-- 025 : Assignment of undefined variable
-- 026 : Multiple assignments for a variable
-- 027 : Incompatible bus size in an equation
-- 028 : Ill-formed interval
-- 029 : Missing expression for assignment
-- 030 : Invalid Bus-size (Too big)
-- 031 : Binary constant too big to fit in specified size
-- 032 : Decimal constant should have a specified size
-- 033 : Decimal constant too big to fit in specified size
-- 034 : Hexadecimal constant too big to fit in specified size
-- 035 : Undefined variable in expression
+Parser:
+- 013: Value too big to fit in Type
+- 014: A Variable is declared without a defined value (no equation and not an input)
+- 015: Input with an equation
+- 016: Unexpected Token found
+- 017: Two arguments should have the same bus size
+- 018: An argument should have the specified bus size.
+- 019: An argument should have a bus size strictly greater than specified bus size.
+- 020: A variable has already been marked as input
+- 021: A variable has already been marked as output
+- 022: A variable has already been declared
+- 023: An input has not been declared
+- 024: An output has not been declared
+- 025: Assignment of undefined variable
+- 026: Multiple assignments for a variable
+- 027: Incompatible bus size in an equation
+- 028: Ill-formed interval
+- 029: Missing expression for assignment
+- 030: Invalid Bus-size (Too big)
+- 031: Binary constant too big to fit in specified size
+- 032: Decimal constant should have a specified size
+- 033: Decimal constant too big to fit in specified size
+- 034: Hexadecimal constant too big to fit in specified size
+- 035: Undefined variable in expression
 
+Scheduler Errors:
+- 040: Cycle Detected.
 
-"Impossible" Errors :
-- 050 : Error parsing integer in the specified base (Lexer prevent this in theory)
-- 051 : Not parsed all the integer (Lexer prevent this too)
+"Impossible" Errors:
+- 050: Error parsing integer in the specified base (Lexer prevent this in theory)
+- 051: Not parsed all the integer (Lexer prevent this too)

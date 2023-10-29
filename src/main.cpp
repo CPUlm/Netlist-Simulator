@@ -1,6 +1,7 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "program_printer.hpp"
+#include "scheduler.h"
 
 #include <cassert>
 #include <fstream>
@@ -128,6 +129,24 @@ void compile_file(std::string_view file_name, std::string_view file_content) {
   Program::ptr program = parser.parse_program();
   ProgramPrinter printer(program, std::cout);
   printer.print();
+
+  std::cout << "\n\n\nScheduling Results :" << std::endl;
+  Scheduler s(ctx, program);
+  s.schedule();
+  const Scheduler::VariableList &l = s.var_list();
+
+  bool is_first = true;
+
+  for (const auto &v : l) {
+    if (is_first) {
+      is_first = false;
+    } else {
+      std::cout << " -> ";
+    }
+    std::cout << v.get()->get_name();
+  }
+
+  std::cout << std::endl;
 }
 
 int main(int argc, const char *argv[]) {

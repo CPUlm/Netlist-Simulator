@@ -7,6 +7,7 @@
 #include <memory>
 #include <cassert>
 #include <unordered_map>
+#include <unordered_set>
 #include <limits>
 #include <string>
 #include <cstdint>
@@ -102,7 +103,7 @@ private:
 class Variable : public Argument {
   static constexpr Kind KIND = Kind::VARIABLE;
 public:
-  using ptr = std::shared_ptr<Variable>;
+  using ptr = std::shared_ptr<const Variable>;
 
   /// Constructor of a variable
   /// \param size Bus size of the variable
@@ -425,9 +426,9 @@ class Program {
 public:
   using ptr = std::unique_ptr<Program>;
 
-  [[nodiscard]] const std::vector<Variable::ptr> &get_inputs() const noexcept { return m_input; };
+  [[nodiscard]] const std::unordered_set<Variable::ptr> &get_inputs() const noexcept { return m_input; };
 
-  [[nodiscard]] const std::vector<Variable::ptr> &get_outputs() const noexcept { return m_output; };
+  [[nodiscard]] const std::unordered_set<Variable::ptr> &get_outputs() const noexcept { return m_output; };
 
   [[nodiscard]] const std::unordered_map<Variable::ptr, Expression::ptr> &get_equations() const noexcept {
     return m_eq;
@@ -438,10 +439,10 @@ public:
 private:
   friend Parser;
   // All the variables categorized as 'input'
-  std::vector<Variable::ptr> m_input = {};
+  std::unordered_set<Variable::ptr> m_input = {};
 
   // All the variables categorized as 'output'
-  std::vector<Variable::ptr> m_output = {};
+  std::unordered_set<Variable::ptr> m_output = {};
 
   // All equations
   std::unordered_map<Variable::ptr, Expression::ptr> m_eq = {};
@@ -451,9 +452,9 @@ private:
 
 template<typename Derived> class Visitor {
 public:
-#define DISPATCH(call) (static_cast<const Derived *>(this)->call)
+#define DISPATCH(call) (static_cast<Derived *>(this)->call)
 
-  void visit(const Argument::ptr &arg) const {
+  void visit(const Argument::ptr &arg) {
     assert(arg != nullptr);
 
     switch (arg->get_kind()) {
@@ -464,11 +465,11 @@ public:
     }
   }
 
-  virtual void visit_argument(const Argument &arg) const {}
-  virtual void visit_constant(const Constant &cst) const { return DISPATCH(visit_argument(cst)); }
-  virtual void visit_variable(const Variable &var) const { return DISPATCH(visit_argument(var)); }
+  virtual void visit_argument(const Argument &arg) {}
+  virtual void visit_constant(const Constant &cst) { return DISPATCH(visit_argument(cst)); }
+  virtual void visit_variable(const Variable &var) { return DISPATCH(visit_argument(var)); }
 
-  void visit(const Expression::ptr &expr) const {
+  void visit(const Expression::ptr &expr) {
     assert(expr != nullptr);
 
     switch (expr->get_kind()) {
@@ -495,35 +496,35 @@ public:
     }
   }
 
-  virtual void visit_expr(const Expression &expr) const {}
-  virtual void visit_arg_expr(const ArgExpression &expr) const {
+  virtual void visit_expr(const Expression &expr) {}
+  virtual void visit_arg_expr(const ArgExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_reg_expr(const RegExpression &expr) const {
+  virtual void visit_reg_expr(const RegExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_not_expr(const NotExpression &expr) const {
+  virtual void visit_not_expr(const NotExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_binop_expr(const BinOpExpression &expr) const {
+  virtual void visit_binop_expr(const BinOpExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_mux_expr(const MuxExpression &expr) const {
+  virtual void visit_mux_expr(const MuxExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_rom_expr(const RomExpression &expr) const {
+  virtual void visit_rom_expr(const RomExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_ram_expr(const RamExpression &expr) const {
+  virtual void visit_ram_expr(const RamExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_concat_expr(const ConcatExpression &expr) const {
+  virtual void visit_concat_expr(const ConcatExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_slice_expr(const SliceExpression &expr) const {
+  virtual void visit_slice_expr(const SliceExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
-  virtual void visit_select_expr(const SelectExpression &expr) const {
+  virtual void visit_select_expr(const SelectExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
 };

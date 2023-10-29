@@ -21,6 +21,7 @@ add_library(netlistlib
         src/report.hpp
         src/report.cpp
         src/graph.hpp
+        src/scheduler.h
 )
 
 target_link_libraries(netlistlib PUBLIC fmt::fmt)
