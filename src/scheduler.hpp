@@ -1,5 +1,5 @@
-#ifndef NETLIST_SRC_SCHEDULER_H
-#define NETLIST_SRC_SCHEDULER_H
+#ifndef NETLIST_SRC_SCHEDULER_HPP
+#define NETLIST_SRC_SCHEDULER_HPP
 
 #include "program.hpp"
 #include "report.hpp"
@@ -10,7 +10,7 @@ public:
   using VariableList = std::vector<std::reference_wrapper<const Variable::ptr>>;
   explicit Scheduler(ReportContext &ctx, const Program::ptr &p) : m_ctx(ctx), m_prog(p) {};
 
-  void schedule() {
+  [[nodiscard]] VariableList schedule() noexcept {
     Graph<Variable::ptr> g;
     ExpressionIterator expIt(g, m_prog->get_inputs());
 
@@ -21,7 +21,7 @@ public:
     }
 
     try {
-      m_var = g.topological();
+      return g.topological();
     } catch (HasCycle &e) {
       m_ctx.report(ReportSeverity::ERROR)
           .with_code(40)
@@ -30,8 +30,6 @@ public:
           .exit();
     }
   }
-
-  [[nodiscard]] const VariableList &var_list() const noexcept { return m_var; }
 
 private:
   class ExpressionIterator : public Visitor<ExpressionIterator> {
@@ -104,7 +102,6 @@ private:
 
   ReportContext &m_ctx;
   const Program::ptr &m_prog;
-  VariableList m_var;
 };
 
-#endif //NETLIST_SRC_SCHEDULER_H
+#endif //NETLIST_SRC_SCHEDULER_HPP

@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include <fmt/format.h>
+#include <filesystem>
 
 class ReportContext;
 
@@ -32,7 +33,7 @@ class ReportBuilder {
 public:
   explicit ReportBuilder(ReportSeverity severity, ReportContext &context) : m_report(severity, context) {}
 
-  [[nodiscard]] ReportBuilder &with_location(const SourcePosition& position) noexcept {
+  [[nodiscard]] ReportBuilder &with_location(const SourcePosition &position) noexcept {
     m_report.position = position;
     return *this;
   }
@@ -75,21 +76,21 @@ private:
 
 class ReportContext {
 public:
-  explicit ReportContext(std::string_view filename, bool colored_output) noexcept:
+  explicit ReportContext(const std::filesystem::path &filename, bool colored_output) noexcept:
       m_file_name(filename), m_colored_output(colored_output) {}
 
   ReportBuilder report(ReportSeverity severity) {
     return ReportBuilder(severity, *this);
   }
 
-  [[nodiscard]] std::string_view get_file_name() const { return m_file_name; }
+  [[nodiscard]] std::string get_file_name() const { return m_file_name; }
 
   [[nodiscard]] bool colored_output() const { return m_colored_output; }
 
   [[nodiscard]] std::string get_location(std::optional<SourcePosition> pos) const noexcept;
 
 private:
-  std::string_view m_file_name;
+  const std::filesystem::path &m_file_name;
   bool m_colored_output;
 };
 

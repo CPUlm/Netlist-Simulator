@@ -1,12 +1,14 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "program_printer.hpp"
-#include "scheduler.h"
+#include "scheduler.hpp"
+#include "dot_printer.hpp"
 
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <filesystem>
 
 static std::ostream &error(std::ostream &stream) {
   stream << "\x1b[1;31mERROR:\x1b[0m ";
@@ -122,22 +124,23 @@ std::optional<std::string> read_file(std::string_view path) {
   return content;
 }
 
-void compile_file(std::string_view file_name, std::string_view file_content) {
+void compile_file(const std::filesystem::path &file_name, std::string_view file_content) {
   ReportContext ctx(file_name, true);
   Lexer lexer(ctx, file_content.data());
   Parser parser(ctx, lexer);
   Program::ptr program = parser.parse_program();
+
+  DotPrinter dot_ptr(program);
+
   ProgramPrinter printer(program, std::cout);
   printer.print();
 
   std::cout << "\n\n\nScheduling Results :" << std::endl;
   Scheduler s(ctx, program);
-  s.schedule();
-  const Scheduler::VariableList &l = s.var_list();
 
   bool is_first = true;
 
-  for (const auto &v : l) {
+  for (const auto &v : s.schedule()) {
     if (is_first) {
       is_first = false;
     } else {
@@ -147,6 +150,13 @@ void compile_file(std::string_view file_name, std::string_view file_content) {
   }
 
   std::cout << std::endl;
+
+  std::filesystem::path dot_file = file_name;
+  dot_file.replace_extension(".dot");
+  std::ofstream f(dot_file);
+  std::cout << dot_file << std::endl;
+  dot_ptr.print(f);
+  f.close();
 }
 
 int main(int argc, const char *argv[]) {
@@ -163,7 +173,7 @@ int main(int argc, const char *argv[]) {
       continue;
     }
 
-    compile_file(input_file, *file_content);
+    compile_file(std::filesystem::path(input_file), *file_content);
   }
 
   return EXIT_SUCCESS;
