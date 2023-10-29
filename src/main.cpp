@@ -125,7 +125,7 @@ std::optional<std::string> read_file(std::string_view path) {
 }
 
 void compile_file(const std::filesystem::path &file_name, std::string_view file_content) {
-  ReportContext ctx(file_name, true);
+  ReportContext ctx(file_name.string(), true);
   Lexer lexer(ctx, file_content.data());
   Parser parser(ctx, lexer);
   Program::ptr program = parser.parse_program();
