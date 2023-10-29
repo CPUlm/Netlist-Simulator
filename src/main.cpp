@@ -46,7 +46,7 @@ public:
     bool has_error = false;
     for (int i = 1; i < argc; ++i) {
       std::string_view argument = argv[i];
-      if (argument[0] == '-') {
+      if (argument.starts_with("-")) {
         has_error |= !parse_option(argument);
         if (has_error)
           break;
@@ -65,7 +65,7 @@ public:
 
 private:
   bool parse_option(std::string_view option) {
-    assert(option[0] == '-');
+    assert(option.starts_with("-"));
 
     if (option == "-h" || option == "--help") {
       show_help_message(stdout);

@@ -1,7 +1,6 @@
 #ifndef NETLIST_PARSER_HPP
 #define NETLIST_PARSER_HPP
 
-#include <charconv>
 #include <set>
 
 #include "program.hpp"
