@@ -99,9 +99,10 @@ void DependencyGraph::Builder::visit_rom(const RomInstruction &inst) {
 
 void DependencyGraph::Builder::visit_ram(const RamInstruction &inst) {
   graph.add_dependency(inst.output, inst.read_addr);
-  graph.add_dependency(inst.output, inst.write_enable);
-  graph.add_dependency(inst.output, inst.write_addr);
-  graph.add_dependency(inst.output, inst.write_data);
+  // There is no dependencies to the other registers.
+  // graph.add_dependency(inst.output, inst.write_enable);
+  // graph.add_dependency(inst.output, inst.write_addr);
+  // graph.add_dependency(inst.output, inst.write_data);
 }
 
 // ========================================================

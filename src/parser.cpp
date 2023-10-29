@@ -613,7 +613,7 @@ bool Parser::parse_rom_expression(reg_t output_reg) {
   if (!read_addr_reg.has_value())
     return false;
 
-  // TODO: Implement `ROM` instruction
+  m_program_builder.add_rom(output_reg, addr_size, word_size, read_addr_reg.value());
   return true;
 }
 
@@ -657,7 +657,8 @@ bool Parser::parse_ram_expression(reg_t output_reg) {
   if (!write_data_reg.has_value())
     return false;
 
-  // TODO: Implement `RAM` instruction
+  m_program_builder.add_ram(output_reg, addr_size, word_size, read_addr_reg.value(), write_enable_reg.value(),
+                            write_addr_reg.value(), write_data_reg.value());
   return true;
 }
 

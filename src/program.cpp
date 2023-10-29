@@ -134,12 +134,32 @@ void Disassembler::Detail::visit_slice(const SliceInstruction &inst) {
 
 void Disassembler::Detail::visit_rom(const RomInstruction &inst) {
   print_inst_label("ROM", inst.output);
-  // TODO: print ROM instruction
+  if (program != nullptr) {
+    const auto &memory_info = program->memories[inst.memory_block];
+    out << memory_info.addr_size << " " << memory_info.word_size << " ";
+  } else {
+    out << "@" << inst.memory_block << " ";
+  }
+
+  print_reg(inst.read_addr);
 }
 
 void Disassembler::Detail::visit_ram(const RamInstruction &inst) {
   print_inst_label("RAM", inst.output);
-  // TODO: print RAM instruction
+  if (program != nullptr) {
+    const auto &memory_info = program->memories[inst.memory_block];
+    out << memory_info.addr_size << " " << memory_info.word_size << " ";
+  } else {
+    out << "@" << inst.memory_block << " ";
+  }
+
+  print_reg(inst.read_addr);
+  out << " ";
+  print_reg(inst.write_enable);
+  out << " ";
+  print_reg(inst.write_addr);
+  out << " ";
+  print_reg(inst.write_data);
 }
 
 // ========================================================
@@ -274,11 +294,22 @@ void BuilderCodeGenerator::Detail::visit_slice(const SliceInstruction &inst) {
 }
 
 void BuilderCodeGenerator::Detail::visit_rom(const RomInstruction &inst) {
-  // TODO
+  const auto &memory_info = program->memories[inst.memory_block];
+  const auto output = get_reg_name(inst.output);
+  const auto read_addr = get_reg_name(inst.read_addr);
+  out << fmt::format("builder.add_rom({}, {}, {}, {});", output, memory_info.addr_size, memory_info.word_size,
+                     read_addr);
 }
 
 void BuilderCodeGenerator::Detail::visit_ram(const RamInstruction &inst) {
-  // TODO
+  const auto &memory_info = program->memories[inst.memory_block];
+  const auto output = get_reg_name(inst.output);
+  const auto read_addr = get_reg_name(inst.read_addr);
+  const auto write_enable = get_reg_name(inst.write_enable);
+  const auto write_addr = get_reg_name(inst.write_addr);
+  const auto write_data = get_reg_name(inst.write_data);
+  out << fmt::format("builder.add_ram({}, {}, {}, {}, {}, {}, {});", output, memory_info.addr_size,
+                     memory_info.word_size, read_addr, write_enable, write_addr, write_data);
 }
 
 // ========================================================
@@ -446,6 +477,45 @@ SliceInstruction &ProgramBuilder::add_slice(reg_t output, bus_size_t start, bus_
   inst->end = end;
   inst->input = input;
   m_program->instructions.push_back(inst);
+  return *inst;
+}
+
+RomInstruction &ProgramBuilder::add_rom(reg_t output, bus_size_t addr_size, bus_size_t word_size, reg_t read_addr) {
+  assert(check_reg(output) && check_reg(read_addr));
+
+  auto *inst = new RomInstruction();
+  inst->output = output;
+  inst->memory_block = m_program->memories.size();
+  inst->read_addr = read_addr;
+  m_program->instructions.push_back(inst);
+
+  auto &memory_info = m_program->memories.emplace_back();
+  memory_info.parent = inst;
+  memory_info.addr_size = addr_size;
+  memory_info.word_size = word_size;
+
+  return *inst;
+}
+
+RamInstruction &ProgramBuilder::add_ram(reg_t output, bus_size_t addr_size, bus_size_t word_size, reg_t read_addr,
+                                        reg_t write_enable, reg_t write_addr, reg_t write_data) {
+  assert(check_reg(output) && check_reg(read_addr) && check_reg(write_enable) && check_reg(write_addr) &&
+         check_reg(write_data));
+
+  auto *inst = new RamInstruction();
+  inst->output = output;
+  inst->memory_block = m_program->memories.size();
+  inst->read_addr = read_addr;
+  inst->write_enable = write_enable;
+  inst->write_addr = write_addr;
+  inst->write_data = write_data;
+  m_program->instructions.push_back(inst);
+
+  auto &memory_info = m_program->memories.emplace_back();
+  memory_info.parent = inst;
+  memory_info.addr_size = addr_size;
+  memory_info.word_size = word_size;
+
   return *inst;
 }
 

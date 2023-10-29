@@ -59,7 +59,7 @@ struct ConstInstructionVisitor {
 /// The list of all supported instructions by the Netlist parser and simulator.
 /// @{
 
-/// Base class for all instructions.
+/// \brief Base class for all instructions.
 struct Instruction {
   reg_t output = {};
 
@@ -69,35 +69,35 @@ struct Instruction {
   virtual void visit(ConstInstructionVisitor &visitor) const = 0;
 };
 
-/// The `output = constant` instruction.
+/// \brief The `output = constant` instruction.
 struct ConstInstruction : Instruction {
   reg_value_t value = 0;
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_const(*this); }
 };
 
-/// The `output = input` instruction.
+/// \brief The `output = input` instruction.
 struct LoadInstruction : Instruction {
   reg_t input = {};
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_load(*this); }
 };
 
-/// The `output = NOT input` instruction.
+/// \brief The `output = NOT input` instruction.
 struct NotInstruction : Instruction {
   reg_t input = {};
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_not(*this); }
 };
 
-/// The `output = REG input` instruction.
+/// \brief The `output = REG input` instruction.
 struct RegInstruction : Instruction {
   reg_t input = {};
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_reg(*this); }
 };
 
-/// The `output = MUX choice first second` instruction.
+/// \brief The `output = MUX choice first second` instruction.
 struct MuxInstruction : Instruction {
   reg_t choice = {};
   reg_t first = {};
@@ -106,7 +106,7 @@ struct MuxInstruction : Instruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_mux(*this); }
 };
 
-/// The `output = CONCAT lhs rhs` instruction.
+/// \brief The `output = CONCAT lhs rhs` instruction.
 struct ConcatInstruction : Instruction {
   reg_t lhs = {};
   reg_t rhs = {};
@@ -116,43 +116,43 @@ struct ConcatInstruction : Instruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_concat(*this); }
 };
 
-/// Base class for all binary instructions such as `AND` or `XOR`.
+/// \brief Base class for all binary instructions such as `AND` or `XOR`.
 struct BinaryInstruction : Instruction {
   reg_t lhs = {};
   reg_t rhs = {};
 };
 
-/// The `output = AND lhs rhs` instruction.
+/// \brief The `output = AND lhs rhs` instruction.
 struct AndInstruction : BinaryInstruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_and(*this); }
 };
 
-/// The `output = NAND lhs rhs` instruction.
+/// \brief The `output = NAND lhs rhs` instruction.
 struct NandInstruction : BinaryInstruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_nand(*this); }
 };
 
-/// The `output = OR lhs rhs` instruction.
+/// \brief The `output = OR lhs rhs` instruction.
 struct OrInstruction : BinaryInstruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_or(*this); }
 };
 
-/// The `output = NOR lhs rhs` instruction.
+/// \brief The `output = NOR lhs rhs` instruction.
 struct NorInstruction : BinaryInstruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_nor(*this); }
 };
 
-/// The `output = XOR lhs rhs` instruction.
+/// \brief The `output = XOR lhs rhs` instruction.
 struct XorInstruction : BinaryInstruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_xor(*this); }
 };
 
-/// The `output = XNOR lhs rhs` instruction.
+/// \brief The `output = XNOR lhs rhs` instruction.
 struct XnorInstruction : BinaryInstruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_xnor(*this); }
 };
 
-/// The `output = SELECT i input` instruction.
+/// \brief The `output = SELECT i input` instruction.
 struct SelectInstruction : Instruction {
   reg_t input = {};
   bus_size_t i = 0;
@@ -160,7 +160,7 @@ struct SelectInstruction : Instruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_select(*this); }
 };
 
-/// The `output = SLICE first end input` instruction.
+/// \brief The `output = SLICE first end input` instruction.
 struct SliceInstruction : Instruction {
   reg_t input = {};
   bus_size_t start = 0;
@@ -169,15 +169,21 @@ struct SliceInstruction : Instruction {
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_slice(*this); }
 };
 
-/// The `output = ROM read_addr` instruction.
-struct RomInstruction : Instruction {
+/// \brief Base class for `ROM` and `RAM` instructions.
+struct MemoryInstruction : Instruction {
+  /// An index inside Program::memories array.
+  std::uint_least32_t memory_block = 0;
+};
+
+/// \brief The `output = ROM read_addr` instruction.
+struct RomInstruction : MemoryInstruction {
   reg_t read_addr = {};
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_rom(*this); }
 };
 
-/// The `output = RAM read_addr write_enable write_addr write_data` instruction.
-struct RamInstruction : Instruction {
+/// \brief The `output = RAM addr_size word_size read_addr write_enable write_addr write_data` instruction.
+struct RamInstruction : MemoryInstruction {
   reg_t read_addr = {};
   reg_t write_enable = {};
   reg_t write_addr = {};
@@ -187,6 +193,17 @@ struct RamInstruction : Instruction {
 };
 
 /// @}
+
+/// Meta information about a RAM or ROM memory block.
+struct MemoryInfo {
+  /// The parent instruction (RAM or ROM) to who belongs this memory block.
+  Instruction *parent = nullptr;
+  bus_size_t addr_size = 0;
+  bus_size_t word_size = 0;
+
+  /// Returns the memory total size in count of words.
+  [[nodiscard]] size_t get_size() const { return 1 << addr_size; }
+};
 
 /// Possible flags for a register.
 /// \see RegisterInfo
@@ -216,6 +233,7 @@ struct RegisterInfo {
 /// A Netlist program represented by a sequence of instructions to be simulated and a set of registers.
 struct Program {
   std::vector<RegisterInfo> registers;
+  std::vector<MemoryInfo> memories;
   std::vector<Instruction *> instructions;
 
   ~Program() {
@@ -373,6 +391,9 @@ public:
   MuxInstruction &add_mux(reg_t output, reg_t choice, reg_t first, reg_t second);
   SelectInstruction &add_select(reg_t output, bus_size_t i, reg_t input);
   SliceInstruction &add_slice(reg_t output, bus_size_t start, bus_size_t end, reg_t input);
+  RomInstruction &add_rom(reg_t output, bus_size_t addr_size, bus_size_t word_size, reg_t read_addr);
+  RamInstruction &add_ram(reg_t output, bus_size_t addr_size, bus_size_t word_size, reg_t read_addr, reg_t write_enable,
+                          reg_t write_addr, reg_t write_data);
 
   [[nodiscard]] std::shared_ptr<Program> build();
 

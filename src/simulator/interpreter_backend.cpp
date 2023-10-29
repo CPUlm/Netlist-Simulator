@@ -11,6 +11,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   size_t pc = 0; // the program counter
   std::unique_ptr<reg_value_t[]> registers_value;
   std::unique_ptr<reg_value_t[]> previous_registers_value;
+  std::unique_ptr<std::unique_ptr<reg_value_t[]>[]> memory_blocks;
 
   /// Checks if the given register is valid.
   [[nodiscard]] bool check_reg(reg_t reg) const { return reg.index < program->registers.size(); }
@@ -23,6 +24,12 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     pc = 0;
     registers_value = std::make_unique<reg_value_t[]>(program->registers.size());
     previous_registers_value = std::make_unique<reg_value_t[]>(program->registers.size());
+
+    memory_blocks = std::make_unique<std::unique_ptr<reg_value_t[]>[]>(program->memories.size());
+    for (uint_least32_t i = 0; i < program->memories.size(); ++i) {
+      const auto &memory_info = program->memories[i];
+      memory_blocks[i] = std::make_unique<reg_value_t[]>(memory_info.get_size());
+    }
   }
 
   void step() {
@@ -122,12 +129,23 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     registers_value[inst.output.index] = (value >> inst.i) & 0b1;
   }
 
-  void visit_rom(const RomInstruction &rom) {
-    // TODO
+  void visit_rom(const RomInstruction &inst) {
+    const auto read_addr = registers_value[inst.read_addr.index];
+    const reg_value_t *memory_block = memory_blocks[inst.memory_block].get();
+    registers_value[inst.output.index] = memory_block[read_addr];
   }
 
-  void visit_ram(const RamInstruction &rom) {
-    // TODO
+  void visit_ram(const RamInstruction &inst) {
+    const auto read_addr = registers_value[inst.read_addr.index];
+    const auto write_enable = registers_value[inst.write_enable.index];
+    const auto write_addr = registers_value[inst.write_addr.index];
+    const auto write_data = registers_value[inst.write_data.index];
+
+    reg_value_t *memory_block = memory_blocks[inst.memory_block].get();
+    registers_value[inst.output.index] = memory_block[read_addr];
+
+    if (write_enable)
+      memory_block[write_addr] = write_data;
   }
 };
 
