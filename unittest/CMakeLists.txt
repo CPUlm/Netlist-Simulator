@@ -17,6 +17,7 @@ add_executable(
         report_test.cpp
         simulator_test.cpp
         bytecode_writer_test.cpp
+        dependency_graph_test.cpp
 )
 
 target_link_libraries(

@@ -20,9 +20,13 @@ add_library(netlistlib
         src/line_map.cpp
         src/report.hpp
         src/report.cpp
-        src/bytecode.cpp
-        src/simulator.hpp
-        src/simulator.cpp
+        src/program.cpp
+        src/simulator/simulator.hpp
+        src/simulator/simulator.cpp
+        src/simulator/interpreter_backend.hpp
+        src/simulator/interpreter_backend.cpp
+        src/dependency_graph.hpp
+        src/dependency_graph.cpp
 )
 
 target_link_libraries(netlistlib PUBLIC fmt::fmt)
