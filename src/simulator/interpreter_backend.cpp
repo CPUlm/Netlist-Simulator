@@ -100,7 +100,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     const auto choice = registers_value[inst.choice.index];
     const auto first = registers_value[inst.first.index];
     const auto second = registers_value[inst.second.index];
-    if (choice) {
+    if (choice == 0) {
       registers_value[inst.output.index] = first;
     } else {
       registers_value[inst.output.index] = second;
