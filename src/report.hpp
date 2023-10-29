@@ -9,6 +9,7 @@
 
 #include <fmt/format.h>
 #include <filesystem>
+#include <utility>
 
 class ReportContext;
 
@@ -76,21 +77,23 @@ private:
 
 class ReportContext {
 public:
-  explicit ReportContext(const std::filesystem::path &filename, bool colored_output) noexcept:
-      m_file_name(filename), m_colored_output(colored_output) {}
+  explicit ReportContext(std::string filename, bool colored_output) noexcept:
+      m_file_name(std::move(filename)), m_colored_output(colored_output) {}
 
   ReportBuilder report(ReportSeverity severity) {
     return ReportBuilder(severity, *this);
   }
 
-  [[nodiscard]] std::string get_file_name() const { return m_file_name; }
+  [[nodiscard]] std::string get_file_name() const {
+    return m_file_name;
+  }
 
   [[nodiscard]] bool colored_output() const { return m_colored_output; }
 
   [[nodiscard]] std::string get_location(std::optional<SourcePosition> pos) const noexcept;
 
 private:
-  const std::filesystem::path &m_file_name;
+  const std::string m_file_name;
   bool m_colored_output;
 };
 
