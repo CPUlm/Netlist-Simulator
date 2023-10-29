@@ -1,6 +1,7 @@
 #ifndef NETLIST_LEXER_HPP
 #define NETLIST_LEXER_HPP
 
+#include "report.hpp"
 #include "token.hpp"
 
 /// \ingroup parser
@@ -12,7 +13,7 @@
 /// The Lexer is lazy, it only generates tokens as the user/parser request.
 class Lexer {
 public:
-  explicit Lexer(const char *input);
+  explicit Lexer(ReportManager &report_manager, const char *input);
 
   /// Returns the next scanned token in the source code and advances the
   /// internal position of the lexer.
@@ -34,7 +35,10 @@ private:
   /// lexer is located at the first valid character of an integer.
   void tokenize_integer(Token &token);
 
+  [[nodiscard]] SourceLocation get_current_location() const;
+
 private:
+  ReportManager &m_report_manager;
   const char *m_input = nullptr;
   const char *m_cursor = nullptr;
 };

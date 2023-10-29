@@ -4,7 +4,9 @@
 
 #include <cassert>
 
-Lexer::Lexer(const char *input) : m_input(input), m_cursor(input) {}
+Lexer::Lexer(ReportManager &report_manager, const char *input)
+    : m_report_manager(report_manager), m_input(input), m_cursor(input) {
+}
 
 /// Returns true if the given ASCII character is a whitespace.
 /// Our definition of whitespace is limited to ' ', '\t', '\n' and '\r'.
@@ -40,36 +42,36 @@ Lexer::Lexer(const char *input) : m_input(input), m_cursor(input) {}
 void Lexer::tokenize(Token &token) {
   // We use an infinite loop here to continue lexing when encountering an
   // unknown character (which we just ignore after emitting an error) or to
-  // skip comments. Each successfully token is directly returned inside the
+  // skip comments. Each successful token is directly returned inside the
   // loop.
   while (true) {
     skip_whitespace();
 
     switch (*m_cursor) {
-    case '\0': // End-Of-Input reached !
+    case '\0': // End-Of-Input reached!
       token.kind = TokenKind::EOI;
       token.spelling = {};
-      token.position = SourceLocation::from_offset(std::distance(m_input, m_cursor));
+      token.position = get_current_location();
       return;
 
     case '=':
       token.kind = TokenKind::EQUAL;
       token.spelling = std::string_view(m_cursor, /* count= */ 1);
-      token.position = SourceLocation::from_offset(std::distance(m_input, m_cursor));
+      token.position = get_current_location();
       ++m_cursor; // eat the character
       return;
 
     case ',':
       token.kind = TokenKind::COMMA;
       token.spelling = std::string_view(m_cursor, /* count= */ 1);
-      token.position = SourceLocation::from_offset(std::distance(m_input, m_cursor));
+      token.position = get_current_location();
       ++m_cursor; // eat the character
       return;
 
     case ':':
       token.kind = TokenKind::COLON;
       token.spelling = std::string_view(m_cursor, /* count= */ 1);
-      token.position = SourceLocation::from_offset(std::distance(m_input, m_cursor));
+      token.position = get_current_location();
       ++m_cursor; // eat the character
       return;
 
@@ -77,7 +79,7 @@ void Lexer::tokenize(Token &token) {
       skip_comment();
       continue; // get the next valid token
 
-    default:
+    default: {
       if (is_start_ident(*m_cursor)) {
         tokenize_identifier(token);
         return;
@@ -87,7 +89,12 @@ void Lexer::tokenize(Token &token) {
       }
 
       // Bad, we reached an unknown character.
-      // FIXME: we should emit an error, for now we just ignore it
+      m_report_manager.report(ReportSeverity::ERROR)
+          .with_location(get_current_location())
+          .with_message("unknown character found")
+          .finish()
+          .exit();
+    }
     }
   }
 }
@@ -129,8 +136,7 @@ void Lexer::tokenize_identifier(Token &token) {
   const char *end = m_cursor;
 
   token.spelling = std::string_view(begin, std::distance(begin, end));
-  auto *keyword_info =
-      KeywordHashTable::lookup(token.spelling.data(), token.spelling.size());
+  auto *keyword_info = KeywordHashTable::lookup(token.spelling.data(), token.spelling.size());
   if (keyword_info != nullptr) {
     token.kind = keyword_info->token_kind;
   } else {
@@ -159,4 +165,8 @@ void Lexer::tokenize_integer(Token &token) {
   token.kind = TokenKind::INTEGER;
   token.spelling = std::string_view(begin, std::distance(begin, end));
   token.position = SourceLocation::from_offset(std::distance(m_input, begin));
+}
+
+SourceLocation Lexer::get_current_location() const {
+  return SourceLocation::from_offset(std::distance(m_input, m_cursor));
 }

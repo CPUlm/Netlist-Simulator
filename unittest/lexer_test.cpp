@@ -3,7 +3,8 @@
 #include "lexer.hpp"
 
 TEST(LexerTest, punctuation) {
-  Lexer lexer("= , :");
+  ReportManager report_manager;
+  Lexer lexer(report_manager, "= , :");
   Token token;
 
   lexer.tokenize(token);
@@ -28,7 +29,8 @@ TEST(LexerTest, punctuation) {
 }
 
 TEST(LexerTest, identifiers) {
-  Lexer lexer("a c_out _l_2");
+  ReportManager report_manager;
+  Lexer lexer(report_manager, "a c_out _l_2");
   Token token;
 
   lexer.tokenize(token);
@@ -53,7 +55,8 @@ TEST(LexerTest, identifiers) {
 }
 
 TEST(LexerTest, keywords) {
-  Lexer lexer("OUTPUT VAR");
+  ReportManager report_manager;
+  Lexer lexer(report_manager, "OUTPUT VAR");
   Token token;
 
   lexer.tokenize(token);
@@ -73,7 +76,8 @@ TEST(LexerTest, keywords) {
 }
 
 TEST(LexerTest, integers) {
-  Lexer lexer("0 42");
+  ReportManager report_manager;
+  Lexer lexer(report_manager, "0 42");
   Token token;
 
   lexer.tokenize(token);
@@ -93,7 +97,8 @@ TEST(LexerTest, integers) {
 }
 
 TEST(LexerTest, comments) {
-  Lexer lexer("# =\n=\n# EOI");
+  ReportManager report_manager;
+  Lexer lexer(report_manager, "# =\n=\n# EOI");
   Token token;
 
   lexer.tokenize(token);

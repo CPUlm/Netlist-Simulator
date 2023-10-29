@@ -162,7 +162,7 @@ int main(int argc, const char *argv[]) {
   }
 
   report_manager.register_file_info(options.input_file, source_code);
-  Lexer lexer(source_code.data());
+  Lexer lexer(report_manager, source_code.data());
   Parser parser(report_manager, lexer);
   std::shared_ptr<Program> program = parser.parse_program();
 
