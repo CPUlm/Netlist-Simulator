@@ -136,11 +136,10 @@ void compile_file(const std::filesystem::path &file_name, std::string_view file_
   printer.print();
 
   std::cout << "\n\n\nScheduling Results :" << std::endl;
-  Scheduler s(ctx, program);
 
   bool is_first = true;
 
-  for (const auto &v : s.schedule()) {
+  for (const auto &v : Scheduler::schedule(ctx, program)) {
     if (is_first) {
       is_first = false;
     } else {

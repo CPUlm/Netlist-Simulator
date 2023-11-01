@@ -5,6 +5,8 @@
 
 class ExpressionIterator : public Visitor<ExpressionIterator> {
 public:
+  using var_id = unsigned int;
+
   [[nodiscard]] std::string get_string() const noexcept {
     return m_sstr.str();
   }
@@ -13,6 +15,7 @@ public:
     m_sstr.str(std::string());
     m_links.str(std::string());
     m_beg_var = beg;
+    add_variable(beg->get_name());
   }
 
   [[nodiscard]] std::string end_var() const noexcept {
@@ -24,8 +27,13 @@ public:
   }
 
   void visit_variable(const Variable &var) override {
+    add_variable(var.get_name());
     m_sstr << var.get_name();
-    m_links << "\t" << var.get_name() << " -> " << m_beg_var->get_name() << "\n";
+    m_links << "\t" << get_variable_id(var.get_name()) << " -> " << get_variable_id(m_beg_var->get_name());
+    if (!is_hard_deps) {
+      m_links << " [style=dashed]";
+    }
+    m_links << "\n";
   }
 
   void visit_arg_expr(const ArgExpression &expr) override {
@@ -34,7 +42,9 @@ public:
 
   void visit_reg_expr(const RegExpression &expr) override {
     m_sstr << "REG(";
+    disable_hard_deps();
     visit(expr.get_variable());
+    enable_hard_deps();
     m_sstr << ")";
   }
 
@@ -85,11 +95,13 @@ public:
     m_sstr << "RAM (" << expr.get_address_size() << ", " << expr.get_bus_size() << ", ";
     visit(expr.get_read_address());
     m_sstr << ", ";
+    disable_hard_deps();
     visit(expr.get_write_enable());
     m_sstr << ", ";
     visit(expr.get_write_address());
     m_sstr << ", ";
     visit(expr.get_write_data());
+    enable_hard_deps();
     m_sstr << ")";
   }
 
@@ -114,10 +126,34 @@ public:
 
   }
 
+  void add_variable(const ident_t &var_name) noexcept {
+    if (!name_to_id.contains(var_name)) {
+      name_to_id.emplace(var_name, next_id);
+      next_id++;
+    }
+  }
+
+  [[nodiscard]] var_id get_variable_id(const ident_t &var_name) const noexcept {
+    return name_to_id.at(var_name);
+  }
+
 private:
+
+  void disable_hard_deps() noexcept {
+    is_hard_deps = false;
+  }
+
+  void enable_hard_deps() noexcept {
+    is_hard_deps = true;
+  }
+
+  bool is_hard_deps = true;
   std::stringstream m_sstr;
   std::stringstream m_links;
   Variable::ptr m_beg_var;
+
+  var_id next_id = 0;
+  std::unordered_map<ident_t, var_id> name_to_id;
 };
 
 void DotPrinter::print(std::ostream &out) {
@@ -126,7 +162,10 @@ void DotPrinter::print(std::ostream &out) {
   out << "digraph {\n";
 
   for (const Variable::ptr &in_var : m_prog->get_inputs()) {
-    out << "\t" << in_var->get_name() << " [label=<<b>" << in_var->get_name() << "</b><br/><i>size</i>: "
+    expIt.add_variable(in_var->get_name());
+
+    out << "\t" << expIt.get_variable_id(in_var->get_name())
+        << " [label=<<b>" << in_var->get_name() << "</b><br/><i>size</i>: "
         << in_var->get_bus_size() << ">";
     if (m_prog->get_outputs().contains(in_var)) {
       out << ", shape=rect]\n";
@@ -139,8 +178,8 @@ void DotPrinter::print(std::ostream &out) {
     expIt.begin_var(var);
     expIt.visit(eq);
 
-    out << "\t" << var->get_name() << " [label=<" << var->get_name() << "<br/><i>size</i>: "
-        << var->get_bus_size()
+    out << "\t" << expIt.get_variable_id(var->get_name())
+        << " [label=<" << var->get_name() << "<br/><i>size</i>: " << var->get_bus_size()
         << "<br/><i>eq</i>: " << expIt.get_string() << ">";
 
     if (m_prog->get_outputs().contains(var)) {
