@@ -453,21 +453,45 @@ private:
 template<typename Derived> class Visitor {
 public:
 #define DISPATCH(call) (static_cast<Derived *>(this)->call)
+#define CONST_DISPATCH(call) (static_cast<const Derived *>(this)->call)
 
   void visit(const Argument::ptr &arg) {
     assert(arg != nullptr);
 
     switch (arg->get_kind()) {
     case Argument::Kind::CONSTANT:
-      return DISPATCH(visit_constant(*dynamic_cast<const Constant *>(arg.get())));
+      return DISPATCH(visit_constant(std::static_pointer_cast<const Constant>(arg)));
     case Argument::Kind::VARIABLE:
-      return DISPATCH(visit_variable(*dynamic_cast<const Variable *>(arg.get())));
+      return DISPATCH(visit_variable(std::static_pointer_cast<const Variable>(arg)));
+    }
+  }
+  void visit(const Argument::ptr &arg) const {
+    assert(arg != nullptr);
+
+    switch (arg->get_kind()) {
+    case Argument::Kind::CONSTANT:
+      return CONST_DISPATCH(visit_constant(std::static_pointer_cast<const Constant>(arg)));
+    case Argument::Kind::VARIABLE:
+      return CONST_DISPATCH(visit_variable(std::static_pointer_cast<const Variable>(arg)));
     }
   }
 
-  virtual void visit_argument(const Argument &arg) {}
-  virtual void visit_constant(const Constant &cst) { return DISPATCH(visit_argument(cst)); }
-  virtual void visit_variable(const Variable &var) { return DISPATCH(visit_argument(var)); }
+  virtual void visit_argument(const Argument::ptr &arg) {}
+  virtual void visit_argument(const Argument::ptr &arg) const {}
+
+  virtual void visit_constant(const Constant::ptr &cst) {
+    return DISPATCH(visit_argument(cst));
+  }
+  virtual void visit_constant(const Constant::ptr &cst) const {
+    return CONST_DISPATCH(visit_argument(cst));
+  }
+
+  virtual void visit_variable(const Variable::ptr &var) {
+    return DISPATCH(visit_argument(var));
+  }
+  virtual void visit_variable(const Variable::ptr &var) const {
+    return CONST_DISPATCH(visit_argument(var));
+  }
 
   void visit(const Expression::ptr &expr) {
     assert(expr != nullptr);
@@ -495,37 +519,104 @@ public:
       return DISPATCH(visit_select_expr(*dynamic_cast<const SelectExpression *>(expr.get())));
     }
   }
+  void visit(const Expression::ptr &expr) const {
+    assert(expr != nullptr);
+
+    switch (expr->get_kind()) {
+    case Expression::Kind::ARG:
+      return CONST_DISPATCH(visit_arg_expr(*dynamic_cast<const ArgExpression *>(expr.get())));
+    case Expression::Kind::REG:
+      return CONST_DISPATCH(visit_reg_expr(*dynamic_cast<const RegExpression *>(expr.get())));
+    case Expression::Kind::NOT:
+      return CONST_DISPATCH(visit_not_expr(*dynamic_cast<const NotExpression *>(expr.get())));
+    case Expression::Kind::BINOP:
+      return CONST_DISPATCH(visit_binop_expr(*dynamic_cast<const BinOpExpression *>(expr.get())));
+    case Expression::Kind::MUX:
+      return CONST_DISPATCH(visit_mux_expr(*dynamic_cast<const MuxExpression *>(expr.get())));
+    case Expression::Kind::ROM:
+      return CONST_DISPATCH(visit_rom_expr(*dynamic_cast<const RomExpression *>(expr.get())));
+    case Expression::Kind::RAM:
+      return CONST_DISPATCH(visit_ram_expr(*dynamic_cast<const RamExpression *>(expr.get())));
+    case Expression::Kind::CONCAT:
+      return CONST_DISPATCH(visit_concat_expr(*dynamic_cast<const ConcatExpression *>(expr.get())));
+    case Expression::Kind::SLICE:
+      return CONST_DISPATCH(visit_slice_expr(*dynamic_cast<const SliceExpression *>(expr.get())));
+    case Expression::Kind::SELECT:
+      return CONST_DISPATCH(visit_select_expr(*dynamic_cast<const SelectExpression *>(expr.get())));
+    }
+  }
 
   virtual void visit_expr(const Expression &expr) {}
+  virtual void visit_expr(const Expression &expr) const {}
+
   virtual void visit_arg_expr(const ArgExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_arg_expr(const ArgExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_reg_expr(const RegExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_reg_expr(const RegExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_not_expr(const NotExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_not_expr(const NotExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_binop_expr(const BinOpExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_binop_expr(const BinOpExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_mux_expr(const MuxExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_mux_expr(const MuxExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_rom_expr(const RomExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_rom_expr(const RomExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_ram_expr(const RamExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_ram_expr(const RamExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_concat_expr(const ConcatExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_concat_expr(const ConcatExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_slice_expr(const SliceExpression &expr) {
     return DISPATCH(visit_expr(expr));
   }
+  virtual void visit_slice_expr(const SliceExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
+  }
+
   virtual void visit_select_expr(const SelectExpression &expr) {
     return DISPATCH(visit_expr(expr));
+  }
+  virtual void visit_select_expr(const SelectExpression &expr) const {
+    return CONST_DISPATCH(visit_expr(expr));
   }
 };
 

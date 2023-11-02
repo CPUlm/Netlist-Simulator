@@ -15,21 +15,21 @@ public:
     m_sstr.str(std::string());
     m_links.str(std::string());
     m_beg_var = beg;
-    add_variable(beg->get_name());
+    add_variable(beg);
   }
 
   [[nodiscard]] std::string end_var() const noexcept {
     return m_links.str();
   }
 
-  void visit_constant(const Constant &cst) override {
-    m_sstr << fmt::format("{:#b}", cst.get_value());
+  void visit_constant(const Constant::ptr &cst) override {
+    m_sstr << fmt::format("{:#b}", cst->get_value());
   }
 
-  void visit_variable(const Variable &var) override {
-    add_variable(var.get_name());
-    m_sstr << var.get_name();
-    m_links << "\t" << get_variable_id(var.get_name()) << " -> " << get_variable_id(m_beg_var->get_name());
+  void visit_variable(const Variable::ptr &var) override {
+    add_variable(var);
+    m_sstr << var->get_name();
+    m_links << "\t" << get_variable_id(var) << " -> " << get_variable_id(m_beg_var);
     if (!is_hard_deps) {
       m_links << " [style=dashed]";
     }
@@ -126,15 +126,15 @@ public:
 
   }
 
-  void add_variable(const ident_t &var_name) noexcept {
-    if (!name_to_id.contains(var_name)) {
-      name_to_id.emplace(var_name, next_id);
+  void add_variable(const Variable::ptr &var) noexcept {
+    if (!var_2_id.contains(var)) {
+      var_2_id.emplace(var, next_id);
       next_id++;
     }
   }
 
-  [[nodiscard]] var_id get_variable_id(const ident_t &var_name) const noexcept {
-    return name_to_id.at(var_name);
+  [[nodiscard]] var_id get_variable_id(const Variable::ptr &var) const {
+    return var_2_id.at(var);
   }
 
 private:
@@ -153,7 +153,7 @@ private:
   Variable::ptr m_beg_var;
 
   var_id next_id = 0;
-  std::unordered_map<ident_t, var_id> name_to_id;
+  std::unordered_map<Variable::ptr, var_id> var_2_id;
 };
 
 void DotPrinter::print(std::ostream &out) {
@@ -162,9 +162,9 @@ void DotPrinter::print(std::ostream &out) {
   out << "digraph {\n";
 
   for (const Variable::ptr &in_var : m_prog->get_inputs()) {
-    expIt.add_variable(in_var->get_name());
+    expIt.add_variable(in_var);
 
-    out << "\t" << expIt.get_variable_id(in_var->get_name())
+    out << "\t" << expIt.get_variable_id(in_var)
         << " [label=<<b>" << in_var->get_name() << "</b><br/><i>size</i>: "
         << in_var->get_bus_size() << ">";
     if (m_prog->get_outputs().contains(in_var)) {
@@ -178,7 +178,7 @@ void DotPrinter::print(std::ostream &out) {
     expIt.begin_var(var);
     expIt.visit(eq);
 
-    out << "\t" << expIt.get_variable_id(var->get_name())
+    out << "\t" << expIt.get_variable_id(var)
         << " [label=<" << var->get_name() << "<br/><i>size</i>: " << var->get_bus_size()
         << "<br/><i>eq</i>: " << expIt.get_string() << ">";
 

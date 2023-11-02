@@ -29,6 +29,13 @@ Parser:
 Scheduler Errors:
 - 040: Cycle Detected.
 
+Simulator Errors:
+- 050: Unused memory chunk
+- 051: Memory chunk size mismatch
+- 052: Uninitialised ROM memory chunk
+- 053: Uninitialised RAM memory chunk
+
 "Impossible" Errors:
-- 050: Error parsing integer in the specified base (Lexer prevent this in theory)
-- 051: Not parsed all the integer (Lexer prevent this too)
+- 090: Error parsing integer in the specified base (Lexer prevent this in theory)
+- 091: Not parsed all the integer (Lexer prevent this too)
+- 092: Unable to determine Argument Kind

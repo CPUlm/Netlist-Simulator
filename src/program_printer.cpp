@@ -49,7 +49,7 @@ static void print_variable_declaration(std::ostream &out, const Program::ptr &p)
 
 ProgramPrinter::ProgramPrinter(const Program::ptr &program, std::ostream &out) : p(program), out(out) {}
 
-void ProgramPrinter::print() {
+void ProgramPrinter::print() const {
   out << "INPUT ";
   print_variable_reference(out, p->get_inputs());
   out << "\n";
@@ -71,29 +71,29 @@ void ProgramPrinter::print() {
   }
 }
 
-void ProgramPrinter::visit_constant(const Constant &cst) {
-  out << fmt::format("{:b}", cst.get_value());
+void ProgramPrinter::visit_constant(const Constant::ptr &cst) const {
+  out << fmt::format("{:b}", cst->get_value());
 }
 
-void ProgramPrinter::visit_variable(const Variable &var) {
-  out << var.get_name();
+void ProgramPrinter::visit_variable(const Variable::ptr &var) const {
+  out << var->get_name();
 }
 
-void ProgramPrinter::visit_arg_expr(const ArgExpression &expr)  {
+void ProgramPrinter::visit_arg_expr(const ArgExpression &expr) const {
   visit(expr.get_argument());
 }
 
-void ProgramPrinter::visit_reg_expr(const RegExpression &expr)  {
+void ProgramPrinter::visit_reg_expr(const RegExpression &expr) const {
   out << "REG ";
   visit(expr.get_variable());
 }
 
-void ProgramPrinter::visit_not_expr(const NotExpression &expr)  {
+void ProgramPrinter::visit_not_expr(const NotExpression &expr) const {
   out << "NOT ";
   visit(expr.get_argument());
 }
 
-void ProgramPrinter::visit_binop_expr(const BinOpExpression &expr) {
+void ProgramPrinter::visit_binop_expr(const BinOpExpression &expr) const {
   switch (expr.get_binop_kind()) {
 
   case BinOpExpression::BinOpKind::OR:
@@ -115,7 +115,7 @@ void ProgramPrinter::visit_binop_expr(const BinOpExpression &expr) {
   visit(expr.get_rhs_argument());
 }
 
-void ProgramPrinter::visit_mux_expr(const MuxExpression &expr)  {
+void ProgramPrinter::visit_mux_expr(const MuxExpression &expr) const {
   out << "MUX ";
   visit(expr.get_choice_argument());
   out << " ";
@@ -124,12 +124,12 @@ void ProgramPrinter::visit_mux_expr(const MuxExpression &expr)  {
   visit(expr.get_false_argument());
 }
 
-void ProgramPrinter::visit_rom_expr(const RomExpression &expr)  {
+void ProgramPrinter::visit_rom_expr(const RomExpression &expr) const {
   out << "ROM " << expr.get_address_size() << " " << expr.get_bus_size() << " ";
   visit(expr.get_read_address());
 }
 
-void ProgramPrinter::visit_ram_expr(const RamExpression &expr)  {
+void ProgramPrinter::visit_ram_expr(const RamExpression &expr) const {
   out << "RAM " << expr.get_address_size() << " " << expr.get_bus_size() << " ";
   visit(expr.get_read_address());
   out << " ";
@@ -140,19 +140,19 @@ void ProgramPrinter::visit_ram_expr(const RamExpression &expr)  {
   visit(expr.get_write_data());
 }
 
-void ProgramPrinter::visit_concat_expr(const ConcatExpression &expr)  {
+void ProgramPrinter::visit_concat_expr(const ConcatExpression &expr) const {
   out << "CONCAT ";
   visit(expr.get_beginning_part());
   out << " ";
   visit(expr.get_last_part());
 }
 
-void ProgramPrinter::visit_slice_expr(const SliceExpression &expr)  {
+void ProgramPrinter::visit_slice_expr(const SliceExpression &expr) const {
   out << "SLICE " << expr.get_begin_index() << " " << expr.get_end_index() << " ";
   visit(expr.get_argument());
 }
 
-void ProgramPrinter::visit_select_expr(const SelectExpression &expr)  {
+void ProgramPrinter::visit_select_expr(const SelectExpression &expr) const {
   out << "SELECT " << expr.get_index() << " ";
   visit(expr.get_argument());
 }

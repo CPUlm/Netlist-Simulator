@@ -3,6 +3,7 @@
 #include "program_printer.hpp"
 #include "scheduler.hpp"
 #include "dot_printer.hpp"
+#include "simulator.hpp"
 
 #include <cassert>
 #include <fstream>
@@ -156,6 +157,9 @@ void compile_file(const std::filesystem::path &file_name, std::string_view file_
   std::cout << dot_file << std::endl;
   dot_ptr.print(f);
   f.close();
+
+  InputManager i;
+  Simulator s(ctx, i, program);
 }
 
 int main(int argc, const char *argv[]) {

@@ -31,6 +31,10 @@ add_library(netlistlib
 
         src/program_printer.hpp
         src/program_printer.cpp
+        src/simulator.cpp
+        src/simulator.hpp
+        src/input_manager.cpp
+        src/input_manager.hpp
 
 )
 

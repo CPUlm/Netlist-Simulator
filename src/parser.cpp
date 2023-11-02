@@ -51,7 +51,7 @@ template<typename T>
     c.report(ReportSeverity::ERROR)
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}", token.spelling, base)
-        .with_code(50)
+        .with_code(90)
         .build()
         .exit();
   } else if (ptr != data + token.spelling.size()) {
@@ -59,7 +59,7 @@ template<typename T>
         .with_location(token.position)
         .with_message("Error parsing value '{}' in base {}. Successfully parsed the value '{}' "
                       "but unable to parse this part : '{}'", token.spelling, base, v, ptr)
-        .with_code(51)
+        .with_code(91)
         .build()
         .exit();
   }
