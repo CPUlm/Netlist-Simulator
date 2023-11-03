@@ -41,7 +41,7 @@ void DependencyGraph::Builder::visit_not(const NotInstruction &inst) {
 }
 
 void DependencyGraph::Builder::visit_reg(const RegInstruction &inst) {
-  graph.add_dependency(inst.output, inst.input);
+  // graph.add_dependency(inst.output, inst.input);
 }
 
 void DependencyGraph::Builder::visit_mux(const MuxInstruction &inst) {
