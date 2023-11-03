@@ -4,6 +4,7 @@
 #include "simulator/simulator.hpp"
 
 #include <charconv>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 
@@ -13,6 +14,7 @@ struct CmdOptions {
   bool syntax_only = false;
   bool dependency_graph = false;
   bool schedule = false;
+  bool timeit = false;
   size_t cycles = 1;
 };
 
@@ -27,6 +29,7 @@ static void print_help(const char *argv0) {
   fmt::println("  --syntax-only          Only parses the input file, no scheduling or simulation is done.");
   fmt::println("  --dep-graph            Outputs the dependency graph of the program in Graphviz DOT format.");
   fmt::println("  --schedule             Outputs the scheduled program.");
+  fmt::println("  --timeit               Outputs the simulation measured time.");
   fmt::println("");
   fmt::println("List of backends:");
   fmt::println("  interpreter            The classical interpreter backend, slow but the more complete.");
@@ -74,7 +77,15 @@ static CmdOptions parse_cmd_args(ReportManager &reports, int argc, const char *a
           std::exit(EXIT_FAILURE);
         }
 
-        options.cycles = std::stoull(argv[i++]);
+        ++i;
+        std::string_view cycles = argv[i];
+        const auto result = std::from_chars(cycles.data(), cycles.data() + cycles.size(), options.cycles);
+        if (result.ec != std::errc() || result.ptr != cycles.data() + cycles.size()) {
+          reports.report(ReportSeverity::ERROR)
+              .with_message("invalid argument to `--cycles', expected an integer")
+              .finish()
+              .exit();
+        }
         continue;
       } else if (arg == "--backend") {
         if (i + 1 >= argc) {
@@ -96,6 +107,9 @@ static CmdOptions parse_cmd_args(ReportManager &reports, int argc, const char *a
         continue;
       } else if (arg == "--dep-graph") {
         options.dependency_graph = true;
+        continue;
+      } else if (arg == "--timeit") {
+        options.timeit = true;
         continue;
       }
     }
@@ -146,6 +160,16 @@ static CmdOptions parse_cmd_args(ReportManager &reports, int argc, const char *a
   }
   out.append(buf, 0, stream.gcount());
   return out;
+}
+
+[[nodiscard]] std::string format_duration(const std::chrono::duration<double>& dur) {
+  if (dur.count() < 1e-3) {
+    return fmt::format("{} ns", dur.count() * 1000000.0);
+  } else if (dur.count() < 1.0) {
+    return fmt::format("{} ms", dur.count() * 1000.0);
+  } else {
+    return fmt::format("{} s", dur.count());
+  }
 }
 
 int main(int argc, const char *argv[]) {
@@ -203,11 +227,18 @@ int main(int argc, const char *argv[]) {
         } while (has_error);
       }
 
+      const auto start = std::chrono::high_resolution_clock::now();
       simulator.execute(options.cycles);
+      const auto end = std::chrono::high_resolution_clock::now();
+      const std::chrono::duration<double> dur = end - start;
 
       fmt::println("Outputs:");
       for (const auto output_reg : program->get_outputs()) {
         fmt::println("  - {} = {:b}", program->get_reg_name(output_reg), simulator.get_register(output_reg));
+      }
+
+      if (options.timeit) {
+        fmt::println("The simulation took {}", format_duration(dur));
       }
     }
   }
