@@ -13,6 +13,7 @@ add_executable(
         lexer_test.cpp
         line_map_test.cpp
         report_test.cpp
+        simulator_test.cpp
 )
 
 target_link_libraries(
