@@ -391,7 +391,8 @@ std::pair<reg_value_t, bus_size_t> Parser::parse_constant(bus_size_t expected_bu
   if (expected_bus_size > 0 && bus_size.value() != expected_bus_size) {
     m_report_manager.report(ReportSeverity::ERROR)
         .with_location(integer_token.position)
-        .with_span({integer_token.position, (std::uint_least32_t)integer_token.spelling.size()}, "has a bus size of {} bit(s)", bus_size.value())
+        .with_span({integer_token.position, (std::uint_least32_t)integer_token.spelling.size()},
+                   "has a bus size of {} bit(s)", bus_size.value())
         .with_message("expected a bus size of {} bit(s)", expected_bus_size, bus_size.value())
         .finish()
         .exit();
@@ -538,6 +539,8 @@ reg_t Parser::parse_argument(bus_size_t expected_bus_size) {
   }
   default:
     unexpected_token_error(m_token, "a variable or a constant");
+    assert(false && "unreachable");
+    return {};
   }
 }
 
