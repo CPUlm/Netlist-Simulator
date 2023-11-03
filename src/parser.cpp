@@ -412,7 +412,7 @@ std::pair<reg_value_t, bus_size_t> Parser::parse_constant() {
 /// ```
 /// bus-size := INTEGER (without any radix prefix, in decimal)
 /// ```
-bus_size_t Parser::parse_bus_size() {
+bus_size_t Parser::parse_bus_size(bool as_index) {
   assert(m_token.kind == TokenKind::INTEGER);
 
   unsigned radix = get_integer_literal_radix(m_token.spelling);
@@ -433,20 +433,22 @@ bus_size_t Parser::parse_bus_size() {
   }
 
   // Check if the bus size is valid:
-  if (value > MAX_VARIABLE_SIZE) {
-    m_report_manager.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
-        .with_message("but size greater than {} bits is not allowed", MAX_VARIABLE_SIZE)
-        .finish()
-        .exit();
-  } else if (value == 0) {
-    m_report_manager.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
-        .with_message("but size 0 is not allowed")
-        .finish()
-        .exit();
+  if (!as_index) {
+    if (value > MAX_VARIABLE_SIZE) {
+      m_report_manager.report(ReportSeverity::ERROR)
+          .with_location(m_token.position)
+          .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+          .with_message("but size greater than {} bits is not allowed", MAX_VARIABLE_SIZE)
+          .finish()
+          .exit();
+    } else if (value == 0) {
+      m_report_manager.report(ReportSeverity::ERROR)
+          .with_location(m_token.position)
+          .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+          .with_message("but size 0 is not allowed")
+          .finish()
+          .exit();
+    }
   }
 
   consume(); // eat INTEGER
@@ -694,7 +696,7 @@ bool Parser::parse_select_expression(reg_t output_reg) {
     return false;
   }
 
-  const auto i = parse_bus_size();
+  const auto i = parse_bus_size(/*as_index=*/true);
 
   const auto input_reg = parse_argument();
   if (!input_reg.has_value())
@@ -718,14 +720,14 @@ bool Parser::parse_slice_expression(reg_t output_reg) {
     return false;
   }
 
-  const auto first = parse_bus_size();
+  const auto first = parse_bus_size(/*as_index=*/true);
 
   if (m_token.kind != TokenKind::INTEGER) {
     emit_unexpected_token_error(m_token, "an integer constant");
     return false;
   }
 
-  const auto end = parse_bus_size();
+  const auto end = parse_bus_size(/*as_index=*/true);
 
   const auto input_reg = parse_argument();
   if (!input_reg.has_value())

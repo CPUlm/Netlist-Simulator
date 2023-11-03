@@ -40,7 +40,7 @@ private:
   bool parse_variables();
 
   [[nodiscard]] std::pair<reg_value_t, bus_size_t> parse_constant();
-  [[nodiscard]] bus_size_t parse_bus_size();
+  [[nodiscard]] bus_size_t parse_bus_size(bool as_index = false);
   void check_invalid_digits(Token& token, unsigned radix);
 
   bool parse_equations();
