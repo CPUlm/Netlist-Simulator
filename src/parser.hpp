@@ -39,7 +39,9 @@ private:
   bool parse_outputs();
   bool parse_variables();
 
-  std::pair<reg_value_t, bus_size_t> parse_constant();
+  [[nodiscard]] std::pair<reg_value_t, bus_size_t> parse_constant();
+  [[nodiscard]] bus_size_t parse_bus_size();
+  void check_invalid_digits(Token& token, unsigned radix);
 
   bool parse_equations();
   bool parse_equation();

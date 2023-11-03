@@ -1,4 +1,5 @@
 #include "parser.hpp"
+#include "utils.hpp"
 
 #include <cassert>
 #include <charconv>
@@ -54,57 +55,20 @@ std::shared_ptr<Program> Parser::parse_program() {
 /// Grammar:
 /// ```
 /// opt-size-specifier := ":" INTEGER
-///                     | <no-size-specifier>
+///                     |
 /// ```
 std::optional<bus_size_t> Parser::parse_size_specifier() {
   if (m_token.kind != TokenKind::COLON)
     return std::nullopt;
 
-  m_lexer.set_default_radix(10);
-
-  consume(); // eat COLON and tokenize the eventual integer literal
-
-  m_lexer.set_default_radix(2);
+  consume(); // eat COLON
 
   if (m_token.kind != TokenKind::INTEGER) {
     emit_unexpected_token_error(m_token, "a bus size");
     return std::nullopt;
   }
 
-  const auto size_in_bits = parse_integer_literal<bus_size_t>(m_token.spelling, /* default_radix= */ 10);
-
-  const bool has_explicit_radix = get_integer_literal_radix(m_token.spelling) > 0;
-  if (has_explicit_radix) {
-    m_report_manager.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
-        .with_message("explicit radix forbidden for bus size constants")
-        .with_note("write `{}' instead", size_in_bits)
-        .finish()
-        .exit();
-  }
-
-  // Check if the size in bits is valid:
-  if (size_in_bits > MAX_VARIABLE_SIZE) {
-    m_report_manager.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
-        .with_message("variables of bit size greater than {} bits is not allowed", MAX_VARIABLE_SIZE)
-        .finish()
-        .exit();
-    return std::nullopt;
-  } else if (size_in_bits == 0) {
-    m_report_manager.report(ReportSeverity::ERROR)
-        .with_location(m_token.position)
-        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
-        .with_message("variables of bit size 0 is not allowed")
-        .finish()
-        .exit();
-    return std::nullopt;
-  }
-
-  consume(); // eat INTEGER
-  return size_in_bits;
+  return parse_bus_size();
 }
 
 /// Grammar:
@@ -117,7 +81,7 @@ std::optional<bus_size_t> Parser::parse_size_specifier() {
 bool Parser::parse_variables_common(bool allow_size_specifier,
                                     const std::function<bool(SourceLocation, std::string_view, size_t)> &handler) {
   if (m_token.kind != TokenKind::IDENTIFIER)
-    return true; // allow empty list
+    return true; // allow an empty list
 
   do {
     if (m_token.kind != TokenKind::IDENTIFIER) {
@@ -417,6 +381,11 @@ bool Parser::parse_expression(reg_t output_reg) {
 std::pair<reg_value_t, bus_size_t> Parser::parse_constant() {
   assert(m_token.kind == TokenKind::INTEGER);
 
+  unsigned radix = get_integer_literal_radix(m_token.spelling);
+  if (radix == 0)
+    radix = 2;
+
+  check_invalid_digits(m_token, radix);
   const auto integer_token = m_token;
   consume(); // eat INTEGER
 
@@ -441,8 +410,88 @@ std::pair<reg_value_t, bus_size_t> Parser::parse_constant() {
 
 /// Grammar:
 /// ```
-/// argument := IDENTIFIER
-///           | <constant>
+/// bus-size := INTEGER (without any radix prefix, in decimal)
+/// ```
+bus_size_t Parser::parse_bus_size() {
+  assert(m_token.kind == TokenKind::INTEGER);
+
+  unsigned radix = get_integer_literal_radix(m_token.spelling);
+  const bool has_prefix = radix > 0;
+  if (radix == 0)
+    radix = 10;
+
+  check_invalid_digits(m_token, radix);
+  const auto value = parse_integer_literal<bus_size_t>(m_token.spelling, radix);
+  if (has_prefix) {
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_span({m_token.position, (std::uint_least32_t)m_token.spelling.size()})
+        .with_message("explicit radix forbidden for bus size constants")
+        .with_note("write `{}' instead", value)
+        .finish()
+        .exit();
+  }
+
+  // Check if the bus size is valid:
+  if (value > MAX_VARIABLE_SIZE) {
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+        .with_message("but size greater than {} bits is not allowed", MAX_VARIABLE_SIZE)
+        .finish()
+        .exit();
+  } else if (value == 0) {
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+        .with_message("but size 0 is not allowed")
+        .finish()
+        .exit();
+  }
+
+  consume(); // eat INTEGER
+  return value;
+}
+
+void Parser::check_invalid_digits(Token &token, unsigned int radix) {
+  std::string_view spelling = m_token.spelling;
+  bool has_prefix = get_integer_literal_radix(spelling) > 0;
+  if (has_prefix)
+    spelling.remove_prefix(2);
+
+  for (uint32_t i = 0; i < spelling.size(); ++i) {
+    const char ch = spelling[i];
+    bool invalid_digit = false;
+    switch (radix) {
+    case 2:
+      invalid_digit = !is_bin_digit(ch);
+      break;
+    case 10:
+      invalid_digit = !is_digit(ch);
+      break;
+    case 16:
+      invalid_digit = !is_hex_digit(ch);
+      break;
+    default:
+      assert(false && "unreachable");
+    }
+
+    if (invalid_digit) {
+      m_report_manager.report(ReportSeverity::ERROR)
+          .with_location({m_token.position.offset + i})
+          .with_span({{m_token.position.offset + i}, 1})
+          .with_message("invalid digit in the constant")
+          .with_note("the radix of the constant is {}", radix)
+          .finish()
+          .exit();
+    }
+  }
+}
+
+/// Grammar:
+/// ```
+/// arg := IDENTIFIER
+///      | <constant>
 /// ```
 std::optional<reg_t> Parser::parse_argument() {
   switch (m_token.kind) {
@@ -507,7 +556,7 @@ bool Parser::parse_load_expression(reg_t output_reg) {
 
 /// Grammar:
 /// ```
-/// not-expression := "NOT" register
+/// not-expression := "NOT" <arg>
 /// ```
 bool Parser::parse_not_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_NOT);
@@ -539,7 +588,7 @@ bool Parser::parse_reg_expression(reg_t output_reg) {
 
 /// Grammar:
 /// ```
-/// binary-expression := binary-opcode register register
+/// binary-expression := binary-opcode <arg> <arg>
 ///
 /// binary-opcode := "AND"
 ///                | "NAND"
@@ -589,7 +638,7 @@ bool Parser::parse_binary_expression(reg_t output_reg) {
 
 /// Grammar:
 /// ```
-/// mux-expression := "MUX" register register register
+/// mux-expression := "MUX" <arg> <arg> <arg>
 /// ```
 bool Parser::parse_mux_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_MUX);
@@ -613,7 +662,7 @@ bool Parser::parse_mux_expression(reg_t output_reg) {
 
 /// Grammar:
 /// ```
-/// concat-expression := "CONCAT" register register
+/// concat-expression := "CONCAT" <arg> <arg>
 /// ```
 bool Parser::parse_concat_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_CONCAT);
@@ -633,10 +682,11 @@ bool Parser::parse_concat_expression(reg_t output_reg) {
 
 /// Grammar:
 /// ```
-/// slice-expression := "SELECT" INTEGER register
+/// slice-expression := "SELECT" <bus-size> <arg>
 /// ```
 bool Parser::parse_select_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_SELECT);
+
   consume(); // eat `SELECT`
 
   if (m_token.kind != TokenKind::INTEGER) {
@@ -644,8 +694,7 @@ bool Parser::parse_select_expression(reg_t output_reg) {
     return false;
   }
 
-  const auto i = parse_integer_literal<uint32_t>(m_token.spelling);
-  consume(); // eat INTEGER
+  const auto i = parse_bus_size();
 
   const auto input_reg = parse_argument();
   if (!input_reg.has_value())
@@ -657,10 +706,11 @@ bool Parser::parse_select_expression(reg_t output_reg) {
 
 /// Grammar:
 /// ```
-/// slice-expression := "SLICE" INTEGER INTEGER register
+/// slice-expression := "SLICE" <bus-size> <bus-size> <arg>
 /// ```
 bool Parser::parse_slice_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_SLICE);
+
   consume(); // eat `SLICE`
 
   if (m_token.kind != TokenKind::INTEGER) {
@@ -668,16 +718,14 @@ bool Parser::parse_slice_expression(reg_t output_reg) {
     return false;
   }
 
-  const auto first = parse_integer_literal<uint32_t>(m_token.spelling);
-  consume(); // eat INTEGER
+  const auto first = parse_bus_size();
 
   if (m_token.kind != TokenKind::INTEGER) {
     emit_unexpected_token_error(m_token, "an integer constant");
     return false;
   }
 
-  const auto end = parse_integer_literal<uint32_t>(m_token.spelling);
-  consume(); // eat INTEGER
+  const auto end = parse_bus_size();
 
   const auto input_reg = parse_argument();
   if (!input_reg.has_value())
@@ -689,10 +737,11 @@ bool Parser::parse_slice_expression(reg_t output_reg) {
 
 /// Grammar:
 /// ```
-/// ram-expression := "RAM" INTEGER INTEGER register
+/// ram-expression := "RAM" <bus-size> <bus-size> <arg>
 /// ```
 bool Parser::parse_rom_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_ROM);
+
   consume(); // eat `ROM`
 
   if (m_token.kind != TokenKind::INTEGER) {
@@ -700,16 +749,13 @@ bool Parser::parse_rom_expression(reg_t output_reg) {
     return false;
   }
 
-  const auto addr_size = parse_integer_literal<uint32_t>(m_token.spelling);
-  consume(); // eat INTEGER
-
+  const auto addr_size = parse_bus_size();
   if (m_token.kind != TokenKind::INTEGER) {
     emit_unexpected_token_error(m_token, "an integer constant");
     return false;
   }
 
-  const auto word_size = parse_integer_literal<uint32_t>(m_token.spelling);
-  consume(); // eat INTEGER
+  const auto word_size = parse_bus_size();
 
   const auto read_addr_reg = parse_argument();
   if (!read_addr_reg.has_value())
@@ -721,10 +767,11 @@ bool Parser::parse_rom_expression(reg_t output_reg) {
 
 /// Grammar:
 /// ```
-/// ram-expression := "RAM" INTEGER INTEGER register register register register
+/// ram-expression := "RAM" <bus-size> <bus-size> <arg> <arg> <arg> <arg>
 /// ```
 bool Parser::parse_ram_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_RAM);
+
   consume(); // eat `RAM`
 
   if (m_token.kind != TokenKind::INTEGER) {
@@ -732,16 +779,14 @@ bool Parser::parse_ram_expression(reg_t output_reg) {
     return false;
   }
 
-  const auto addr_size = parse_integer_literal<uint32_t>(m_token.spelling);
-  consume(); // eat INTEGER
+  const auto addr_size = parse_bus_size();
 
   if (m_token.kind != TokenKind::INTEGER) {
     emit_unexpected_token_error(m_token, "an integer constant");
     return false;
   }
 
-  const auto word_size = parse_integer_literal<uint32_t>(m_token.spelling);
-  consume(); // eat INTEGER
+  const auto word_size = parse_bus_size();
 
   const auto read_addr_reg = parse_argument();
   if (!read_addr_reg.has_value())

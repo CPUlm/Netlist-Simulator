@@ -22,11 +22,6 @@ public:
   /// generated, and all further calls will do the same.
   void tokenize(Token &token);
 
-  /// Sets the default radix to use for integer constants. For example,
-  /// when parsing a bus size you call this function with radix=10, but
-  /// when parsing a simple constant you call this function with radix=2.
-  void set_default_radix(unsigned radix) { m_default_radix = radix; }
-
 private:
   /// Just skip eagerly any whitespace found at the current position.
   void skip_whitespace();
@@ -46,7 +41,6 @@ private:
   ReportManager &m_report_manager;
   const char *m_input = nullptr;
   const char *m_cursor = nullptr;
-  unsigned m_default_radix = 2;
 };
 
 #endif // NETLIST_LEXER_HPP

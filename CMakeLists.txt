@@ -25,6 +25,7 @@ add_library(netlist_lib
         src/simulator/interpreter_backend.cpp
         src/dependency_graph.hpp
         src/dependency_graph.cpp
+        src/utils.hpp
 )
 
 add_subdirectory(fmt)

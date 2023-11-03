@@ -1,6 +1,6 @@
 #include "lexer.hpp"
-
 #include "keywords.hpp"
+#include "utils.hpp"
 
 #include <cassert>
 
@@ -20,21 +20,6 @@ Lexer::Lexer(ReportManager &report_manager, const char *input)
   default:
     return false;
   }
-}
-
-/// Returns true if the given ASCII character is a valid binary digit.
-[[nodiscard]] static inline bool is_bin_digit(char ch) {
-  return ch == '0' || ch == '1';
-}
-
-/// Returns true if the given ASCII character is a valid decimal digit.
-[[nodiscard]] static inline bool is_digit(char ch) {
-  return (ch >= '0' && ch <= '9');
-}
-
-/// Returns true if the given ASCII character is a valid hexadecimal digit.
-[[nodiscard]] static inline bool is_hex_digit(char ch) {
-  return is_digit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F');
 }
 
 /// Returns true if the given ASCII character is a valid first character for
@@ -162,27 +147,17 @@ void Lexer::tokenize_integer(Token &token) {
 
   const char *begin = m_cursor;
 
-  unsigned radix = m_default_radix;
   bool has_explicit_radix = false;
   if (*m_cursor == '0') {
     ++m_cursor;
     switch (*m_cursor) {
     case 'b':
     case 'B':
-      ++m_cursor;
-      radix = 2;
-      has_explicit_radix = true;
-      break;
     case 'd':
     case 'D':
-      ++m_cursor;
-      radix = 10;
-      has_explicit_radix = true;
-      break;
     case 'x':
     case 'X':
       ++m_cursor;
-      radix = 16;
       has_explicit_radix = true;
       break;
     }
@@ -200,34 +175,9 @@ void Lexer::tokenize_integer(Token &token) {
   // This never read past the end of the input because each input buffer is
   // guaranteed to be terminated by the NUL character and is_digit() returns
   // false for such a character.
-  while (is_hex_digit(*m_cursor)) {
-    bool invalid_digit = false;
-    switch (radix) {
-    case 2:
-      invalid_digit = !is_bin_digit(*m_cursor);
-      break;
-    case 10:
-      invalid_digit = !is_digit(*m_cursor);
-      break;
-    case 16:
-      invalid_digit = !is_hex_digit(*m_cursor);
-      break;
-    default:
-      assert(false && "unreachable");
-    }
-
-    if (invalid_digit) {
-      m_report_manager.report(ReportSeverity::ERROR)
-          .with_location(get_current_location())
-          .with_span({get_current_location(), 1})
-          .with_message("invalid digit in the constant")
-          .with_note("the radix of the constant is {}", radix)
-          .finish()
-          .exit();
-    }
-
+  // We are permissive here, the parser will detect invalid digits.
+  while (is_hex_digit(*m_cursor))
     ++m_cursor;
-  }
 
   const char *end = m_cursor;
 
