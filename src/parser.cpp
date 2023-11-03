@@ -1,16 +1,42 @@
 #include "parser.hpp"
 
 #include <cassert>
+#include <charconv>
 
-template <typename T> [[nodiscard]] static T parse_integer_literal(std::string_view literal) {
-  // TODO(hgruniaux): use std::from_chars, implements binary, hexadecimal, decimal parsing
-
-  T value = 0;
-  for (char ch : literal) {
-    value *= 10;
-    value += ch - '0';
+/// Returns the radix of the given integer literal if explicitly written.
+/// Otherwise returns 0.
+[[nodiscard]] static unsigned get_integer_literal_radix(std::string_view literal) {
+  if (literal.size() > 2) {
+    switch (literal[1]) {
+    case 'b':
+    case 'B':
+      return 2;
+    case 'd':
+    case 'D':
+      return 10;
+    case 'x':
+    case 'X':
+      return 16;
+    }
   }
 
+  return 0;
+}
+
+template <typename T>
+[[nodiscard]] static T parse_integer_literal(std::string_view literal, unsigned default_radix = 2) {
+  unsigned radix = get_integer_literal_radix(literal);
+  if (radix > 0)
+    literal.remove_prefix(2);
+  else
+    radix = default_radix;
+
+  T value;
+  // We must use data() and data() + size() instead of begin() and end() because
+  // some standard implementations return special iterators (for debugging purposes) instead of raw pointers.
+  const auto result = std::from_chars(literal.data(), literal.data() + literal.size(), value, radix);
+  // The lexer have already checked the syntax.
+  assert((result.ec == std::errc{}) && (result.ptr == (literal.data() + literal.size())));
   return value;
 }
 
@@ -34,14 +60,29 @@ std::optional<size_t> Parser::parse_size_specifier() {
   if (m_token.kind != TokenKind::COLON)
     return 1; // the default size is 1 bit
 
-  consume(); // eat COLON
+  m_lexer.set_default_radix(10);
+
+  consume(); // eat COLON and tokenize the eventual integer literal
+
+  m_lexer.set_default_radix(2);
 
   if (m_token.kind != TokenKind::INTEGER) {
     emit_unexpected_token_error(m_token, "an integer literal");
     return std::nullopt;
   }
 
-  const auto size_in_bits = parse_integer_literal<size_t>(m_token.spelling);
+  const auto size_in_bits = parse_integer_literal<size_t>(m_token.spelling, /* default_radix= */ 10);
+
+  const bool has_explicit_radix = get_integer_literal_radix(m_token.spelling) > 0;
+  if (has_explicit_radix) {
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+        .with_message("explicit radix forbidden for bus size constants")
+        .with_note("write `{}' instead", size_in_bits)
+        .finish()
+        .exit();
+  }
 
   // Check if the size in bits is valid:
   if (size_in_bits > MAX_VARIABLE_SIZE) {
