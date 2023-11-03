@@ -107,7 +107,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   void visit_concat(const ConcatInstruction &inst) override {
     const auto lhs = registers_value[inst.lhs.index];
     const auto rhs = registers_value[inst.rhs.index];
-    registers_value[inst.output.index] = (lhs << inst.offset) | rhs;
+    registers_value[inst.output.index] = lhs | (rhs << inst.offset);
   }
 
   void visit_reg(const RegInstruction &inst) override {

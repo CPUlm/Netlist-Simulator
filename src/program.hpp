@@ -110,7 +110,7 @@ struct MuxInstruction : Instruction {
 struct ConcatInstruction : Instruction {
   reg_t lhs = {};
   reg_t rhs = {};
-  // How many bits should LHS be shifted? This corresponds to the bus size of RHS.
+  // How many bits should RHS be shifted? This corresponds to the bus size of LHS.
   bus_size_t offset = 0;
 
   void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_concat(*this); }
