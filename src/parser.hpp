@@ -46,6 +46,7 @@ private:
   void parse_equations();
   void parse_equation();
   void parse_expression(reg_t output);
+  [[nodiscard]] reg_t parse_register();
   [[nodiscard]] reg_t parse_argument();
   void parse_const_expression(reg_t output);
   void parse_load_expression(reg_t output);

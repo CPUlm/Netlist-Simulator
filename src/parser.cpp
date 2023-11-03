@@ -65,11 +65,6 @@ std::optional<bus_size_t> Parser::parse_size_specifier() {
 
   consume(); // eat COLON
 
-  if (m_token.kind != TokenKind::INTEGER) {
-    unexpected_token_error(m_token, "a bus size");
-    return std::nullopt;
-  }
-
   return parse_bus_size();
 }
 
@@ -401,7 +396,8 @@ std::pair<reg_value_t, bus_size_t> Parser::parse_constant() {
 /// bus-size := INTEGER (without any radix prefix, in decimal)
 /// ```
 bus_size_t Parser::parse_bus_size(bool as_index) {
-  assert(m_token.kind == TokenKind::INTEGER);
+  if (m_token.kind != TokenKind::INTEGER)
+    unexpected_token_error(m_token, "a decimal integer constant");
 
   unsigned radix = get_integer_literal_radix(m_token.spelling);
   const bool has_prefix = radix > 0;
@@ -480,25 +476,35 @@ void Parser::check_invalid_digits(Token &token, unsigned int radix) {
 
 /// Grammar:
 /// ```
-/// arg := IDENTIFIER
+/// register := IDENTIFIER
+/// ```
+[[nodiscard]] reg_t Parser::parse_register() {
+  if (m_token.kind != TokenKind::IDENTIFIER)
+    unexpected_token_error(m_token, "a register");
+
+  const auto it = m_variables.find(m_token.spelling);
+  if (it == m_variables.end()) {
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+        .with_message("variable `{}' not found", m_token.spelling)
+        .finish()
+        .exit();
+  }
+
+  consume(); // eat IDENTIFIER
+  return it->second.reg;
+}
+
+/// Grammar:
+/// ```
+/// arg := <register>
 ///      | <constant>
 /// ```
 reg_t Parser::parse_argument() {
   switch (m_token.kind) {
-  case TokenKind::IDENTIFIER: {
-    const auto it = m_variables.find(m_token.spelling);
-    if (it == m_variables.end()) {
-      m_report_manager.report(ReportSeverity::ERROR)
-          .with_location(m_token.position)
-          .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
-          .with_message("variable `{}' not found", m_token.spelling)
-          .finish()
-          .exit();
-    }
-
-    consume(); // eat IDENTIFIER
-    return it->second.reg;
-  }
+  case TokenKind::IDENTIFIER:
+    return parse_register();
   case TokenKind::INTEGER: {
     // For the following code: output = AND a 0110
     // We generate something like that:
@@ -521,7 +527,6 @@ reg_t Parser::parse_argument() {
 /// ```
 void Parser::parse_const_expression(reg_t output) {
   assert(m_token.kind == TokenKind::INTEGER);
-
   const auto [value, bus_size] = parse_constant();
   m_program_builder.add_const(output, value);
 }
@@ -532,8 +537,7 @@ void Parser::parse_const_expression(reg_t output) {
 /// ```
 void Parser::parse_load_expression(reg_t output) {
   assert(m_token.kind == TokenKind::IDENTIFIER);
-
-  const auto input = parse_argument();
+  const auto input = parse_register();
   m_program_builder.add_load(output, input);
 }
 
@@ -551,13 +555,13 @@ void Parser::parse_not_expression(reg_t output) {
 
 /// Grammar:
 /// ```
-/// reg-expression := "REG" register
+/// reg-expression := "REG" <register>
 /// ```
 void Parser::parse_reg_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_REG);
   consume(); // eat `REG`
 
-  auto input = parse_argument();
+  auto input = parse_register();
   m_program_builder.add_reg(output, input);
 }
 
@@ -640,10 +644,6 @@ void Parser::parse_select_expression(reg_t output) {
 
   consume(); // eat `SELECT`
 
-  if (m_token.kind != TokenKind::INTEGER) {
-    unexpected_token_error(m_token, "an integer constant");
-  }
-
   const auto i = parse_bus_size(/*as_index=*/true);
   const auto input = parse_argument();
 
@@ -659,16 +659,7 @@ void Parser::parse_slice_expression(reg_t output) {
 
   consume(); // eat `SLICE`
 
-  if (m_token.kind != TokenKind::INTEGER) {
-    unexpected_token_error(m_token, "an integer constant");
-  }
-
   const auto start = parse_bus_size(/*as_index=*/true);
-
-  if (m_token.kind != TokenKind::INTEGER) {
-    unexpected_token_error(m_token, "an integer constant");
-  }
-
   const auto end = parse_bus_size(/*as_index=*/true);
   const auto input = parse_argument();
 
@@ -684,15 +675,7 @@ void Parser::parse_rom_expression(reg_t output) {
 
   consume(); // eat `ROM`
 
-  if (m_token.kind != TokenKind::INTEGER) {
-    unexpected_token_error(m_token, "an integer constant");
-  }
-
   const auto addr_size = parse_bus_size();
-  if (m_token.kind != TokenKind::INTEGER) {
-    unexpected_token_error(m_token, "an integer constant");
-  }
-
   const auto word_size = parse_bus_size();
   const auto read_addr = parse_argument();
 
@@ -708,16 +691,7 @@ void Parser::parse_ram_expression(reg_t output) {
 
   consume(); // eat `RAM`
 
-  if (m_token.kind != TokenKind::INTEGER) {
-    unexpected_token_error(m_token, "an integer constant");
-  }
-
   const auto addr_size = parse_bus_size();
-
-  if (m_token.kind != TokenKind::INTEGER) {
-    unexpected_token_error(m_token, "an integer constant");
-  }
-
   const auto word_size = parse_bus_size();
   const auto read_addr = parse_argument();
   const auto write_enable = parse_argument();
