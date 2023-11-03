@@ -33,33 +33,33 @@ private:
 
   static constexpr size_t MAX_VARIABLE_SIZE = 64;
   std::optional<bus_size_t> parse_size_specifier();
-  bool parse_variables_common(bool allow_size_specifier,
+  void parse_variables_common(bool allow_size_specifier,
                               const std::function<bool(SourceLocation, std::string_view, size_t)> &handler);
-  bool parse_inputs();
-  bool parse_outputs();
-  bool parse_variables();
+  void parse_inputs();
+  void parse_outputs();
+  void parse_variables();
 
   [[nodiscard]] std::pair<reg_value_t, bus_size_t> parse_constant();
   [[nodiscard]] bus_size_t parse_bus_size(bool as_index = false);
   void check_invalid_digits(Token& token, unsigned radix);
 
-  bool parse_equations();
-  bool parse_equation();
-  bool parse_expression(reg_t output_reg);
-  std::optional<reg_t> parse_argument();
-  bool parse_const_expression(reg_t output_reg);
-  bool parse_load_expression(reg_t output_reg);
-  bool parse_not_expression(reg_t output_reg);
-  bool parse_reg_expression(reg_t output_reg);
-  bool parse_binary_expression(reg_t output_reg);
-  bool parse_mux_expression(reg_t output_reg);
-  bool parse_concat_expression(reg_t output_reg);
-  bool parse_select_expression(reg_t output_reg);
-  bool parse_slice_expression(reg_t output_reg);
-  bool parse_rom_expression(reg_t output_reg);
-  bool parse_ram_expression(reg_t output_reg);
+  void parse_equations();
+  void parse_equation();
+  void parse_expression(reg_t output);
+  [[nodiscard]] reg_t parse_argument();
+  void parse_const_expression(reg_t output);
+  void parse_load_expression(reg_t output);
+  void parse_not_expression(reg_t output);
+  void parse_reg_expression(reg_t output);
+  void parse_binary_expression(reg_t output);
+  void parse_mux_expression(reg_t output);
+  void parse_concat_expression(reg_t output);
+  void parse_select_expression(reg_t output);
+  void parse_slice_expression(reg_t output);
+  void parse_rom_expression(reg_t output);
+  void parse_ram_expression(reg_t output);
 
-  void emit_unexpected_token_error(const Token &token, std::string_view expected_token_name);
+  void unexpected_token_error(const Token &token, std::string_view expected_token_name);
 
 private:
   ReportManager &m_report_manager;

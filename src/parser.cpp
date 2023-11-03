@@ -47,8 +47,10 @@ Parser::Parser(ReportManager &report_manager, Lexer &lexer) : m_report_manager(r
 }
 
 std::shared_ptr<Program> Parser::parse_program() {
-  if (!(parse_inputs() && parse_outputs() && parse_variables() && parse_equations()))
-    return nullptr;
+  parse_inputs();
+  parse_outputs();
+  parse_variables();
+  parse_equations();
   return m_program_builder.build();
 }
 
@@ -64,7 +66,7 @@ std::optional<bus_size_t> Parser::parse_size_specifier() {
   consume(); // eat COLON
 
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "a bus size");
+    unexpected_token_error(m_token, "a bus size");
     return std::nullopt;
   }
 
@@ -78,15 +80,14 @@ std::optional<bus_size_t> Parser::parse_size_specifier() {
 ///                     | variable-decl-list "," variable-decl
 ///                     |
 /// ```
-bool Parser::parse_variables_common(bool allow_size_specifier,
+void Parser::parse_variables_common(bool allow_size_specifier,
                                     const std::function<bool(SourceLocation, std::string_view, size_t)> &handler) {
   if (m_token.kind != TokenKind::IDENTIFIER)
-    return true; // allow an empty list
+    return; // allow an empty list
 
   do {
     if (m_token.kind != TokenKind::IDENTIFIER) {
-      emit_unexpected_token_error(m_token, "a comma");
-      return false;
+      unexpected_token_error(m_token, "a comma");
     }
 
     SourceLocation variable_location = m_token.position;
@@ -104,13 +105,13 @@ bool Parser::parse_variables_common(bool allow_size_specifier,
     }
 
     if (!handler(variable_location, variable_name, size_specifier.value()))
-      return false;
+      return;
 
     if (m_token.kind == TokenKind::COMMA) {
       consume(); // eat COMMA
       continue;
     } else {
-      return true;
+      return;
     }
   } while (true);
 }
@@ -119,10 +120,9 @@ bool Parser::parse_variables_common(bool allow_size_specifier,
 /// ```
 /// inputs := "INPUT" variable-decl-list
 /// ```
-bool Parser::parse_inputs() {
+void Parser::parse_inputs() {
   if (m_token.kind != TokenKind::KEY_INPUT) {
-    emit_unexpected_token_error(m_token, "the keyword `INPUT'");
-    return false;
+    unexpected_token_error(m_token, "the keyword `INPUT'");
   }
 
   consume(); // eat `INPUT`
@@ -154,10 +154,9 @@ bool Parser::parse_inputs() {
 /// ```
 /// outputs := "OUTPUT" variable-decl-list
 /// ```
-bool Parser::parse_outputs() {
+void Parser::parse_outputs() {
   if (m_token.kind != TokenKind::KEY_OUTPUT) {
-    emit_unexpected_token_error(m_token, "the keyword `OUTPUT'");
-    return false;
+    unexpected_token_error(m_token, "the keyword `OUTPUT'");
   }
 
   consume(); // eat `OUTPUT`
@@ -193,10 +192,9 @@ bool Parser::parse_outputs() {
 /// ```
 /// variables := "VAR" variable-decl-list
 /// ```
-bool Parser::parse_variables() {
+void Parser::parse_variables() {
   if (m_token.kind != TokenKind::KEY_VAR) {
-    emit_unexpected_token_error(m_token, "the keyword `VAR'");
-    return false;
+    unexpected_token_error(m_token, "the keyword `VAR'");
   }
 
   consume(); // eat `VAR`
@@ -244,30 +242,25 @@ bool Parser::parse_variables() {
 /// equation-list := equation
 ///                | equation-list equation
 /// ```
-bool Parser::parse_equations() {
+void Parser::parse_equations() {
   // We expect the `IN` keyword, but if it's absent we just pretend it's there.
   if (m_token.kind != TokenKind::KEY_IN) {
-    emit_unexpected_token_error(m_token, "the keyword `IN'");
+    unexpected_token_error(m_token, "the keyword `IN'");
   } else {
     consume(); // eat `IN`
   }
 
-  bool ok = true;
-  while (m_token.kind != TokenKind::EOI && (ok &= parse_equation()))
-    ;
-
-  return ok;
+  while (m_token.kind != TokenKind::EOI)
+    parse_equation();
 }
 
 /// Grammar:
 /// ```
 /// equation := IDENTIFIER "=" expression
 /// ```
-bool Parser::parse_equation() {
-  if (m_token.kind != TokenKind::IDENTIFIER) {
-    emit_unexpected_token_error(m_token, "an equation label");
-    return false;
-  }
+void Parser::parse_equation() {
+  if (m_token.kind != TokenKind::IDENTIFIER)
+    unexpected_token_error(m_token, "an equation label");
 
   std::string_view variable_label = m_token.spelling;
   auto it = m_variables.find(variable_label);
@@ -278,7 +271,6 @@ bool Parser::parse_equation() {
         .with_message("equation label `{}' not declared inside `VAR' declaration", variable_label)
         .finish()
         .exit();
-    return false;
   } else if (it->second.is_input) {
     m_report_manager.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
@@ -286,20 +278,17 @@ bool Parser::parse_equation() {
         .with_message("cannot assign an expression to the input variable `{}'", variable_label)
         .finish()
         .exit();
-    return false;
   }
 
   consume(); // eat IDENTIFIER
 
-  if (m_token.kind != TokenKind::EQUAL) {
-    emit_unexpected_token_error(m_token, "a `=' followed by an expression`");
-    return false;
-  }
+  if (m_token.kind != TokenKind::EQUAL)
+    unexpected_token_error(m_token, "a `=' followed by an expression`");
 
   consume(); // eat `=`
 
   reg_t output_reg = it->second.reg;
-  return parse_expression(output_reg);
+  parse_expression(output_reg);
 }
 
 /// Grammar:
@@ -316,35 +305,35 @@ bool Parser::parse_equation() {
 ///             | ram-expression
 ///             | rom-expression
 /// ```
-bool Parser::parse_expression(reg_t output_reg) {
+void Parser::parse_expression(reg_t output) {
   switch (m_token.kind) {
   case TokenKind::INTEGER:
-    return parse_const_expression(output_reg);
+    return parse_const_expression(output);
   case TokenKind::IDENTIFIER:
-    return parse_load_expression(output_reg);
+    return parse_load_expression(output);
   case TokenKind::KEY_NOT:
-    return parse_not_expression(output_reg);
+    return parse_not_expression(output);
   case TokenKind::KEY_REG:
-    return parse_reg_expression(output_reg);
+    return parse_reg_expression(output);
   case TokenKind::KEY_AND:
   case TokenKind::KEY_NAND:
   case TokenKind::KEY_OR:
   case TokenKind::KEY_NOR:
   case TokenKind::KEY_XOR:
   case TokenKind::KEY_XNOR:
-    return parse_binary_expression(output_reg);
+    return parse_binary_expression(output);
   case TokenKind::KEY_MUX:
-    return parse_mux_expression(output_reg);
+    return parse_mux_expression(output);
   case TokenKind::KEY_CONCAT:
-    return parse_concat_expression(output_reg);
+    return parse_concat_expression(output);
   case TokenKind::KEY_SELECT:
-    return parse_select_expression(output_reg);
+    return parse_select_expression(output);
   case TokenKind::KEY_SLICE:
-    return parse_slice_expression(output_reg);
+    return parse_slice_expression(output);
   case TokenKind::KEY_RAM:
-    return parse_ram_expression(output_reg);
+    return parse_ram_expression(output);
   case TokenKind::KEY_ROM:
-    return parse_rom_expression(output_reg);
+    return parse_rom_expression(output);
   default:
     m_report_manager.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
@@ -352,7 +341,6 @@ bool Parser::parse_expression(reg_t output_reg) {
         .with_message("invalid expression, expected an operator or a constant")
         .finish()
         .exit();
-    return false;
   }
 }
 
@@ -456,7 +444,7 @@ bus_size_t Parser::parse_bus_size(bool as_index) {
 }
 
 void Parser::check_invalid_digits(Token &token, unsigned int radix) {
-  std::string_view spelling = m_token.spelling;
+  std::string_view spelling = token.spelling;
   bool has_prefix = get_integer_literal_radix(spelling) > 0;
   if (has_prefix)
     spelling.remove_prefix(2);
@@ -480,8 +468,8 @@ void Parser::check_invalid_digits(Token &token, unsigned int radix) {
 
     if (invalid_digit) {
       m_report_manager.report(ReportSeverity::ERROR)
-          .with_location({m_token.position.offset + i})
-          .with_span({{m_token.position.offset + i}, 1})
+          .with_location({token.position.offset + i})
+          .with_span({{token.position.offset + i}, 1})
           .with_message("invalid digit in the constant")
           .with_note("the radix of the constant is {}", radix)
           .finish()
@@ -495,7 +483,7 @@ void Parser::check_invalid_digits(Token &token, unsigned int radix) {
 /// arg := IDENTIFIER
 ///      | <constant>
 /// ```
-std::optional<reg_t> Parser::parse_argument() {
+reg_t Parser::parse_argument() {
   switch (m_token.kind) {
   case TokenKind::IDENTIFIER: {
     const auto it = m_variables.find(m_token.spelling);
@@ -506,7 +494,6 @@ std::optional<reg_t> Parser::parse_argument() {
           .with_message("variable `{}' not found", m_token.spelling)
           .finish()
           .exit();
-      return std::nullopt;
     }
 
     consume(); // eat IDENTIFIER
@@ -524,8 +511,7 @@ std::optional<reg_t> Parser::parse_argument() {
     return reg;
   }
   default:
-    emit_unexpected_token_error(m_token, "a variable or a constant");
-    return std::nullopt;
+    unexpected_token_error(m_token, "a variable or a constant");
   }
 }
 
@@ -533,59 +519,46 @@ std::optional<reg_t> Parser::parse_argument() {
 /// ```
 /// const-expression := <constant>
 /// ```
-bool Parser::parse_const_expression(reg_t output_reg) {
+void Parser::parse_const_expression(reg_t output) {
   assert(m_token.kind == TokenKind::INTEGER);
 
   const auto [value, bus_size] = parse_constant();
-  m_program_builder.add_const(output_reg, value);
-  return true;
+  m_program_builder.add_const(output, value);
 }
 
 /// Grammar:
 /// ```
 /// load-expression := <register>
 /// ```
-bool Parser::parse_load_expression(reg_t output_reg) {
+void Parser::parse_load_expression(reg_t output) {
   assert(m_token.kind == TokenKind::IDENTIFIER);
 
-  const auto input_reg = parse_argument();
-  if (!input_reg.has_value())
-    return false;
-
-  m_program_builder.add_load(output_reg, input_reg.value());
-  return true;
+  const auto input = parse_argument();
+  m_program_builder.add_load(output, input);
 }
 
 /// Grammar:
 /// ```
 /// not-expression := "NOT" <arg>
 /// ```
-bool Parser::parse_not_expression(reg_t output_reg) {
+void Parser::parse_not_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_NOT);
   consume(); // eat `NOT`
 
-  auto input_reg = parse_argument();
-  if (!input_reg.has_value())
-    return false;
-
-  m_program_builder.add_not(output_reg, input_reg.value());
-  return true;
+  auto input = parse_argument();
+  m_program_builder.add_not(output, input);
 }
 
 /// Grammar:
 /// ```
 /// reg-expression := "REG" register
 /// ```
-bool Parser::parse_reg_expression(reg_t output_reg) {
+void Parser::parse_reg_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_REG);
   consume(); // eat `REG`
 
-  auto input_reg = parse_argument();
-  if (!input_reg.has_value())
-    return false;
-
-  m_program_builder.add_reg(output_reg, input_reg.value());
-  return true;
+  auto input = parse_argument();
+  m_program_builder.add_reg(output, input);
 }
 
 /// Grammar:
@@ -599,223 +572,166 @@ bool Parser::parse_reg_expression(reg_t output_reg) {
 ///                | "XOR"
 ///                | "XNOR"
 /// ```
-bool Parser::parse_binary_expression(reg_t output_reg) {
+void Parser::parse_binary_expression(reg_t output) {
   auto token_kind = m_token.kind;
   consume(); // eat the binary operator keyword
 
   auto lhs_reg = parse_argument();
-  if (!lhs_reg.has_value())
-    return false;
-
   auto rhs_reg = parse_argument();
-  if (!rhs_reg.has_value())
-    return false;
 
   switch (token_kind) {
   case TokenKind::KEY_AND:
-    m_program_builder.add_and(output_reg, lhs_reg.value(), rhs_reg.value());
+    m_program_builder.add_and(output, lhs_reg, rhs_reg);
     break;
   case TokenKind::KEY_NAND:
-    m_program_builder.add_nand(output_reg, lhs_reg.value(), rhs_reg.value());
+    m_program_builder.add_nand(output, lhs_reg, rhs_reg);
     break;
   case TokenKind::KEY_OR:
-    m_program_builder.add_or(output_reg, lhs_reg.value(), rhs_reg.value());
+    m_program_builder.add_or(output, lhs_reg, rhs_reg);
     break;
   case TokenKind::KEY_NOR:
-    m_program_builder.add_nor(output_reg, lhs_reg.value(), rhs_reg.value());
+    m_program_builder.add_nor(output, lhs_reg, rhs_reg);
     break;
   case TokenKind::KEY_XOR:
-    m_program_builder.add_xor(output_reg, lhs_reg.value(), rhs_reg.value());
+    m_program_builder.add_xor(output, lhs_reg, rhs_reg);
     break;
   case TokenKind::KEY_XNOR:
-    m_program_builder.add_xnor(output_reg, lhs_reg.value(), rhs_reg.value());
+    m_program_builder.add_xnor(output, lhs_reg, rhs_reg);
     break;
   default:
     assert(false && "unreachable code");
     break;
   }
-
-  return true;
 }
 
 /// Grammar:
 /// ```
 /// mux-expression := "MUX" <arg> <arg> <arg>
 /// ```
-bool Parser::parse_mux_expression(reg_t output_reg) {
+void Parser::parse_mux_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_MUX);
   consume(); // eat `MUX`
 
-  auto choice_reg = parse_argument();
-  if (!choice_reg.has_value())
-    return false;
-
-  auto first_reg = parse_argument();
-  if (!first_reg.has_value())
-    return false;
-
-  auto second_reg = parse_argument();
-  if (!second_reg.has_value())
-    return false;
-
-  m_program_builder.add_mux(output_reg, choice_reg.value(), first_reg.value(), second_reg.value());
-  return true;
+  auto choice = parse_argument();
+  auto first = parse_argument();
+  auto second = parse_argument();
+  m_program_builder.add_mux(output, choice, first, second);
 }
 
 /// Grammar:
 /// ```
 /// concat-expression := "CONCAT" <arg> <arg>
 /// ```
-bool Parser::parse_concat_expression(reg_t output_reg) {
+void Parser::parse_concat_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_CONCAT);
   consume(); // eat `CONCAT`
 
-  auto lhs_reg = parse_argument();
-  if (!lhs_reg.has_value())
-    return false;
-
-  auto rhs_reg = parse_argument();
-  if (!rhs_reg.has_value())
-    return false;
-
-  m_program_builder.add_concat(output_reg, lhs_reg.value(), rhs_reg.value());
-  return true;
+  auto lhs = parse_argument();
+  auto rhs = parse_argument();
+  m_program_builder.add_concat(output, lhs, rhs);
 }
 
 /// Grammar:
 /// ```
 /// slice-expression := "SELECT" <bus-size> <arg>
 /// ```
-bool Parser::parse_select_expression(reg_t output_reg) {
+void Parser::parse_select_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_SELECT);
 
   consume(); // eat `SELECT`
 
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "an integer constant");
-    return false;
+    unexpected_token_error(m_token, "an integer constant");
   }
 
   const auto i = parse_bus_size(/*as_index=*/true);
+  const auto input = parse_argument();
 
-  const auto input_reg = parse_argument();
-  if (!input_reg.has_value())
-    return false;
-
-  m_program_builder.add_select(output_reg, i, input_reg.value());
-  return true;
+  m_program_builder.add_select(output, i, input);
 }
 
 /// Grammar:
 /// ```
 /// slice-expression := "SLICE" <bus-size> <bus-size> <arg>
 /// ```
-bool Parser::parse_slice_expression(reg_t output_reg) {
+void Parser::parse_slice_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_SLICE);
 
   consume(); // eat `SLICE`
 
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "an integer constant");
-    return false;
+    unexpected_token_error(m_token, "an integer constant");
   }
 
-  const auto first = parse_bus_size(/*as_index=*/true);
+  const auto start = parse_bus_size(/*as_index=*/true);
 
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "an integer constant");
-    return false;
+    unexpected_token_error(m_token, "an integer constant");
   }
 
   const auto end = parse_bus_size(/*as_index=*/true);
+  const auto input = parse_argument();
 
-  const auto input_reg = parse_argument();
-  if (!input_reg.has_value())
-    return false;
-
-  m_program_builder.add_slice(output_reg, first, end, input_reg.value());
-  return true;
+  m_program_builder.add_slice(output, start, end, input);
 }
 
 /// Grammar:
 /// ```
 /// ram-expression := "RAM" <bus-size> <bus-size> <arg>
 /// ```
-bool Parser::parse_rom_expression(reg_t output_reg) {
+void Parser::parse_rom_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_ROM);
 
   consume(); // eat `ROM`
 
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "an integer constant");
-    return false;
+    unexpected_token_error(m_token, "an integer constant");
   }
 
   const auto addr_size = parse_bus_size();
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "an integer constant");
-    return false;
+    unexpected_token_error(m_token, "an integer constant");
   }
 
   const auto word_size = parse_bus_size();
+  const auto read_addr = parse_argument();
 
-  const auto read_addr_reg = parse_argument();
-  if (!read_addr_reg.has_value())
-    return false;
-
-  m_program_builder.add_rom(output_reg, addr_size, word_size, read_addr_reg.value());
-  return true;
+  m_program_builder.add_rom(output, addr_size, word_size, read_addr);
 }
 
 /// Grammar:
 /// ```
 /// ram-expression := "RAM" <bus-size> <bus-size> <arg> <arg> <arg> <arg>
 /// ```
-bool Parser::parse_ram_expression(reg_t output_reg) {
+void Parser::parse_ram_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_RAM);
 
   consume(); // eat `RAM`
 
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "an integer constant");
-    return false;
+    unexpected_token_error(m_token, "an integer constant");
   }
 
   const auto addr_size = parse_bus_size();
 
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "an integer constant");
-    return false;
+    unexpected_token_error(m_token, "an integer constant");
   }
 
   const auto word_size = parse_bus_size();
+  const auto read_addr = parse_argument();
+  const auto write_enable = parse_argument();
+  const auto write_addr = parse_argument();
+  const auto write_data = parse_argument();
 
-  const auto read_addr_reg = parse_argument();
-  if (!read_addr_reg.has_value())
-    return false;
-
-  const auto write_enable_reg = parse_argument();
-  if (!write_enable_reg.has_value())
-    return false;
-
-  const auto write_addr_reg = parse_argument();
-  if (!write_addr_reg.has_value())
-    return false;
-
-  const auto write_data_reg = parse_argument();
-  if (!write_data_reg.has_value())
-    return false;
-
-  m_program_builder.add_ram(output_reg, addr_size, word_size, read_addr_reg.value(), write_enable_reg.value(),
-                            write_addr_reg.value(), write_data_reg.value());
-  return true;
+  m_program_builder.add_ram(output, addr_size, word_size, read_addr, write_enable, write_addr, write_data);
 }
 
 void Parser::consume() {
   m_lexer.tokenize(m_token);
 }
 
-void Parser::emit_unexpected_token_error(const Token &token, std::string_view expected_token_name) {
+void Parser::unexpected_token_error(const Token &token, std::string_view expected_token_name) {
   m_report_manager.report(ReportSeverity::ERROR)
       .with_location(token.position)
       .with_span({token.position, (uint32_t)token.spelling.size()})
