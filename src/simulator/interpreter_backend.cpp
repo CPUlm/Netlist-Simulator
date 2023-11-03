@@ -12,6 +12,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   std::unique_ptr<reg_value_t[]> registers_value;
   std::unique_ptr<reg_value_t[]> previous_registers_value;
   std::unique_ptr<std::unique_ptr<reg_value_t[]>[]> memory_blocks;
+  std::unique_ptr<std::unique_ptr<reg_value_t[]>[]> previous_memory_blocks;
 
   /// Checks if the given register is valid.
   [[nodiscard]] bool check_reg(reg_t reg) const { return reg.index < program->registers.size(); }
@@ -26,9 +27,11 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     previous_registers_value = std::make_unique<reg_value_t[]>(program->registers.size());
 
     memory_blocks = std::make_unique<std::unique_ptr<reg_value_t[]>[]>(program->memories.size());
+    previous_memory_blocks = std::make_unique<std::unique_ptr<reg_value_t[]>[]>(program->memories.size());
     for (uint_least32_t i = 0; i < program->memories.size(); ++i) {
       const auto &memory_info = program->memories[i];
       memory_blocks[i] = std::make_unique<reg_value_t[]>(memory_info.get_size());
+      previous_memory_blocks[i] = std::make_unique<reg_value_t[]>(memory_info.get_size());
     }
   }
 
@@ -44,6 +47,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
 
       pc = 0;
       std::swap(previous_registers_value, registers_value);
+      std::swap(previous_memory_blocks, memory_blocks);
     }
   }
 
@@ -132,7 +136,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
 
   void visit_rom(const RomInstruction &inst) {
     const auto read_addr = registers_value[inst.read_addr.index];
-    const reg_value_t *memory_block = memory_blocks[inst.memory_block].get();
+    const reg_value_t *memory_block = previous_memory_blocks[inst.memory_block].get();
     registers_value[inst.output.index] = memory_block[read_addr];
   }
 
@@ -142,11 +146,13 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     const auto write_addr = registers_value[inst.write_addr.index];
     const auto write_data = registers_value[inst.write_data.index];
 
-    reg_value_t *memory_block = memory_blocks[inst.memory_block].get();
-    registers_value[inst.output.index] = memory_block[read_addr];
+    const reg_value_t *read_memory_block = previous_memory_blocks[inst.memory_block].get();
+    registers_value[inst.output.index] = read_memory_block[read_addr];
 
-    if (write_enable)
-      memory_block[write_addr] = write_data;
+    if (write_enable) {
+      reg_value_t *write_memory_block = memory_blocks[inst.memory_block].get();
+      write_memory_block[write_addr] = write_data;
+    }
   }
 };
 
