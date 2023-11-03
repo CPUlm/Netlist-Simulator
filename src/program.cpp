@@ -57,6 +57,36 @@ void Disassembler::disassemble(const std::shared_ptr<Program> &program) {
 void Disassembler::disassemble(const std::shared_ptr<Program> &program, std::ostream &out) {
   Detail d(out);
   d.program = program;
+
+  out << "INPUT ";
+  const auto inputs = program->get_inputs();
+  for (auto it = inputs.begin(); it != inputs.end(); it++) {
+    if (it != inputs.begin())
+      out << ", ";
+    out << program->get_reg_name(*it);
+  }
+  out << "\n";
+
+  out << "OUTPUT ";
+  const auto outputs = program->get_outputs();
+  for (auto it = outputs.begin(); it != outputs.end(); it++) {
+    if (it != outputs.begin())
+      out << ", ";
+    out << program->get_reg_name(*it);
+  }
+  out << "\n";
+
+  out << "VAR ";
+  std::uint_least32_t i = 0;
+  for (auto it = program->registers.begin(); it != program->registers.end(); it++) {
+    if (it != program->registers.begin())
+      out << ", ";
+    out << program->get_reg_name({i++});
+    out << ":" << it->bus_size;
+  }
+  out << "\n";
+
+  out << "IN\n";
   for (const auto &instruction : program->instructions) {
     instruction->visit(d);
     out << "\n";
