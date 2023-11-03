@@ -134,13 +134,13 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     registers_value[inst.output.index] = (value >> inst.i) & 0b1;
   }
 
-  void visit_rom(const RomInstruction &inst) {
+  void visit_rom(const RomInstruction &inst) override {
     const auto read_addr = registers_value[inst.read_addr.index];
     const reg_value_t *memory_block = previous_memory_blocks[inst.memory_block].get();
     registers_value[inst.output.index] = memory_block[read_addr];
   }
 
-  void visit_ram(const RamInstruction &inst) {
+  void visit_ram(const RamInstruction &inst) override {
     const auto read_addr = registers_value[inst.read_addr.index];
     const auto write_enable = registers_value[inst.write_enable.index];
     const auto write_addr = registers_value[inst.write_addr.index];
