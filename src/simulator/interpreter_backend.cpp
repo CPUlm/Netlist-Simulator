@@ -43,6 +43,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
         step();
 
       pc = 0;
+      std::swap(previous_registers_value, registers_value);
     }
   }
 
