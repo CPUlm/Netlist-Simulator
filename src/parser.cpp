@@ -112,9 +112,13 @@ std::optional<bus_size_t> Parser::parse_size_specifier() {
 /// variable-decl := IDENTIFIER opt-size-specifier
 /// variable-decl-list := variable-decl
 ///                     | variable-decl-list "," variable-decl
+///                     |
 /// ```
 bool Parser::parse_variables_common(bool allow_size_specifier,
                                     const std::function<bool(SourceLocation, std::string_view, size_t)> &handler) {
+  if (m_token.kind != TokenKind::IDENTIFIER)
+    return true; // allow empty list
+
   do {
     if (m_token.kind != TokenKind::IDENTIFIER) {
       emit_unexpected_token_error(m_token, "a comma");
