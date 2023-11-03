@@ -31,19 +31,7 @@ public:
 
   [[nodiscard]] reg_value_t *get_registers() override;
   bool prepare(const std::shared_ptr<Program> &program) override;
-  void simulate(size_t n) override;
-
-  // ------------------------------------------------------
-  // The debugger API
-  // ------------------------------------------------------
-
-  /// The interpreter backend supports the debugger API !
-  [[nodiscard]] bool has_debugger() const override { return true; }
-
-  [[nodiscard]] reg_value_t get_register(reg_t reg) const override;
-  void set_register(reg_t reg, reg_value_t value) override;
-
-  void step() override;
+  void cycle() override;
 
 private:
   struct Detail;

@@ -87,7 +87,7 @@ void Simulator::print_outputs() {
 
 void Simulator::print_register_impl(reg_t reg) {
   const auto &reg_info = m_program->registers[reg.index];
-  const auto current_value = m_backend->get_register(reg);
+  const auto current_value = get_register(reg);
   // The `+ 2` in the code below is because we must consider that `0b` is also printed.
   fmt::print("%{} (aka '{}') = {:#0{}b}", reg.index, reg_info.name, current_value, reg_info.bus_size + 2);
 }
@@ -96,11 +96,6 @@ void Simulator::print_register_impl(reg_t reg) {
 // The simulator API
 // ------------------------------------------------------
 
-void Simulator::execute(size_t cycles) {
-  m_backend->simulate(cycles);
-}
-
-void Simulator::step() {
-  assert(m_backend->has_debugger());
-  m_backend->step();
+void Simulator::cycle() {
+  m_backend->cycle();
 }

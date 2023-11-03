@@ -1,6 +1,6 @@
 #include "interpreter_backend.hpp"
 
-#include <cassert>
+#include <cstring>
 
 // ========================================================
 // class InterpreterBackend::Detail
@@ -9,10 +9,10 @@
 struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   std::shared_ptr<Program> program;
   size_t pc = 0; // the program counter
-  std::unique_ptr<reg_value_t[]> registers_value;
-  std::unique_ptr<reg_value_t[]> previous_registers_value;
-  std::unique_ptr<std::unique_ptr<reg_value_t[]>[]> memory_blocks;
-  std::unique_ptr<std::unique_ptr<reg_value_t[]>[]> previous_memory_blocks;
+  std::vector<reg_value_t> registers_value;
+  std::vector<reg_value_t> saved_registers_value;
+  std::vector<std::unique_ptr<reg_value_t[]>> memory_blocks;
+  std::vector<std::unique_ptr<reg_value_t[]>> saved_memory_blocks;
 
   /// Checks if the given register is valid.
   [[nodiscard]] bool check_reg(reg_t reg) const { return reg.index < program->registers.size(); }
@@ -23,15 +23,18 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   void prepare(const std::shared_ptr<Program> &p) {
     program = p;
     pc = 0;
-    registers_value = std::make_unique<reg_value_t[]>(program->registers.size());
-    previous_registers_value = std::make_unique<reg_value_t[]>(program->registers.size());
+    registers_value.resize(program->registers.size());
+    saved_registers_value.resize(program->registers.size());
+    // Zero-initialize the registers just to be sure.
+    std::memset(registers_value.data(), 0, sizeof(reg_value_t) * registers_value.size());
+    std::memset(saved_registers_value.data(), 0, sizeof(reg_value_t) * saved_registers_value.size());
 
-    memory_blocks = std::make_unique<std::unique_ptr<reg_value_t[]>[]>(program->memories.size());
-    previous_memory_blocks = std::make_unique<std::unique_ptr<reg_value_t[]>[]>(program->memories.size());
+    memory_blocks.resize(program->memories.size());
+    saved_memory_blocks.resize(program->memories.size());
     for (uint_least32_t i = 0; i < program->memories.size(); ++i) {
       const auto &memory_info = program->memories[i];
       memory_blocks[i] = std::make_unique<reg_value_t[]>(memory_info.get_size());
-      previous_memory_blocks[i] = std::make_unique<reg_value_t[]>(memory_info.get_size());
+      saved_memory_blocks[i] = std::make_unique<reg_value_t[]>(memory_info.get_size());
     }
   }
 
@@ -40,22 +43,26 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     ++pc;
   }
 
-  void finish_cycle() {
-    pc = 0;
-    std::swap(previous_registers_value, registers_value);
-    std::swap(previous_memory_blocks, memory_blocks);
+  void start_cycle() { pc = 0; }
+
+  void end_cycle() {
+    // Save registers.
+    std::memcpy(saved_registers_value.data(), registers_value.data(), sizeof(reg_value_t) * registers_value.size());
+
+    // Save memory blocks.
+    for (uint_least32_t i = 0; i < program->memories.size(); ++i) {
+      const auto &memory_info = program->memories[i];
+      std::memcpy(saved_memory_blocks[i].get(), memory_blocks[i].get(), sizeof(reg_value_t) * memory_info.get_size());
+    }
   }
 
-  void execute(size_t n = 1) {
-    while (n-- > 0) {
-      while (!at_end())
-        step();
+  void cycle() {
+    start_cycle();
 
-      finish_cycle();
-    }
+    while (!at_end())
+      step();
 
-    std::swap(previous_registers_value, registers_value);
-    std::swap(previous_memory_blocks, memory_blocks);
+    end_cycle();
   }
 
   void visit_const(const ConstInstruction &inst) override { registers_value[inst.output.index] = inst.value; }
@@ -111,7 +118,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   }
 
   void visit_reg(const RegInstruction &inst) override {
-    const auto previous_value = previous_registers_value[inst.input.index];
+    const auto previous_value = saved_registers_value[inst.input.index];
     registers_value[inst.output.index] = previous_value;
   }
 
@@ -143,7 +150,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
 
   void visit_rom(const RomInstruction &inst) override {
     const auto read_addr = registers_value[inst.read_addr.index];
-    const reg_value_t *memory_block = previous_memory_blocks[inst.memory_block].get();
+    const reg_value_t *memory_block = saved_memory_blocks[inst.memory_block].get();
     registers_value[inst.output.index] = memory_block[read_addr];
   }
 
@@ -153,7 +160,7 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     const auto write_addr = registers_value[inst.write_addr.index];
     const auto write_data = registers_value[inst.write_data.index];
 
-    const reg_value_t *read_memory_block = previous_memory_blocks[inst.memory_block].get();
+    const reg_value_t *read_memory_block = saved_memory_blocks[inst.memory_block].get();
     registers_value[inst.output.index] = read_memory_block[read_addr];
 
     if (write_enable) {
@@ -177,7 +184,7 @@ InterpreterBackend::~InterpreterBackend() = default;
 // ------------------------------------------------------
 
 reg_value_t *InterpreterBackend::get_registers() {
-  return m_d->registers_value.get();
+  return m_d->registers_value.data();
 }
 
 bool InterpreterBackend::prepare(const std::shared_ptr<Program> &program) {
@@ -185,27 +192,6 @@ bool InterpreterBackend::prepare(const std::shared_ptr<Program> &program) {
   return true;
 }
 
-void InterpreterBackend::simulate(size_t n) {
-  assert(n > 0);
-  m_d->execute(n);
-}
-
-// ------------------------------------------------------
-// The debugger API
-// ------------------------------------------------------
-
-reg_value_t InterpreterBackend::get_register(reg_t reg) const {
-  assert(m_d->check_reg(reg));
-
-  const auto mask = (1 << m_d->program->registers[reg.index].bus_size) - 1;
-  return m_d->registers_value[reg.index] & mask;
-}
-
-void InterpreterBackend::set_register(reg_t reg, reg_value_t value) {
-  assert(m_d->check_reg(reg));
-  m_d->registers_value[reg.index] = value;
-}
-
-void InterpreterBackend::step() {
-  m_d->step();
+void InterpreterBackend::cycle() {
+  m_d->cycle();
 }

@@ -32,56 +32,21 @@ public:
   // The simulator API
   // ------------------------------------------------------
 
-  /// \brief Prepares the given Netlist program for further simulation.
+  /// \brief Prepares the given Netlist program for simulation.
   ///
   /// This function may be used to compile the given program to machine code
   /// or do any optimizations for an interpreter.
   ///
-  /// \param program
+  /// \param program The program that will be simulated.
   /// \return False in case of failure.
   virtual bool prepare(const std::shared_ptr<Program> &program) = 0;
-  /// \brief Simulates a Netlist program.
+  /// \brief Simulates a cycle of the Netlist program.
   ///
   /// How the Netlist program is effectively simulated is implementation defined.
   /// Internally, the program may be interpreted or compiled to machine code and then
   /// executed. The only thing important is that for the same program and the
   /// same inputs you should always get the same outputs.
-  ///
-  /// \param n The count of cycles to simulate. By default is 1 cycle.
-  virtual void simulate(size_t n) = 0;
-
-  // ------------------------------------------------------
-  // The debugger API
-  // ------------------------------------------------------
-
-  /// \brief Does this backend support the debugger API of the simulator?
-  ///
-  /// By default, this function returns false.
-  [[nodiscard]] virtual bool has_debugger() const { return false; }
-
-  /// \brief Returns the value of the given requested \a reg.
-  ///
-  /// \warning This function only works if has_debugger() returns true.
-  ///
-  /// \param reg The register to request. If \a reg does not exists, the behavior is undefined.
-  /// \return The bits of the requested register stored in the lowest bit of the returned value.
-  [[nodiscard]] virtual reg_value_t get_register(reg_t reg) const {
-    assert(false && "debugger API not supported");
-    return 0;
-  }
-  /// \brief Sets the value of the given requested \a reg to \a value.
-  ///
-  /// \warning This function only works if has_debugger() returns true.
-  ///
-  /// \param reg The register to update. If \a reg does not exists, the behavior is undefined.
-  /// \param value The new register's value. Only the lowest bits of \a value that can be
-  ///              stored in \a reg are considered. Others are discarded.
-  virtual void set_register(reg_t reg, reg_value_t value) { assert(false && "debugger API not supported"); }
-
-  /// \brief Simulates a single instruction in the Netlist program.
-  ///
-  /// \warning This function only works if has_debugger() returns true.
-  virtual void step() { assert(false && "debugger API not supported"); }
+  virtual void cycle() = 0;
 };
 
 // ========================================================
@@ -144,19 +109,8 @@ public:
   // The Simulator API
   // ------------------------------------------------------
 
-  /// Simulates the Netlist program for \a n cycles.
-  ///
-  /// You can call this function even if the simulator is actually stopped at
-  /// a breakpoint. In that case, the execution is just resumed.
-  void execute(size_t n = 1);
-  /// \brief Executes a single step of the simulation.
-  ///
-  /// \warning This function only works if the currently used backend supports
-  /// the debugger API.
-  ///
-  /// You can call this function even if the simulator is actually stopped at
-  /// a breakpoint. In that case, the execution is just resumed.
-  void step();
+  /// Simulates a cycle of the Netlist program.
+  void cycle();
 
 private:
   void print_register_impl(reg_t reg);
