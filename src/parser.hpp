@@ -32,17 +32,19 @@ private:
   void consume();
 
   static constexpr size_t MAX_VARIABLE_SIZE = 64;
-  std::optional<size_t> parse_size_specifier();
+  std::optional<bus_size_t> parse_size_specifier();
   bool parse_variables_common(bool allow_size_specifier,
                               const std::function<bool(SourceLocation, std::string_view, size_t)> &handler);
   bool parse_inputs();
   bool parse_outputs();
   bool parse_variables();
 
+  std::pair<reg_value_t, bus_size_t> parse_constant();
+
   bool parse_equations();
   bool parse_equation();
   bool parse_expression(reg_t output_reg);
-  std::optional<reg_t> parse_register();
+  std::optional<reg_t> parse_argument();
   bool parse_const_expression(reg_t output_reg);
   bool parse_load_expression(reg_t output_reg);
   bool parse_not_expression(reg_t output_reg);

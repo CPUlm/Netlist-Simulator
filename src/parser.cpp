@@ -56,9 +56,9 @@ std::shared_ptr<Program> Parser::parse_program() {
 /// opt-size-specifier := ":" INTEGER
 ///                     | <no-size-specifier>
 /// ```
-std::optional<size_t> Parser::parse_size_specifier() {
+std::optional<bus_size_t> Parser::parse_size_specifier() {
   if (m_token.kind != TokenKind::COLON)
-    return 1; // the default size is 1 bit
+    return std::nullopt;
 
   m_lexer.set_default_radix(10);
 
@@ -67,11 +67,11 @@ std::optional<size_t> Parser::parse_size_specifier() {
   m_lexer.set_default_radix(2);
 
   if (m_token.kind != TokenKind::INTEGER) {
-    emit_unexpected_token_error(m_token, "an integer literal");
+    emit_unexpected_token_error(m_token, "a bus size");
     return std::nullopt;
   }
 
-  const auto size_in_bits = parse_integer_literal<size_t>(m_token.spelling, /* default_radix= */ 10);
+  const auto size_in_bits = parse_integer_literal<bus_size_t>(m_token.spelling, /* default_radix= */ 10);
 
   const bool has_explicit_radix = get_integer_literal_radix(m_token.spelling) > 0;
   if (has_explicit_radix) {
@@ -130,7 +130,7 @@ bool Parser::parse_variables_common(bool allow_size_specifier,
     if (allow_size_specifier) {
       size_specifier = parse_size_specifier();
       if (!size_specifier.has_value())
-        return false; // Syntax error
+        size_specifier = 1;
     } else {
       size_specifier = 0;
     }
@@ -388,11 +388,59 @@ bool Parser::parse_expression(reg_t output_reg) {
   }
 }
 
+[[nodiscard]] static std::optional<bus_size_t> get_bus_size_of_constant(std::string_view literal) {
+  auto radix = get_integer_literal_radix(literal);
+  if (radix > 0)
+    literal.remove_prefix(2);
+  else
+    radix = 2;
+
+  switch (radix) {
+  case 2:
+    // TODO: check for integer size
+    return static_cast<bus_size_t>(literal.size());
+  case 16:
+    return static_cast<bus_size_t>(literal.size() * 4);
+  default:
+    return std::nullopt;
+  }
+}
+
 /// Grammar:
 /// ```
-/// register := IDENTIFIER
+/// constant := INTEGER <opt-size-specifier>
 /// ```
-std::optional<reg_t> Parser::parse_register() {
+std::pair<reg_value_t, bus_size_t> Parser::parse_constant() {
+  assert(m_token.kind == TokenKind::INTEGER);
+
+  const auto integer_token = m_token;
+  consume(); // eat INTEGER
+
+  auto bus_size = parse_size_specifier();
+  if (!bus_size.has_value()) {
+    bus_size = get_bus_size_of_constant(integer_token.spelling);
+
+    if (!bus_size.has_value()) {
+      m_report_manager.report(ReportSeverity::ERROR)
+          .with_location(integer_token.position)
+          .with_span({integer_token.position, (std::uint_least32_t)integer_token.spelling.size()})
+          .with_message("a decimal integer constant needs a explicit bus size")
+          .finish()
+          .exit();
+    }
+  }
+
+  assert(bus_size.has_value());
+  const auto value = parse_integer_literal<reg_value_t>(integer_token.spelling);
+  return {value, bus_size.value()};
+}
+
+/// Grammar:
+/// ```
+/// argument := IDENTIFIER
+///           | <constant>
+/// ```
+std::optional<reg_t> Parser::parse_argument() {
   switch (m_token.kind) {
   case TokenKind::IDENTIFIER: {
     const auto it = m_variables.find(m_token.spelling);
@@ -409,22 +457,31 @@ std::optional<reg_t> Parser::parse_register() {
     consume(); // eat IDENTIFIER
     return it->second.reg;
   }
+  case TokenKind::INTEGER: {
+    // For the following code: output = AND a 0110
+    // We generate something like that:
+    // _temp_0 = CONST 0110
+    // output = AND a _temp_0
+
+    const auto [value, bus_size] = parse_constant();
+    const reg_t reg = m_program_builder.add_register(bus_size);
+    m_program_builder.add_const(reg, value);
+    return reg;
+  }
   default:
-    emit_unexpected_token_error(m_token, "a variable");
+    emit_unexpected_token_error(m_token, "a variable or a constant");
     return std::nullopt;
   }
 }
 
 /// Grammar:
 /// ```
-/// const-expression := INTEGER
+/// const-expression := <constant>
 /// ```
 bool Parser::parse_const_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::INTEGER);
 
-  const auto value = parse_integer_literal<reg_value_t>(m_token.spelling);
-  consume(); // eat INTEGER
-
+  const auto [value, bus_size] = parse_constant();
   m_program_builder.add_const(output_reg, value);
   return true;
 }
@@ -436,7 +493,7 @@ bool Parser::parse_const_expression(reg_t output_reg) {
 bool Parser::parse_load_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::IDENTIFIER);
 
-  const auto input_reg = parse_register();
+  const auto input_reg = parse_argument();
   if (!input_reg.has_value())
     return false;
 
@@ -452,7 +509,7 @@ bool Parser::parse_not_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_NOT);
   consume(); // eat `NOT`
 
-  auto input_reg = parse_register();
+  auto input_reg = parse_argument();
   if (!input_reg.has_value())
     return false;
 
@@ -468,7 +525,7 @@ bool Parser::parse_reg_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_REG);
   consume(); // eat `REG`
 
-  auto input_reg = parse_register();
+  auto input_reg = parse_argument();
   if (!input_reg.has_value())
     return false;
 
@@ -491,11 +548,11 @@ bool Parser::parse_binary_expression(reg_t output_reg) {
   auto token_kind = m_token.kind;
   consume(); // eat the binary operator keyword
 
-  auto lhs_reg = parse_register();
+  auto lhs_reg = parse_argument();
   if (!lhs_reg.has_value())
     return false;
 
-  auto rhs_reg = parse_register();
+  auto rhs_reg = parse_argument();
   if (!rhs_reg.has_value())
     return false;
 
@@ -534,15 +591,15 @@ bool Parser::parse_mux_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_MUX);
   consume(); // eat `MUX`
 
-  auto choice_reg = parse_register();
+  auto choice_reg = parse_argument();
   if (!choice_reg.has_value())
     return false;
 
-  auto first_reg = parse_register();
+  auto first_reg = parse_argument();
   if (!first_reg.has_value())
     return false;
 
-  auto second_reg = parse_register();
+  auto second_reg = parse_argument();
   if (!second_reg.has_value())
     return false;
 
@@ -558,11 +615,11 @@ bool Parser::parse_concat_expression(reg_t output_reg) {
   assert(m_token.kind == TokenKind::KEY_CONCAT);
   consume(); // eat `CONCAT`
 
-  auto lhs_reg = parse_register();
+  auto lhs_reg = parse_argument();
   if (!lhs_reg.has_value())
     return false;
 
-  auto rhs_reg = parse_register();
+  auto rhs_reg = parse_argument();
   if (!rhs_reg.has_value())
     return false;
 
@@ -586,7 +643,7 @@ bool Parser::parse_select_expression(reg_t output_reg) {
   const auto i = parse_integer_literal<uint32_t>(m_token.spelling);
   consume(); // eat INTEGER
 
-  const auto input_reg = parse_register();
+  const auto input_reg = parse_argument();
   if (!input_reg.has_value())
     return false;
 
@@ -618,7 +675,7 @@ bool Parser::parse_slice_expression(reg_t output_reg) {
   const auto end = parse_integer_literal<uint32_t>(m_token.spelling);
   consume(); // eat INTEGER
 
-  const auto input_reg = parse_register();
+  const auto input_reg = parse_argument();
   if (!input_reg.has_value())
     return false;
 
@@ -650,7 +707,7 @@ bool Parser::parse_rom_expression(reg_t output_reg) {
   const auto word_size = parse_integer_literal<uint32_t>(m_token.spelling);
   consume(); // eat INTEGER
 
-  const auto read_addr_reg = parse_register();
+  const auto read_addr_reg = parse_argument();
   if (!read_addr_reg.has_value())
     return false;
 
@@ -682,19 +739,19 @@ bool Parser::parse_ram_expression(reg_t output_reg) {
   const auto word_size = parse_integer_literal<uint32_t>(m_token.spelling);
   consume(); // eat INTEGER
 
-  const auto read_addr_reg = parse_register();
+  const auto read_addr_reg = parse_argument();
   if (!read_addr_reg.has_value())
     return false;
 
-  const auto write_enable_reg = parse_register();
+  const auto write_enable_reg = parse_argument();
   if (!write_enable_reg.has_value())
     return false;
 
-  const auto write_addr_reg = parse_register();
+  const auto write_addr_reg = parse_argument();
   if (!write_addr_reg.has_value())
     return false;
 
-  const auto write_data_reg = parse_register();
+  const auto write_data_reg = parse_argument();
   if (!write_data_reg.has_value())
     return false;
 
