@@ -241,9 +241,6 @@ std::vector<reg_t> DependencyGraph::topological_sort(ReportManager &report_manag
 
   for (std::uint_least32_t i = 0; i < m_program->registers.size(); ++i) {
     const auto &reg_info = m_program->registers[i];
-    if (!(reg_info.flags & RIF_OUTPUT))
-      continue;
-
     visitor.visit({i});
   }
 
