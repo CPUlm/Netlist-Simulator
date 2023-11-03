@@ -20,12 +20,13 @@ Simulator::Simulator(const std::shared_ptr<Program> &program)
 
 reg_value_t Simulator::get_register(reg_t reg) const {
   assert(is_valid_register(reg));
-  return m_backend->get_register(reg);
+  const auto mask = (1 << m_program->registers[reg.index].bus_size) - 1;
+  return m_backend->get_registers()[reg.index] & mask;
 }
 
 void Simulator::set_register(reg_t reg, reg_value_t value) {
   assert(is_valid_register(reg));
-  m_backend->set_register(reg, value);
+  m_backend->get_registers()[reg.index] = value;
 }
 
 void Simulator::print_register(reg_t reg) {
@@ -96,9 +97,7 @@ void Simulator::print_register_impl(reg_t reg) {
 // ------------------------------------------------------
 
 void Simulator::execute(size_t cycles) {
-  reg_value_t inputs[1];
-  reg_value_t outputs[1];
-  m_backend->simulate(inputs, outputs, cycles);
+  m_backend->simulate(cycles);
 }
 
 void Simulator::step() {

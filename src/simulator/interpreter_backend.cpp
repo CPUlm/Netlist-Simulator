@@ -40,15 +40,22 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
     ++pc;
   }
 
+  void finish_cycle() {
+    pc = 0;
+    std::swap(previous_registers_value, registers_value);
+    std::swap(previous_memory_blocks, memory_blocks);
+  }
+
   void execute(size_t n = 1) {
     while (n-- > 0) {
       while (!at_end())
         step();
 
-      pc = 0;
-      std::swap(previous_registers_value, registers_value);
-      std::swap(previous_memory_blocks, memory_blocks);
+      finish_cycle();
     }
+
+    std::swap(previous_registers_value, registers_value);
+    std::swap(previous_memory_blocks, memory_blocks);
   }
 
   void visit_const(const ConstInstruction &inst) override { registers_value[inst.output.index] = inst.value; }
@@ -169,13 +176,16 @@ InterpreterBackend::~InterpreterBackend() = default;
 // The simulator API
 // ------------------------------------------------------
 
+reg_value_t *InterpreterBackend::get_registers() {
+  return m_d->registers_value.get();
+}
+
 bool InterpreterBackend::prepare(const std::shared_ptr<Program> &program) {
   m_d->prepare(program);
   return true;
 }
 
-void InterpreterBackend::simulate(reg_value_t *inputs, reg_value_t *outputs, size_t n) {
-  assert(inputs != nullptr && outputs != nullptr);
+void InterpreterBackend::simulate(size_t n) {
   assert(n > 0);
   m_d->execute(n);
 }

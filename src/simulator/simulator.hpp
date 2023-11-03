@@ -25,6 +25,9 @@ public:
   /// Returns the backend name.
   [[nodiscard]] virtual std::string_view get_name() const = 0;
 
+  /// Returns the registers value.
+  [[nodiscard]] virtual reg_value_t *get_registers() = 0;
+
   // ------------------------------------------------------
   // The simulator API
   // ------------------------------------------------------

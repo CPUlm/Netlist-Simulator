@@ -18,7 +18,7 @@
 ///
 /// The performance of this implementation are not a priority, still any
 /// improvement in time or memory consumption is welcome.
-class InterpreterBackend : public SimulatorBackend {
+class InterpreterBackend final : public SimulatorBackend {
 public:
   InterpreterBackend();
   ~InterpreterBackend() override;
@@ -29,8 +29,9 @@ public:
   // The simulator API
   // ------------------------------------------------------
 
+  [[nodiscard]] reg_value_t *get_registers() override;
   bool prepare(const std::shared_ptr<Program> &program) override;
-  void simulate(reg_value_t *inputs, reg_value_t *outputs, size_t n) override;
+  void simulate(size_t n) override;
 
   // ------------------------------------------------------
   // The debugger API
