@@ -332,7 +332,7 @@ void Parser::parse_expression(reg_t output) {
   default:
     m_report_manager.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
-        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+        .with_span(get_current_token_range())
         .with_message("invalid expression, expected an operator or a constant")
         .finish()
         .exit();
@@ -361,7 +361,7 @@ void Parser::parse_expression(reg_t output) {
 /// ```
 /// constant := INTEGER <opt-size-specifier>
 /// ```
-std::pair<reg_value_t, bus_size_t> Parser::parse_constant() {
+std::pair<reg_value_t, bus_size_t> Parser::parse_constant(bus_size_t expected_bus_size) {
   assert(m_token.kind == TokenKind::INTEGER);
 
   unsigned radix = get_integer_literal_radix(m_token.spelling);
@@ -387,6 +387,16 @@ std::pair<reg_value_t, bus_size_t> Parser::parse_constant() {
   }
 
   assert(bus_size.has_value());
+
+  if (expected_bus_size > 0 && bus_size.value() != expected_bus_size) {
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(integer_token.position)
+        .with_span({integer_token.position, (std::uint_least32_t)integer_token.spelling.size()}, "has a bus size of {} bit(s)", bus_size.value())
+        .with_message("expected a bus size of {} bit(s)", expected_bus_size, bus_size.value())
+        .finish()
+        .exit();
+  }
+
   const auto value = parse_integer_literal<reg_value_t>(integer_token.spelling);
   return {value, bus_size.value()};
 }
@@ -421,14 +431,14 @@ bus_size_t Parser::parse_bus_size(bool as_index) {
     if (value > MAX_VARIABLE_SIZE) {
       m_report_manager.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
-          .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+          .with_span(get_current_token_range())
           .with_message("but size greater than {} bits is not allowed", MAX_VARIABLE_SIZE)
           .finish()
           .exit();
     } else if (value == 0) {
       m_report_manager.report(ReportSeverity::ERROR)
           .with_location(m_token.position)
-          .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+          .with_span(get_current_token_range())
           .with_message("but size 0 is not allowed")
           .finish()
           .exit();
@@ -478,7 +488,7 @@ void Parser::check_invalid_digits(Token &token, unsigned int radix) {
 /// ```
 /// register := IDENTIFIER
 /// ```
-[[nodiscard]] reg_t Parser::parse_register() {
+[[nodiscard]] reg_t Parser::parse_register(bus_size_t expected_bus_size) {
   if (m_token.kind != TokenKind::IDENTIFIER)
     unexpected_token_error(m_token, "a register");
 
@@ -486,8 +496,18 @@ void Parser::check_invalid_digits(Token &token, unsigned int radix) {
   if (it == m_variables.end()) {
     m_report_manager.report(ReportSeverity::ERROR)
         .with_location(m_token.position)
-        .with_span({m_token.position, (uint32_t)m_token.spelling.size()})
+        .with_span(get_current_token_range())
         .with_message("variable `{}' not found", m_token.spelling)
+        .finish()
+        .exit();
+  }
+
+  const bus_size_t register_bus_size = m_program_builder.get_register_bus_size(it->second.reg);
+  if (expected_bus_size > 0 && register_bus_size != expected_bus_size) {
+    m_report_manager.report(ReportSeverity::ERROR)
+        .with_location(m_token.position)
+        .with_span(get_current_token_range(), "has a bus size of {} bit(s)", register_bus_size)
+        .with_message("expected a bus size of {} bit(s)", expected_bus_size, register_bus_size)
         .finish()
         .exit();
   }
@@ -501,18 +521,18 @@ void Parser::check_invalid_digits(Token &token, unsigned int radix) {
 /// arg := <register>
 ///      | <constant>
 /// ```
-reg_t Parser::parse_argument() {
+reg_t Parser::parse_argument(bus_size_t expected_bus_size) {
   switch (m_token.kind) {
   case TokenKind::IDENTIFIER:
-    return parse_register();
+    return parse_register(expected_bus_size);
   case TokenKind::INTEGER: {
     // For the following code: output = AND a 0110
     // We generate something like that:
     // _temp_0 = CONST 0110
     // output = AND a _temp_0
 
-    const auto [value, bus_size] = parse_constant();
-    const reg_t reg = m_program_builder.add_register(bus_size);
+    const auto [value, bus_size] = parse_constant(expected_bus_size);
+    const reg_t reg = m_program_builder.add_register(bus_size, {}, RIF_INTERNAL);
     m_program_builder.add_const(reg, value);
     return reg;
   }
@@ -527,7 +547,9 @@ reg_t Parser::parse_argument() {
 /// ```
 void Parser::parse_const_expression(reg_t output) {
   assert(m_token.kind == TokenKind::INTEGER);
-  const auto [value, bus_size] = parse_constant();
+
+  const bus_size_t output_bus_size = m_program_builder.get_register_bus_size(output);
+  const auto [value, bus_size] = parse_constant(output_bus_size);
   m_program_builder.add_const(output, value);
 }
 
@@ -537,7 +559,9 @@ void Parser::parse_const_expression(reg_t output) {
 /// ```
 void Parser::parse_load_expression(reg_t output) {
   assert(m_token.kind == TokenKind::IDENTIFIER);
-  const auto input = parse_register();
+
+  const bus_size_t output_bus_size = m_program_builder.get_register_bus_size(output);
+  const auto input = parse_register(output_bus_size);
   m_program_builder.add_load(output, input);
 }
 
@@ -549,7 +573,8 @@ void Parser::parse_not_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_NOT);
   consume(); // eat `NOT`
 
-  auto input = parse_argument();
+  const bus_size_t output_bus_size = m_program_builder.get_register_bus_size(output);
+  auto input = parse_argument(output_bus_size);
   m_program_builder.add_not(output, input);
 }
 
@@ -561,7 +586,8 @@ void Parser::parse_reg_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_REG);
   consume(); // eat `REG`
 
-  auto input = parse_register();
+  const bus_size_t output_bus_size = m_program_builder.get_register_bus_size(output);
+  auto input = parse_register(output_bus_size);
   m_program_builder.add_reg(output, input);
 }
 
@@ -580,8 +606,9 @@ void Parser::parse_binary_expression(reg_t output) {
   auto token_kind = m_token.kind;
   consume(); // eat the binary operator keyword
 
-  auto lhs_reg = parse_argument();
-  auto rhs_reg = parse_argument();
+  const bus_size_t output_bus_size = m_program_builder.get_register_bus_size(output);
+  auto lhs_reg = parse_argument(output_bus_size);
+  auto rhs_reg = parse_argument(output_bus_size);
 
   switch (token_kind) {
   case TokenKind::KEY_AND:
@@ -616,9 +643,10 @@ void Parser::parse_mux_expression(reg_t output) {
   assert(m_token.kind == TokenKind::KEY_MUX);
   consume(); // eat `MUX`
 
-  auto choice = parse_argument();
-  auto first = parse_argument();
-  auto second = parse_argument();
+  const bus_size_t output_bus_size = m_program_builder.get_register_bus_size(output);
+  auto choice = parse_argument(/*expected_bus_size=*/1);
+  auto first = parse_argument(output_bus_size);
+  auto second = parse_argument(output_bus_size);
   m_program_builder.add_mux(output, choice, first, second);
 }
 
@@ -677,7 +705,7 @@ void Parser::parse_rom_expression(reg_t output) {
 
   const auto addr_size = parse_bus_size();
   const auto word_size = parse_bus_size();
-  const auto read_addr = parse_argument();
+  const auto read_addr = parse_argument(addr_size);
 
   m_program_builder.add_rom(output, addr_size, word_size, read_addr);
 }
@@ -712,4 +740,8 @@ void Parser::unexpected_token_error(const Token &token, std::string_view expecte
       .with_message("unexpected token; expected {}", expected_token_name)
       .finish()
       .exit();
+}
+
+SourceRange Parser::get_current_token_range() const {
+  return {m_token.position, (uint32_t)m_token.spelling.size()};
 }

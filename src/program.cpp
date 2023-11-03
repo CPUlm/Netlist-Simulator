@@ -385,6 +385,11 @@ reg_t ProgramBuilder::add_register(bus_size_t bus_size, const std::string &name,
   return reg;
 }
 
+bus_size_t ProgramBuilder::get_register_bus_size(reg_t reg) const {
+  assert(check_reg(reg));
+  return m_program->registers[reg.index].bus_size;
+}
+
 ConstInstruction &ProgramBuilder::add_const(reg_t output, reg_value_t value) {
   assert(check_reg(output));
 
@@ -577,10 +582,10 @@ RamInstruction &ProgramBuilder::add_ram(reg_t output, bus_size_t addr_size, bus_
   return *inst;
 }
 
-[[nodiscard]] std::shared_ptr<Program> ProgramBuilder::build() {
+std::shared_ptr<Program> ProgramBuilder::build() {
   return std::move(m_program);
 }
 
-[[nodiscard]] bool ProgramBuilder::check_reg(reg_t reg) const {
+bool ProgramBuilder::check_reg(reg_t reg) const {
   return reg.index < m_program->registers.size();
 }

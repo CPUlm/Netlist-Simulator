@@ -245,22 +245,25 @@ struct Program {
   Program(const Program &) = delete;
   Program(Program &&) noexcept = default;
 
-  /// Returns the inputs of the program.
+  /// \brief Returns the inputs of the program.
   [[nodiscard]] std::vector<reg_t> get_inputs() const;
-  /// Returns the outputs of the program.
+  /// \brief Returns the outputs of the program.
   [[nodiscard]] std::vector<reg_t> get_outputs() const;
 
-  /// Returns the register's name.
+  /// \brief Returns the register's name.
   ///
   /// If the register has a name then it is returned, otherwise a string
   /// of the form "%index" is returned with index the register's internal index.
   [[nodiscard]] std::string get_reg_name(reg_t reg) const;
 };
 
-/// The Netlist program disassembler. This class takes a program and then outputs
-/// a textual representation to the given output stream.
+/// \brief The Netlist program disassembler.
 ///
-/// The output is intended to contain the maximum information.
+/// This class takes a program and then outputs a textual representation
+/// to the given output stream.
+///
+/// The output is intended to contain the maximum information and to be a valid
+/// parseable Netlist program.
 class Disassembler {
 public:
   /// Disassembles a single instruction and prints it to std::cout.
@@ -363,7 +366,7 @@ private:
   };
 };
 
-/// Utility class to simplify the creation of a Program instance.
+/// \brief Utility class to simplify the creation of a Program instance.
 ///
 /// To create an instance of Program representing the following Netlist code:
 /// ```
@@ -386,7 +389,8 @@ private:
 /// ```
 class ProgramBuilder {
 public:
-  reg_t add_register(bus_size_t bus_size = 1, const std::string &name = {}, unsigned flags = 0);
+  [[nodiscard]] reg_t add_register(bus_size_t bus_size = 1, const std::string &name = {}, unsigned flags = 0);
+  [[nodiscard]] bus_size_t get_register_bus_size(reg_t reg) const;
 
   ConstInstruction &add_const(reg_t output, reg_value_t value);
   LoadInstruction &add_load(reg_t output, reg_t input);

@@ -39,15 +39,15 @@ private:
   void parse_outputs();
   void parse_variables();
 
-  [[nodiscard]] std::pair<reg_value_t, bus_size_t> parse_constant();
+  [[nodiscard]] std::pair<reg_value_t, bus_size_t> parse_constant(bus_size_t expected_bus_size = 0);
   [[nodiscard]] bus_size_t parse_bus_size(bool as_index = false);
-  void check_invalid_digits(Token& token, unsigned radix);
+  void check_invalid_digits(Token &token, unsigned radix);
 
   void parse_equations();
   void parse_equation();
   void parse_expression(reg_t output);
-  [[nodiscard]] reg_t parse_register();
-  [[nodiscard]] reg_t parse_argument();
+  [[nodiscard]] reg_t parse_register(bus_size_t expected_bus_size = 0);
+  [[nodiscard]] reg_t parse_argument(bus_size_t expected_bus_size = 0);
   void parse_const_expression(reg_t output);
   void parse_load_expression(reg_t output);
   void parse_not_expression(reg_t output);
@@ -61,6 +61,7 @@ private:
   void parse_ram_expression(reg_t output);
 
   void unexpected_token_error(const Token &token, std::string_view expected_token_name);
+  [[nodiscard]] SourceRange get_current_token_range() const;
 
 private:
   ReportManager &m_report_manager;
