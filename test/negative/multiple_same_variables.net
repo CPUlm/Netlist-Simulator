@@ -1,0 +1,5 @@
+INPUT a
+OUTPUT b
+VAR a, b, c, c
+IN
+b = NOT a

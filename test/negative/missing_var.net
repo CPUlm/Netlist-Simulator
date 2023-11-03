@@ -1,0 +1,4 @@
+INPUT a
+OUTPUT b
+IN
+b = NOT a
