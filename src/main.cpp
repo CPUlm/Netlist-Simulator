@@ -15,7 +15,7 @@ struct CmdOptions {
   bool dependency_graph = false;
   bool schedule = false;
   bool timeit = false;
-  size_t cycles = 1;
+  size_t cycles = 0;
 };
 
 static void print_help(const char *argv0) {
@@ -162,7 +162,7 @@ static CmdOptions parse_cmd_args(ReportManager &reports, int argc, const char *a
   return out;
 }
 
-[[nodiscard]] std::string format_duration(const std::chrono::duration<double>& dur) {
+[[nodiscard]] std::string format_duration(const std::chrono::duration<double> &dur) {
   if (dur.count() < 1e-3) {
     return fmt::format("{} ns", dur.count() * 1000000.0);
   } else if (dur.count() < 1.0) {
@@ -203,42 +203,50 @@ int main(int argc, const char *argv[]) {
     } else {
       graph.schedule(report_manager);
       Simulator simulator(program);
-      fmt::println("Simulating {} cycle(s) of `{}'.", options.cycles, options.input_file);
-      fmt::println("Inputs:");
-      for (const auto input_reg : program->get_inputs()) {
-        bool has_error;
-        do {
-          fmt::print("  - {} = ", program->get_reg_name(input_reg));
-          std::string value_string;
-          std::cin >> value_string;
 
-          reg_value_t value;
-          const auto result = std::from_chars(value_string.data(), value_string.data() + value_string.size(), value, 2);
-          if (result.ec != std::errc() || result.ptr != (value_string.data() + value_string.size())) {
-            report_manager.report(ReportSeverity::ERROR)
-                .with_message("expected a constant, `{}' is not one", value_string)
-                .finish()
-                .print();
-            has_error = true;
-          } else {
-            has_error = false;
-            simulator.set_register(input_reg, value);
-          }
-        } while (has_error);
-      }
+      unsigned step = 1;
+      while (options.cycles == 0 || step <= options.cycles) {
+        fmt::println("# Step {}", step);
 
-      const auto start = std::chrono::high_resolution_clock::now();
-      simulator.execute(options.cycles);
-      const auto end = std::chrono::high_resolution_clock::now();
-      const std::chrono::duration<double> dur = end - start;
+        // Retrieve the inputs from the user.
+        fmt::println("Inputs:");
+        for (const auto input_reg : program->get_inputs()) {
+          bool has_error;
+          do {
+            fmt::print("  - {} = ", program->get_reg_name(input_reg));
+            std::string value_string;
+            std::cin >> value_string;
 
-      fmt::println("Outputs:");
-      for (const auto output_reg : program->get_outputs()) {
-        fmt::println("  - {} = {:b}", program->get_reg_name(output_reg), simulator.get_register(output_reg));
-      }
+            reg_value_t value;
+            const auto result = std::from_chars(value_string.data(), value_string.data() + value_string.size(), value, 2);
+            if (result.ec != std::errc() || result.ptr != (value_string.data() + value_string.size())) {
+              report_manager.report(ReportSeverity::ERROR)
+                  .with_message("expected a constant, `{}' is not one", value_string)
+                  .finish()
+                  .print();
+              has_error = true;
+            } else {
+              has_error = false;
+              simulator.set_register(input_reg, value);
+            }
+          } while (has_error);
+        }
 
-      if (options.timeit) {
-        fmt::println("The simulation took {}", format_duration(dur));
+        const auto start = std::chrono::high_resolution_clock::now();
+        simulator.cycle();
+        const auto end = std::chrono::high_resolution_clock::now();
+        const std::chrono::duration<double> dur = end - start;
+        step += 1;
+
+        // Show the computed outputs.
+        fmt::println("Outputs:");
+        for (const auto output_reg : program->get_outputs()) {
+          fmt::println("  - {} = {:b}", program->get_reg_name(output_reg), simulator.get_register(output_reg));
+        }
+
+        if (options.timeit) {
+          fmt::println("The simulation took {}", format_duration(dur));
+        }
       }
     }
   }
