@@ -70,13 +70,13 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   void visit_nand(const NandInstruction &inst) override {
     const auto lhs = registers_value[inst.lhs.index];
     const auto rhs = registers_value[inst.rhs.index];
-    registers_value[inst.output.index] = lhs | rhs;
+    registers_value[inst.output.index] = ~(lhs & rhs);
   }
 
   void visit_or(const OrInstruction &inst) override {
     const auto lhs = registers_value[inst.lhs.index];
     const auto rhs = registers_value[inst.rhs.index];
-    registers_value[inst.output.index] = ~(lhs & rhs);
+    registers_value[inst.output.index] = lhs | rhs;
   }
 
   void visit_nor(const NorInstruction &inst) override {
