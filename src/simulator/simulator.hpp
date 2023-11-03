@@ -47,10 +47,8 @@ public:
   /// executed. The only thing important is that for the same program and the
   /// same inputs you should always get the same outputs.
   ///
-  /// \param inputs The inputs of the Netlist, in the same order as they were found in the program.
-  /// \param outputs The outputs of the Netlist, in the same order as they were found in the program.
   /// \param n The count of cycles to simulate. By default is 1 cycle.
-  virtual void simulate(reg_value_t *inputs, reg_value_t *outputs, size_t n = 1) = 0;
+  virtual void simulate(size_t n) = 0;
 
   // ------------------------------------------------------
   // The debugger API
@@ -67,7 +65,10 @@ public:
   ///
   /// \param reg The register to request. If \a reg does not exists, the behavior is undefined.
   /// \return The bits of the requested register stored in the lowest bit of the returned value.
-  [[nodiscard]] virtual reg_value_t get_register(reg_t reg) const { assert(false && "debugger API not supported"); return 0; }
+  [[nodiscard]] virtual reg_value_t get_register(reg_t reg) const {
+    assert(false && "debugger API not supported");
+    return 0;
+  }
   /// \brief Sets the value of the given requested \a reg to \a value.
   ///
   /// \warning This function only works if has_debugger() returns true.
