@@ -1,0 +1,8 @@
+INPUT a, b, c
+OUTPUT o1, o2, o3, o4
+VAR a, b: 8, c: 8, o1: 8, o2: 8, o3: 8, o4: 8
+IN
+o1 = MUX a b c
+o2 = MUX a 0x42 c
+o3 = MUX a b 0d12 : 8
+o4 = MUX 0b1 b c

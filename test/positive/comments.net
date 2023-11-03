@@ -1,0 +1,7 @@
+INPUT a # a comme alphonse
+# OUTPUT
+OUTPUT # b
+b VAR a, b
+IN b = AND # a
+    # c'est bizarre
+a a

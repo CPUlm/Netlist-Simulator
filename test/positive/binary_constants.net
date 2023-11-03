@@ -1,0 +1,7 @@
+INPUT
+OUTPUT a, b, c
+VAR a, b: 4, c: 3
+IN
+a = 0b1
+b = 0b0100
+c = 0B0 : 3

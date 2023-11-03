@@ -1,0 +1,6 @@
+INPUT
+OUTPUT a, b
+VAR a, b: 10
+IN
+a = 0d42 : 1
+b = 0D0123456789 : 10

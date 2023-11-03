@@ -1,0 +1,8 @@
+INPUT a
+OUTPUT o1, o2, o3, o4
+VAR a: 8, o1: 8, o2: 1, o3: 3, o4: 3
+IN
+o1 = SLICE 1 8 a
+o2 = SLICE 2 2 a
+o3 = SLICE 2 4 0xff
+o4 = SLICE 2 4 0d42 : 8

@@ -1,0 +1,8 @@
+INPUT a
+OUTPUT o1, o2, o3, o4
+VAR a, o1, o2: 8, o3: 5, o4: 4
+IN
+o1 = NOT a
+o2 = NOT 0x0f
+o3 = NOT 01101
+o4 = NOT 0d42 : 4
