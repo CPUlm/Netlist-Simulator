@@ -3,6 +3,7 @@
 #include "parser.hpp"
 #include "simulator/simulator.hpp"
 
+#include <charconv>
 #include <fstream>
 #include <iostream>
 
@@ -148,6 +149,8 @@ static CmdOptions parse_cmd_args(ReportManager &reports, int argc, const char *a
 }
 
 int main(int argc, const char *argv[]) {
+  std::ostream::sync_with_stdio();
+
   ReportManager report_manager;
   const auto options = parse_cmd_args(report_manager, argc, argv);
 
@@ -176,11 +179,36 @@ int main(int argc, const char *argv[]) {
     } else {
       graph.schedule(report_manager);
       Simulator simulator(program);
-      simulator.set_register({0}, 0b101);
-      simulator.set_register({1}, 0b00);
-      simulator.print_inputs();
-      simulator.execute();
-      simulator.print_outputs();
+      fmt::println("Simulating {} cycle(s) of `{}'.", options.cycles, options.input_file);
+      fmt::println("Inputs:");
+      for (const auto input_reg : program->get_inputs()) {
+        bool has_error;
+        do {
+          fmt::print("  - {} = ", program->get_reg_name(input_reg));
+          std::string value_string;
+          std::cin >> value_string;
+
+          reg_value_t value;
+          const auto result = std::from_chars(value_string.data(), value_string.data() + value_string.size(), value, 2);
+          if (result.ec != std::errc() || result.ptr != (value_string.data() + value_string.size())) {
+            report_manager.report(ReportSeverity::ERROR)
+                .with_message("expected a constant, `{}' is not one", value_string)
+                .finish()
+                .print();
+            has_error = true;
+          } else {
+            has_error = false;
+            simulator.set_register(input_reg, value);
+          }
+        } while (has_error);
+      }
+
+      simulator.execute(options.cycles);
+
+      fmt::println("Outputs:");
+      for (const auto output_reg : program->get_outputs()) {
+        fmt::println("  - {} = {:b}", program->get_reg_name(output_reg), simulator.get_register(output_reg));
+      }
     }
   }
 

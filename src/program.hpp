@@ -244,6 +244,17 @@ struct Program {
   Program() = default;
   Program(const Program &) = delete;
   Program(Program &&) noexcept = default;
+
+  /// Returns the inputs of the program.
+  [[nodiscard]] std::vector<reg_t> get_inputs() const;
+  /// Returns the outputs of the program.
+  [[nodiscard]] std::vector<reg_t> get_outputs() const;
+
+  /// Returns the register's name.
+  ///
+  /// If the register has a name then it is returned, otherwise a string
+  /// of the form "%index" is returned with index the register's internal index.
+  [[nodiscard]] std::string get_reg_name(reg_t reg) const;
 };
 
 /// The Netlist program disassembler. This class takes a program and then outputs

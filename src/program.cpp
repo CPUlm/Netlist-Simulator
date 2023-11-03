@@ -6,6 +6,38 @@
 #include <ostream>
 
 // ========================================================
+// struct Program
+// ========================================================
+
+std::vector<reg_t> Program::get_inputs() const {
+  std::vector<reg_t> inputs;
+  for (std::uint_least32_t i = 0; i < registers.size(); ++i) {
+    if (registers[i].flags & RIF_INPUT)
+      inputs.push_back({i});
+  }
+  return inputs;
+}
+
+std::vector<reg_t> Program::get_outputs() const {
+  std::vector<reg_t> inputs;
+  for (std::uint_least32_t i = 0; i < registers.size(); ++i) {
+    if (registers[i].flags & RIF_OUTPUT)
+      inputs.push_back({i});
+  }
+  return inputs;
+}
+
+std::string Program::get_reg_name(reg_t reg) const {
+  assert(reg.index < registers.size());
+
+  const auto &reg_info = registers[reg.index];
+  if (reg_info.name.empty())
+    return fmt::format("%{}", reg.index);
+  else
+    return reg_info.name;
+}
+
+// ========================================================
 // class Disassembler
 // ========================================================
 
@@ -33,15 +65,11 @@ void Disassembler::disassemble(const std::shared_ptr<Program> &program, std::ost
 
 void Disassembler::Detail::print_reg(reg_t reg) {
   if (program != nullptr) {
-    const auto &reg_info = program->registers[reg.index];
-    if (!reg_info.name.empty()) {
-      out << reg_info.name;
-      return;
-    }
+    out << program->get_reg_name(reg);
+  } else {
+    // Fallback to using a generic register syntax: `%index`.
+    out << "%" << reg.index;
   }
-
-  // Fallback to using a generic register syntax: `%{reg_index}`.
-  out << "%" << reg.index;
 }
 
 void Disassembler::Detail::print_inst_label(const char *opcode, reg_t output) {
