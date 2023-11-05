@@ -6,13 +6,15 @@
 #include <string>
 #include <vector>
 
+using reg_index_t = std::uint_least32_t;
 using reg_value_t = std::uint_least64_t;
 using bus_size_t = std::uint_least32_t;
 
-/// A register name to be used in a Netlist program.
+/// \brief A register name to be used in a Netlist program.
+///
+/// This is just a wrapper around a register's index that provides type safety.
 struct reg_t {
-  std::uint_least32_t index = UINT_LEAST32_MAX;
-
+  reg_index_t index = UINT_LEAST32_MAX;
   [[nodiscard]] auto operator<=>(const reg_t &) const = default;
 };
 
@@ -245,18 +247,21 @@ struct Program {
   Program(const Program &) = delete;
   Program(Program &&) noexcept = default;
 
+  /// \brief Returns \c true if the program is empty, that is if it doesn't have any instruction.
+  [[nodiscard]] bool is_empty() const { return instructions.empty(); }
+
+  /// \brief Returns \c true if the program has at least one input.
+  [[nodiscard]] bool has_inputs() const;
   /// \brief Returns the inputs of the program.
   [[nodiscard]] std::vector<reg_t> get_inputs() const;
+
+  /// \brief Returns \c true if the program has at least one output.
+  [[nodiscard]] bool has_outputs() const;
   /// \brief Returns the outputs of the program.
   [[nodiscard]] std::vector<reg_t> get_outputs() const;
 
   /// \brief Returns the register's name.
   ///
-  /// If the register has a name then it is returned, otherwise a string
-  /// of the form "%index" is returned with index the register's internal index.
-  [[nodiscard]] std::string get_reg_name(reg_t reg) const;
-};
-
 /// \brief The Netlist program disassembler.
 ///
 /// This class takes a program and then outputs a textual representation
@@ -305,6 +310,9 @@ private:
     void visit_rom(const RomInstruction &inst) override;
     void visit_ram(const RamInstruction &inst) override;
   };
+  /// If the register has a name then it is returned, otherwise a dummy but
+  /// valid identifier is returned uniquely identifying the register.
+  [[nodiscard]] std::string get_register_name(reg_t reg) const;
 };
 
 /// \brief Utility class to simplify the creation of a Program instance.

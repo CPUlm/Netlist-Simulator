@@ -1,5 +1,6 @@
 #include "program.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <fmt/format.h>
 #include <iostream>
@@ -9,32 +10,40 @@
 // struct Program
 // ========================================================
 
+bool Program::has_inputs() const {
+  return std::ranges::any_of(registers, [](const auto &register_info) { return register_info.flags & RIF_INPUT; });
+}
+
 std::vector<reg_t> Program::get_inputs() const {
   std::vector<reg_t> inputs;
-  for (std::uint_least32_t i = 0; i < registers.size(); ++i) {
+  for (reg_index_t i = 0; i < registers.size(); ++i) {
     if (registers[i].flags & RIF_INPUT)
       inputs.push_back({i});
   }
   return inputs;
 }
 
-std::vector<reg_t> Program::get_outputs() const {
-  std::vector<reg_t> inputs;
-  for (std::uint_least32_t i = 0; i < registers.size(); ++i) {
-    if (registers[i].flags & RIF_OUTPUT)
-      inputs.push_back({i});
-  }
-  return inputs;
+bool Program::has_outputs() const {
+  return std::ranges::any_of(registers, [](const auto &register_info) { return register_info.flags & RIF_OUTPUT; });
 }
 
-std::string Program::get_reg_name(reg_t reg) const {
+std::vector<reg_t> Program::get_outputs() const {
+  std::vector<reg_t> outputs;
+  for (reg_index_t i = 0; i < registers.size(); ++i) {
+    if (registers[i].flags & RIF_OUTPUT)
+      outputs.push_back({i});
+  }
+  return outputs;
+}
+
+std::string Program::get_register_name(reg_t reg) const {
   assert(reg.index < registers.size());
 
-  const auto &reg_info = registers[reg.index];
-  if (reg_info.name.empty())
+  const auto &register_info = registers[reg.index];
+  if (register_info.name.empty())
     return fmt::format("__r{}", reg.index);
   else
-    return reg_info.name;
+    return register_info.name;
 }
 
 // ========================================================
