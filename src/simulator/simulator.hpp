@@ -14,18 +14,36 @@
 
 /// \brief The interface for Netlist simulator's backends.
 ///
-/// To actually call the simulator, please use the more complete and user-friendly
-/// Simulator interface.
+/// The subclasses of this interface are the ones implementing the logic behind
+/// a Netlist simulation. The interface is intentionally largely vague and abstract
+/// to allow any kind of implementation. Therefore, you can implement a simulator
+/// backend using a JIT compiler or a virtual machine if you want.
+///
+/// You never use a simulator backend directly. You should consider instance of
+/// this interface and the interface itself as internal details. The simulator
+/// is used via the Simulator class which will ultimately call a selected
+/// backend.
 ///
 /// \see Simulator
 class SimulatorBackend {
 public:
   virtual ~SimulatorBackend() = default;
 
-  /// Returns the backend name.
+  /// \brief Returns the backend name.
+  ///
+  /// This can be anything but ideally two backends should have two distinct names.
   [[nodiscard]] virtual std::string_view get_name() const = 0;
 
-  /// Returns the registers value.
+  /// \brief Returns the registers value.
+  ///
+  /// The returned array should stores the registers value in the order of the
+  /// registers themself (registers are indexed).
+  ///
+  /// Moreover, the returned array is mutable. That is, the returned pointer may
+  /// be used to set the value of some registers and subclasses must account of
+  /// this in their implementation (either by directly using this array for their
+  /// simulation or copying from and back at each cycle between the array returned
+  /// by this function and their internal storage for registers).
   [[nodiscard]] virtual reg_value_t *get_registers() = 0;
 
   // ------------------------------------------------------
@@ -35,10 +53,12 @@ public:
   /// \brief Prepares the given Netlist program for simulation.
   ///
   /// This function may be used to compile the given program to machine code
-  /// or do any optimizations for an interpreter.
+  /// or do any optimizations. After this call, all simulation will
+  /// be done on the given program.
   ///
   /// \param program The program that will be simulated.
   /// \return False in case of failure.
+  /// \see cycle() and simulate()
   virtual bool prepare(const std::shared_ptr<Program> &program) = 0;
   /// \brief Simulates a cycle of the Netlist program.
   ///
@@ -46,7 +66,23 @@ public:
   /// Internally, the program may be interpreted or compiled to machine code and then
   /// executed. The only thing important is that for the same program and the
   /// same inputs you should always get the same outputs.
+  ///
+  /// The inputs may be set via the function get_registers(). Likewise, the outputs
+  /// may be retrieved the same way.
+  ///
+  /// \see simulate() and prepare()
   virtual void cycle() = 0;
+  /// \brief Simulates \a n cycles of the Netlist program.
+  ///
+  /// This is the same as calling cycle \a n times. But a subclass may provide
+  /// an optimized implementation for this.
+  ///
+  /// \param n The count of cycles to simulate.
+  /// \see cycle() and prepare()
+  virtual void simulate(size_t n) {
+    while (n--)
+      cycle();
+  }
 };
 
 // ========================================================
