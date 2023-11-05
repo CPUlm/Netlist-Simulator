@@ -14,6 +14,7 @@ add_executable(
         line_map_test.cpp
         report_test.cpp
         simulator_test.cpp
+        disassembler_test.cpp
 )
 
 target_link_libraries(
