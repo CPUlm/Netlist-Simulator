@@ -290,7 +290,17 @@ struct Program {
 /// ```
 class ProgramBuilder {
 public:
+  /// \brief Adds a new register to the program.
+  ///
+  /// \param bus_size The bus size of the register, must be included in the range [1,64].
+  /// \param name The register's name for debugging purposes. Can be empty.
+  /// \param flags Meta flags for the registers. See RegisterInfoFlag.
+  /// \return The newly added register.
   [[nodiscard]] reg_t add_register(bus_size_t bus_size = 1, const std::string &name = {}, unsigned flags = 0);
+  /// \brief Returns the given register's bus size.
+  ///
+  /// It is undefined if \a reg was not created by add_register() in the same instance
+  /// of ProgramBuilder.
   [[nodiscard]] bus_size_t get_register_bus_size(reg_t reg) const;
 
   ConstInstruction &add_const(reg_t output, reg_value_t value);
@@ -311,6 +321,10 @@ public:
   RamInstruction &add_ram(reg_t output, bus_size_t addr_size, bus_size_t word_size, reg_t read_addr, reg_t write_enable,
                           reg_t write_addr, reg_t write_data);
 
+  /// \brief Builds the final Netlist program.
+  ///
+  /// After that, the builder should not be used anymore. Moreover, the returned program
+  /// is not really finished, scheduling is still needed. See DependencyGraph.
   [[nodiscard]] std::shared_ptr<Program> build();
 
 private:
