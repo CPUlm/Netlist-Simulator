@@ -32,7 +32,7 @@ std::string Program::get_reg_name(reg_t reg) const {
 
   const auto &reg_info = registers[reg.index];
   if (reg_info.name.empty())
-    return fmt::format("%{}", reg.index);
+    return fmt::format("__r{}", reg.index);
   else
     return reg_info.name;
 }
@@ -97,8 +97,8 @@ void Disassembler::Detail::print_reg(reg_t reg) {
   if (program != nullptr) {
     out << program->get_reg_name(reg);
   } else {
-    // Fallback to using a generic register syntax: `%index`.
-    out << "%" << reg.index;
+    // Fallback to using a generic register name.
+    out << "__r" << reg.index;
   }
 }
 
@@ -117,9 +117,12 @@ void Disassembler::Detail::print_binary_inst(const char *opcode, const BinaryIns
 void Disassembler::Detail::visit_const(const ConstInstruction &inst) {
   print_reg(inst.output);
   out << " = ";
-  // TODO(hgruniaux): better output for constants (maybe outputting in binary
-  //  and considering the bus size).
-  out << inst.value;
+  if (program != nullptr) {
+    const auto bus_size = program->registers[inst.output.index].bus_size;
+    out << fmt::format("{:0{}b}", inst.value, bus_size);
+  } else {
+    out << fmt::format("{:b}", inst.value);
+  }
 }
 
 void Disassembler::Detail::visit_load(const LoadInstruction &inst) {
