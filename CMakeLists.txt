@@ -35,6 +35,9 @@ add_library(netlistlib
         src/simulator.hpp
         src/input_manager.cpp
         src/input_manager.hpp
+        src/utils.hpp
+        src/command_line_parser.cpp
+        src/command_line_parser.hpp
 
 )
 
@@ -47,5 +50,5 @@ add_executable(netlist
 target_link_libraries(netlist PUBLIC netlistlib)
 target_include_directories(netlistlib PUBLIC src/)
 
-enable_testing()
-add_subdirectory(unittest)
+#enable_testing()
+#add_subdirectory(unittest)

@@ -35,7 +35,22 @@ Simulator Errors:
 - 052: Uninitialised ROM memory chunk
 - 053: Uninitialised RAM memory chunk
 
+IO Errors:
+- 060: Error occurred when opening file
+- 061: Error occurred when reading file
+- 062: Interrupted during IO
+
+Main Errors:
+- 070: No argument passed
+- 071: Not enough arguments passed
+- 072: Expected 2 arguments here
+- 073: Unknown action
+- 074: Cannot interpret argument as a base 10 number
+
 "Impossible" Errors:
 - 090: Error parsing integer in the specified base (Lexer prevent this in theory)
 - 091: Not parsed all the integer (Lexer prevent this too)
 - 092: Unable to determine Argument Kind
+- 093: Illegal parse_verbose call
+- 094: Illegal parse_number call
+- 095: Illegal parse_files call

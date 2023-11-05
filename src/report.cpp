@@ -21,6 +21,8 @@ public:
     const char *warning = "1;33";
     /// The color for notes.
     const char *note = "1;34";
+    /// The color for notes.
+    const char *help = "1;34";
     /// The color for the text.
     const char *text = "0";
     /// The color for the locus (filename:line:column).
@@ -31,20 +33,23 @@ public:
 
   /// Prints the given report to stdout.
   void print(const Report &report) {
-    print_colored(report.context, m_colors.text, "In file ");
-    print_colored(report.context, m_colors.locus,
-                  report.context.get_location(report.position));
-    print_colored(report.context, m_colors.text, ":\n");
+    if (!report.context.get_file_name().empty()) {
+      // Error with a file name
+      print_colored(report.context, m_colors.text, "In file ");
+      print_colored(report.context, m_colors.locus, report.context.get_location(report.position));
+      print_colored(report.context, m_colors.text, ":\n");
+    }
+
     print_message(report.context, report.severity, report.code, report.message);
 
-    if (!report.note.empty()) {
-      print_colored(report.context, m_colors.note, "note:");
-      print_colored(report.context, m_colors.text, " {}\n", report.note);
+    if (!report.help.empty()) {
+      print_colored(report.context, m_colors.help, "help:");
+      print_colored(report.context, m_colors.text, " {}\n", report.help);
     }
   }
 
 private:
-  void print_message(ReportContext context, ReportSeverity severity,
+  void print_message(const ReportContext &context, ReportSeverity severity,
                      const std::optional<uint32_t> &code,
                      std::string_view message) {
 
@@ -63,6 +68,9 @@ private:
       severity_name = "error";
       severity_prefix = 'E';
       break;
+    case ReportSeverity::INTERRUPTED:
+      print_colored(context, m_colors.text, "{}\n", message);
+      return;
     }
 
     if (code.has_value()) {
@@ -80,7 +88,7 @@ private:
   /// m). If the use of colors is disabled, then the formatted message is
   /// printed verbatim.
   template<typename... Args>
-  void print_colored(ReportContext c, const char *ansi_color,
+  void print_colored(const ReportContext &c, const char *ansi_color,
                      std::string_view message, Args &&...args) {
     if (c.colored_output())
       m_out << "\x1b[" << ansi_color << "m";
@@ -105,8 +113,8 @@ void Report::print(std::ostream &out) const {
   print(out);
 
   if (code.has_value()) {
-    ::exit(code.value());
+    std::exit(code.value());
   } else {
-    ::exit(1);
+    std::exit(1);
   }
 }

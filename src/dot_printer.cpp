@@ -156,7 +156,7 @@ private:
   std::unordered_map<Variable::ptr, var_id> var_2_id;
 };
 
-void DotPrinter::print(std::ostream &out) {
+void DotPrinter::print() {
   ExpressionIterator expIt;
 
   out << "digraph {\n";

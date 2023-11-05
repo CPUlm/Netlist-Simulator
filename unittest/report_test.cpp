@@ -59,10 +59,10 @@ TEST_F(ReportTest, with_note) {
 
   ctx.report(ReportSeverity::ERROR)
       .with_message("foobar")
-      .with_note("did you mean '{}'", "foo")
+      .with_help("did you mean 'foo'")
       .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), "In file file:\nerror: foobar\nnote: did you mean 'foo'\n");
+  EXPECT_EQ(stream.str(), "In file file:\nerror: foobar\nhelp: did you mean 'foo'\n");
 }
 
 TEST_F(ReportTest, with_position) {
@@ -71,10 +71,10 @@ TEST_F(ReportTest, with_position) {
   ctx.report(ReportSeverity::ERROR)
       .with_location({42, 5})
       .with_message("foobar")
-      .with_note("did you mean '{}'", "foo")
+      .with_help("did you mean 'foo'")
       .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), "In file file:42:5:\nerror: foobar\nnote: did you mean 'foo'\n");
+  EXPECT_EQ(stream.str(), "In file file:42:5:\nerror: foobar\nhelp: did you mean 'foo'\n");
 }
 
 using ReportDeathTest = ReportTest;
@@ -84,12 +84,12 @@ TEST_F(ReportDeathTest, with_exit) {
                 ctx.report(ReportSeverity::ERROR)
                     .with_location({42, 5})
                     .with_message("foobar")
-                    .with_note("did you mean '{}'", "foo")
+                    .with_help("did you mean 'foo'")
                     .build()
                     .exit();
               },
               testing::ExitedWithCode(1),
-              "In file file:42:5:\nerror: foobar\nnote: did you mean 'foo'\n");
+              "In file file:42:5:\nerror: foobar\nhelp: did you mean 'foo'\n");
 }
 
 TEST_F(ReportDeathTest, with_exit_and_code) {
@@ -98,11 +98,11 @@ TEST_F(ReportDeathTest, with_exit_and_code) {
                     .with_code(10)
                     .with_location({42, 5})
                     .with_message("foobar")
-                    .with_note("did you mean '{}'", "foo")
+                    .with_help("did you mean 'foo'")
                     .build()
                     .exit();
               },
               testing::ExitedWithCode(10),
-              "In file file:42:5:\nerror\\[E0010\\]: foobar\nnote: did you mean 'foo'\n");
+              "In file file:42:5:\nerror\\[E0010\\]: foobar\nhelp: did you mean 'foo'\n");
 }
 

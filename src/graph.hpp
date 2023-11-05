@@ -34,7 +34,7 @@ template<typename T>
 class Graph {
 public:
   using iterator = typename std::unordered_map<T, Node<T>>::const_iterator;
-  using LabelList = typename std::vector<std::reference_wrapper<const T>>;
+  using LabelList = typename std::vector<T>;
 
   void add_node(const T &label) noexcept {
     nodes.emplace(std::piecewise_construct, std::forward_as_tuple(label), std::forward_as_tuple(label));

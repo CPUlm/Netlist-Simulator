@@ -9,7 +9,7 @@
 
 class Parser {
 public:
-  explicit Parser(ReportContext &context, Lexer &lexer);
+  explicit Parser(const ReportContext &context, Lexer &lexer);
 
   /// Parse a program.
   [[nodiscard]] std::unique_ptr<Program> parse_program();
@@ -85,7 +85,7 @@ private:
   /// Check that the argument fit in a bus size of 'size'
   [[nodiscard]] Argument::ptr parse_argument();
 
-  ReportContext &m_context;
+  const ReportContext &m_context;
   Lexer &m_lexer;
   Token m_token;
 

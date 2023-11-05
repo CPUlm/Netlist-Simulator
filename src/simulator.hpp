@@ -9,11 +9,9 @@
 
 class Simulator {
 public:
-  explicit Simulator(ReportContext &ctx, InputManager &in_manager, const Program::ptr &p);
+  explicit Simulator(const ReportContext &ctx, const InputManager &in_manager, const Program::ptr &p);
 
   void cycle();
-
-  void simulate(size_t nb_cycle);
 
   [[nodiscard]] value_t read_value(const Variable::ptr &var) const {
     return env.at(var);
@@ -93,9 +91,8 @@ private:
   [[nodiscard]] value_t eval_arg(const Argument::ptr &arg) const noexcept;
 
   const Program::ptr &prog;
-  ReportContext &ctx;
+  const ReportContext &ctx;
   const Scheduler::VariableList dep_list;
-  InputManager &in_manager;
 
   const MemoryMapper mem_map;
   std::vector<value_t> memory;

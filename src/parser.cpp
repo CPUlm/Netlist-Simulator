@@ -4,7 +4,7 @@
 
 /// Parse the current token as an integer in the given base. We use a template to process different integer types.
 template<typename T>
-[[nodiscard]] T parse_int(const Token &token, int base, ReportContext &c) {
+[[nodiscard]] T parse_int(const Token &token, int base, const ReportContext &c) {
   T v;
   const char *data = token.spelling.data();
 
@@ -99,7 +99,7 @@ const std::unordered_map<TokenKind, std::string> token_spelling = {
     {TokenKind::KEY_RAM, "RAM"},
 };
 
-Parser::Parser(ReportContext &context, Lexer &lexer)
+Parser::Parser(const ReportContext &context, Lexer &lexer)
     : m_context(context), m_lexer(lexer) {
   // Gets the first token
   consume();

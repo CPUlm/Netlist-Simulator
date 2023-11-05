@@ -39,11 +39,14 @@ Simulator::ExpressionEvaluator::ExpressionEvaluator(const Simulator::var_env &en
                                                     const Simulator::MemoryMapper &mem_map)
     : env(env), current_value(0), mem(mem), mem_map(mem_map) {}
 
+constexpr value_t one = 1;
+
 value_t Simulator::ExpressionEvaluator::eval(const Variable::ptr &var, const Expression::ptr &expr) noexcept {
+  const value_t mask = (one << expr->get_bus_size()) - 1;
   current_value = 0;
   current_var = var;
   visit(expr);
-  return current_value;
+  return current_value & mask;
 }
 
 void Simulator::ExpressionEvaluator::visit_constant(const Constant::ptr &cst) {
@@ -122,8 +125,6 @@ void Simulator::ExpressionEvaluator::visit_concat_expr(const ConcatExpression &e
   current_value = current_value << expr.get_bus_size() | beg_value;
 }
 
-constexpr value_t one = 1;
-
 void Simulator::ExpressionEvaluator::visit_slice_expr(const SliceExpression &expr) {
   visit(expr.get_argument());
   const value_t value_shifted = current_value >> expr.get_begin_index();
@@ -136,15 +137,13 @@ void Simulator::ExpressionEvaluator::visit_select_expr(const SelectExpression &e
   current_value = (current_value >> expr.get_index()) & one;
 }
 
-Simulator::Simulator(ReportContext &ctx, InputManager &in_manager, const Program::ptr &p)
+Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, const Program::ptr &p)
     : prog(p), ctx(ctx), dep_list(Scheduler::schedule(ctx, p)), mem_map(p), memory(mem_map.current_index, 0),
-      env(), expr_eval(env, memory, mem_map), in_manager(in_manager) {
-
-  in_manager.register_input_variables(p->get_inputs());
+      env(), expr_eval(env, memory, mem_map) {
 
   // Initialing env variables. (All result of equation are set to 0)
   for (const auto &[var, _] : p->get_equations()) {
-    env.emplace(var, 0);
+    env[var] = 0;
   }
 
   // We list every memory block to fill.
@@ -174,6 +173,7 @@ Simulator::Simulator(ReportContext &ctx, InputManager &in_manager, const Program
           .with_code(50)
           .build()
           .print();
+      continue;
     }
 
     if (block_size != memory_chunks.size()) {
@@ -210,11 +210,35 @@ Simulator::Simulator(ReportContext &ctx, InputManager &in_manager, const Program
   }
 }
 
+void print_env(const std::unordered_map<Variable::ptr, value_t> &env) {
+  std::cout << "Environment:\n";
+  for (const auto &[var, val] : env) {
+    std::cout << var->get_name() << " = " << val << "\n";
+  }
+  std::cout << "\n" << std::flush;
+}
+
+void print_memory(const std::vector<value_t> &mem) {
+  std::cout << "Memory:\n";
+  if (mem.empty()) {
+    std::cout << "  empty";
+  } else {
+    for (size_t i = 0; i < mem.size(); ++i) {
+      std::cout << "memory[" << i << "] -> " << mem[i] << "\n";
+    }
+  }
+
+  std::cout << "\n" << std::flush;
+}
+
 void Simulator::cycle() {
   // Set all Input value
   for (const Variable::ptr &in_var : prog->get_inputs()) {
-    env.emplace(in_var, in_manager.get_input_value(in_var->get_name()));
+    env[in_var] = InputManager::get_input_value(in_var);
   }
+
+  print_env(env);
+  print_memory(memory);
 
   // Iterate over equations
   for (const Variable::ptr &var : dep_list) {
@@ -234,6 +258,9 @@ void Simulator::cycle() {
       memory[offset] = data;
     }
   }
+
+  print_env(env);
+  print_memory(memory);
 }
 
 value_t Simulator::eval_arg(const Argument::ptr &arg) const noexcept {
@@ -251,11 +278,5 @@ value_t Simulator::eval_arg(const Argument::ptr &arg) const noexcept {
         .build()
         .exit();
   }
-  }
-}
-
-void Simulator::simulate(size_t nb_cycle) {
-  for (size_t i = 0; i < nb_cycle; ++i) {
-    cycle();
   }
 }

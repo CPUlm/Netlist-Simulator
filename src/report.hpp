@@ -13,17 +13,17 @@
 
 class ReportContext;
 
-enum class ReportSeverity { WARNING, ERROR };
+enum class ReportSeverity { WARNING, ERROR, INTERRUPTED, };
 
 struct Report {
-  ReportContext &context;
+  const ReportContext &context;
   ReportSeverity severity;
   std::optional<SourcePosition> position;
   std::optional<int> code;
   std::string message;
-  std::string note;
+  std::string help;
 
-  explicit Report(ReportSeverity severity, ReportContext &context) noexcept
+  explicit Report(ReportSeverity severity, const ReportContext &context) noexcept
       : context(context), severity(severity) {}
 
   void print(std::ostream &out = std::cerr) const;
@@ -32,7 +32,7 @@ struct Report {
 
 class ReportBuilder {
 public:
-  explicit ReportBuilder(ReportSeverity severity, ReportContext &context) : m_report(severity, context) {}
+  explicit ReportBuilder(ReportSeverity severity, const ReportContext &context) : m_report(severity, context) {}
 
   [[nodiscard]] ReportBuilder &with_location(const SourcePosition &position) noexcept {
     m_report.position = position;
@@ -49,14 +49,13 @@ public:
     return *this;
   }
 
-  /// Sets a note message for the report that adds additional information (maybe
-  /// also a hint to fix the error).
+  /// Sets a help message for the report that adds additional information to how
+  /// to use the command line program.
   ///
   /// The message is formatted using std::format() and therefore the syntax and
   /// arguments supported by std::format() are also by this function.
-  template<typename... T>
-  [[nodiscard]] ReportBuilder &with_note(fmt::format_string<T...> format, T &&...args) {
-    m_report.note = fmt::vformat(format, fmt::make_format_args(args...));
+  [[nodiscard]] ReportBuilder &with_help(const std::string &help) {
+    m_report.help = help;
     return *this;
   }
 
@@ -80,7 +79,9 @@ public:
   explicit ReportContext(std::string filename, bool colored_output) noexcept:
       m_file_name(std::move(filename)), m_colored_output(colored_output) {}
 
-  ReportBuilder report(ReportSeverity severity) {
+  explicit ReportContext(bool colored_output) noexcept: m_file_name(), m_colored_output(colored_output) {}
+
+  [[nodiscard]] ReportBuilder report(ReportSeverity severity) const {
     return ReportBuilder(severity, *this);
   }
 

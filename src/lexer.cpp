@@ -22,7 +22,7 @@ void Lexer::DataBuffer::next_char() {
   }
 }
 
-Lexer::Lexer(ReportContext &context, const char *input)
+Lexer::Lexer(const ReportContext &context, const char *input)
     : m_buf(input), m_context(context) {}
 
 /// Returns true if the given ASCII character is a whitespace,

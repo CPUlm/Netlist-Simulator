@@ -10,15 +10,14 @@ class Simulator;
 // Input Variables are read from files for each cycle or from stdin & stdout.
 class InputManager {
 public:
-  explicit InputManager();
-  // TODO : Build Class.
+  explicit InputManager(const std::vector<std::string_view> &input_files) {}
 
 protected:
   friend Simulator;
-  value_t get_input_value(ident_t var_name);
+
+  static value_t get_input_value(const Variable::ptr &var);
 
   std::unordered_map<ident_t, std::vector<value_t>> memory_blocks;
-  void register_input_variables(const std::unordered_set<Variable::ptr> &input_var);
 };
 
 #endif //NETLIST_SRC_INPUT_MANAGER_HPP

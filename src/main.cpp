@@ -1,182 +1,110 @@
+#include <atomic>
+#include <csignal>
+
+#include "command_line_parser.hpp"
+#include "utils.hpp"
+
 #include "lexer.hpp"
 #include "parser.hpp"
+
 #include "program_printer.hpp"
-#include "scheduler.hpp"
 #include "dot_printer.hpp"
+#include "scheduler.hpp"
 #include "simulator.hpp"
 
-#include <cassert>
-#include <fstream>
-#include <iostream>
-#include <optional>
-#include <filesystem>
-
-static std::ostream &error(std::ostream &stream) {
-  stream << "\x1b[1;31mERROR:\x1b[0m ";
-  return stream;
+namespace {
+volatile std::atomic_bool stop_flag = false;
 }
 
-/// The different options that can be given to the netlist compiler/simulator.
-struct CommandLineOptions {
-  std::vector<std::string_view> input_files;
-};
-
-/// A simple command line option parser for use by the netlist
-/// compiler/simulator. It fills the data structure CommandLineOptions
-/// using the command line arguments given to main() function.
-///
-/// Usage:
-/// ```
-/// CommandLineOptions cmd_options;
-/// CommandLineParser cmd_parser(cmd_options);
-/// if (!cmd_parser.parse(argc, argv))
-///   return EXIT_FAILURE;
-///
-/// // Then:
-/// options.input_files;
-/// // etc.
-/// ```
-class CommandLineParser {
-public:
-  explicit CommandLineParser(CommandLineOptions &options)
-      : m_options(options) {}
-
-  bool parse(int argc, const char *argv[]) {
-    assert(argc > 0);
-
-    m_program_name = argv[0];
-
-    // The first argument is generally, by convention, the program name.
-    bool has_error = false;
-    for (int i = 1; i < argc; ++i) {
-      std::string_view argument = argv[i];
-      if (argument.starts_with("-")) {
-        has_error |= !parse_option(argument);
-        if (has_error)
-          break;
-      } else {
-        m_options.input_files.push_back(argument);
-      }
-    }
-
-    if (!has_error && post_validation()) {
-      return true;
-    }
-
-    show_help_message();
-    return false;
+void signal_handler(int signal) {
+  if (signal == SIGTERM || signal == SIGINT) {
+    std::cin.setstate(std::ios::failbit); // To detect stopping when reading stdin
+    stop_flag = true;
   }
-
-private:
-  bool parse_option(std::string_view option) {
-    assert(option.starts_with("-"));
-
-    if (option == "-h" || option == "--help") {
-      show_help_message(stdout);
-      std::exit(EXIT_SUCCESS);
-    } else if (option == "--version") {
-      show_version_message();
-      std::exit(EXIT_SUCCESS);
-    } else {
-      std::cerr << error << "unknown option `" << option << "'" << std::endl;
-      return false;
-    }
-  }
-
-  [[nodiscard]] bool post_validation() const {
-    if (m_options.input_files.empty()) {
-      std::cerr << error << "no input files" << std::endl;
-      return false;
-    }
-
-    return true;
-  }
-
-  void show_help_message(FILE *file = stderr) {
-    fprintf(file, "USAGE %s [options...] [files...]\n", m_program_name.data());
-  }
-
-  static void show_version_message() {
-    printf("Netlist compiler/simulation, version 0.1\n");
-  }
-
-private:
-  std::string_view m_program_name;
-  CommandLineOptions &m_options;
-};
-
-/// Reads the full content of a file at the given path.
-/// If, for some reason, we fail to read the file content then
-/// std::nullopt is returned.
-std::optional<std::string> read_file(std::string_view path) {
-  constexpr std::size_t BUFFER_SIZE = 4096;
-  char buffer[BUFFER_SIZE] = {0};
-
-  auto stream = std::ifstream(path.data());
-  if (!stream)
-    return std::nullopt;
-
-  std::string content;
-  while (stream.read(buffer, BUFFER_SIZE)) {
-    content.append(buffer, 0, stream.gcount());
-  }
-
-  content.append(buffer, 0, stream.gcount());
-  return content;
-}
-
-void compile_file(const std::filesystem::path &file_name, std::string_view file_content) {
-  ReportContext ctx(file_name.string(), true);
-  Lexer lexer(ctx, file_content.data());
-  Parser parser(ctx, lexer);
-  Program::ptr program = parser.parse_program();
-
-  DotPrinter dot_ptr(program);
-
-  ProgramPrinter printer(program, std::cout);
-  printer.print();
-
-  std::cout << "\n\n\nScheduling Results :" << std::endl;
-
-  bool is_first = true;
-
-  for (const auto &v : Scheduler::schedule(ctx, program)) {
-    if (is_first) {
-      is_first = false;
-    } else {
-      std::cout << " -> ";
-    }
-    std::cout << v.get()->get_name();
-  }
-
-  std::cout << std::endl;
-
-  std::filesystem::path dot_file = file_name;
-  dot_file.replace_extension(".dot");
-  std::ofstream f(dot_file);
-  std::cout << dot_file << std::endl;
-  dot_ptr.print(f);
-  f.close();
-
-  InputManager i;
-  Simulator s(ctx, i, program);
 }
 
 int main(int argc, const char *argv[]) {
-  CommandLineOptions cmd_options;
-  CommandLineParser cmd_parser(cmd_options);
-  if (!cmd_parser.parse(argc, argv))
-    return EXIT_FAILURE;
+  std::signal(SIGINT, signal_handler);
+  std::signal(SIGTERM, signal_handler);
 
-  for (const auto &input_file : cmd_options.input_files) {
-    auto file_content = read_file(input_file);
-    if (!file_content.has_value()) {
-      std::cerr << error << "failed to read file `" << input_file << "'"
-                << std::endl;
-      continue;
+  CommandLineParser cmd_parser(argc, argv);
+
+  if (cmd_parser.get_action() == NoAction) {
+    return EXIT_SUCCESS;
+  }
+
+  ReportContext ctx(cmd_parser.get_netlist_file(), true);
+  std::string netlist_content = read_file(ctx, cmd_parser.get_netlist_file());
+  Lexer lexer(ctx, netlist_content.data());
+  Parser parser(ctx, lexer);
+  Program::ptr program = parser.parse_program();
+
+  switch (cmd_parser.get_action()) {
+  case Simulate: {
+    InputManager im(cmd_parser.get_inputs());
+    Simulator s(ctx, im, program);
+    size_t cycle_id = 0;
+
+    if (cmd_parser.cycle_amount_defined()) {
+      for (; cycle_id < cmd_parser.get_cycle_amount(); ++cycle_id) {
+        if (cmd_parser.is_verbose()) {
+          std::cout << "Step " << cycle_id + 1 << ":\n";
+        }
+        s.cycle();
+        if (cmd_parser.is_verbose()) {
+          print_output_values(s, program, std::cout);
+          std::cout << "\n";
+        }
+      }
+    } else {
+      while (!stop_flag) {
+        if (cmd_parser.is_verbose()) {
+          std::cout << "Step " << cycle_id + 1 << ":\n";
+        }
+        s.cycle();
+        if (cmd_parser.is_verbose()) {
+          print_output_values(s, program, std::cout);
+          std::cout << "\n";
+        }
+        cycle_id++;
+      }
     }
+    if (!cmd_parser.is_verbose()) {
+      std::cout << "Step " << cycle_id << ":\n";
+      print_output_values(s, program, std::cout);
+      std::cout << "\n";
+    }
+    break;
+  }
 
-    compile_file(std::filesystem::path(input_file), *file_content);
+  case DotExport: {
+    DotPrinter printer(program, std::cout);
+    printer.print();
+    break;
+  }
+
+  case PrintFile: {
+    ProgramPrinter printer(program, std::cout);
+    printer.print();
+    break;
+  }
+
+  case Schedule: {
+    bool is_first = true;
+
+    for (const auto &v : Scheduler::schedule(ctx, program)) {
+      if (is_first) {
+        is_first = false;
+      } else {
+        std::cout << " -> ";
+      }
+      std::cout << v->get_name();
+    }
+    std::cout << "\n";
+    break;
+  }
+  case NoAction:
+    break;
   }
 
   return EXIT_SUCCESS;

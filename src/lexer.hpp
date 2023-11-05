@@ -10,7 +10,7 @@
 /// the ASCII or UTF-8 encoding) into a stream of Tokens.
 class Lexer {
 public:
-  explicit Lexer(ReportContext &context, const char *input);
+  explicit Lexer(const ReportContext &context, const char *input);
 
   /// Returns the next scanned token in the source code and advances the
   /// internal position of the lexer.
@@ -70,7 +70,7 @@ private:
     const char *m_cur;
   } m_buf;
 
-  ReportContext &m_context;
+  const ReportContext &m_context;
 
   [[nodiscard]] static inline bool is_whitespace(const DataBuffer &b);
   [[nodiscard]] static inline bool is_binary_digit(const DataBuffer &b);
