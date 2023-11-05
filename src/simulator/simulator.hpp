@@ -94,6 +94,16 @@ public:
 /// The actual simulator logic is implemented inside an implementation of the
 /// interface SimulatorBackend.
 ///
+/// Example of usage:
+/// ```
+/// std::shared<Program> program = /* ... */;
+/// Simulator simulator(program);
+/// simulator.set_register(input_a, 0b1001);
+/// simulator.set_register(input_b, 0b1111);
+/// simulator.cycle();
+/// fmt::print("output_a = {}", simulator.get_register(output_a));
+/// ```
+///
 /// \see SimulatorBackend
 class Simulator {
 public:
@@ -102,54 +112,39 @@ public:
   /// \brief Returns the current program being simulated.
   [[nodiscard]] std::shared_ptr<Program> get_program() const { return m_program; }
 
-  // ------------------------------------------------------
-  // The debugger API
-  // ------------------------------------------------------
-
-  // ------------------------
-  // The registers API
-
-  /// \brief Returns the total count of registers available (and registered in the bytecode).
-  [[nodiscard]] size_t get_register_count() const { return m_program->registers.size(); }
-  /// \brief Returns true if the given register index is valid and refers to a real register
-  /// in the current Netlist program.
-  [[nodiscard]] bool is_valid_register(reg_t reg) const { return reg.index < get_register_count(); }
-  /// \brief Shorthand for `get_backend()->get_register(reg)`.
-  [[nodiscard]] reg_value_t get_register(reg_t reg) const;
-  /// \brief Shorthand for `get_backend()->set_register(reg, value)`.
-  void set_register(reg_t reg, reg_value_t value);
-  /// \brief Prints the given register value to the standard output.
-  ///
-  /// \warning This need debugger support from the backend.
-  ///
-  /// \param reg The register to print, behavior is undefined if the register doesn't exist.
-  void print_register(reg_t reg);
-  /// \brief Prints the registers in the given range to the standard output.
-  ///
-  /// \warning This need debugger support from the backend.
-  ///
-  /// \param registers_start The first register index to print, inclusive.
-  /// \param registers_end The last register index to print, inclusive.
-  void print_registers(std::uint_least32_t registers_start = 0, std::uint_least32_t registers_end = UINT_LEAST32_MAX);
-
-  /// \brief Prints the inputs to the standard output.
-  ///
-  /// \warning This need debugger support from the backend.
-  void print_inputs();
-  /// \brief Prints the outputs to the standard output.
-  ///
-  /// \warning This need debugger support from the backend.
-  void print_outputs();
+  /// \brief Returns the currently used simulator backend.
+  [[nodiscard]] SimulatorBackend* get_backend() { return m_backend.get(); }
+  [[nodiscard]] const SimulatorBackend* get_backend() const { return m_backend.get(); }
 
   // ------------------------------------------------------
   // The Simulator API
   // ------------------------------------------------------
 
-  /// Simulates a cycle of the Netlist program.
-  void cycle();
+  /// \brief Returns true if the given register is valid.
+  [[nodiscard]] bool is_valid_register(reg_t reg) const { return reg.index < m_program->registers.size(); }
+  /// \brief Returns \a reg value.
+  /// \param reg The register to query.
+  /// \return The register's bits stored in the lowest bits.
+  [[nodiscard]] reg_value_t get_register(reg_t reg) const;
+  /// \brief Sets \a reg to the given value.
+  /// \param reg The register to modify.
+  /// \param value The new register bits stored in the lowest bits.
+  void set_register(reg_t reg, reg_value_t value);
 
-private:
-  void print_register_impl(reg_t reg);
+  /// \brief Simulates a cycle of the Netlist program.
+  ///
+  /// This is exactly the same as `simulate(1)`.
+  ///
+  /// \see simulate()
+  void cycle();
+  /// \brief Simulates \a n cycles of the Netlist program.
+  ///
+  /// The inputs are set using the set_register() function before the simulation.
+  /// Likewise, the outputs are retrieved using the get_register() function.
+  ///
+  /// \param n The count of cycles to simulate.
+  /// \see cycle() and set_register()
+  void simulate(size_t n = 1);
 
 private:
   std::shared_ptr<Program> m_program;
