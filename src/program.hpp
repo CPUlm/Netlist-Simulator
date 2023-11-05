@@ -307,65 +307,6 @@ private:
   };
 };
 
-/// Utility class that generates C++ code using the ProgramBuilder API
-/// to recreate the given program.
-///
-/// This can be quite useful to create unit tests.
-///
-/// **For example:**
-/// If you have a program representing the following Netlist code:
-/// ```
-/// INPUT a
-/// OUTPUT b
-/// VAR a: 2, b, c
-/// c = SELECT 1 a
-/// b = AND a c
-/// ```
-/// The following C++ code will be generated:
-/// ```
-/// ProgramBuilder builder;
-/// const auto a = builder.add_register(2, "a", 1);
-/// const auto b = builder.add_register(1, "b", 2);
-/// const auto c = builder.add_register(1, "c", 0);
-/// builder.add_select(c, 1, a);
-/// builder.add_and(b, a, c);
-/// ```
-class BuilderCodeGenerator {
-public:
-  static void generate(const std::shared_ptr<Program> &program);
-  static void generate(const std::shared_ptr<Program> &program, std::ostream &out);
-
-private:
-  /// \internal
-  struct Detail final : ConstInstructionVisitor {
-    std::shared_ptr<Program> program;
-    std::ostream &out;
-
-    explicit Detail(std::ostream &out) : ConstInstructionVisitor(), out(out) {}
-
-    void prepare(const std::shared_ptr<Program> &program);
-
-    [[nodiscard]] std::string get_reg_name(reg_t reg) const;
-
-    void visit_const(const ConstInstruction &inst) override;
-    void visit_load(const LoadInstruction &inst) override;
-    void visit_not(const NotInstruction &inst) override;
-    void visit_reg(const RegInstruction &inst) override;
-    void visit_mux(const MuxInstruction &inst) override;
-    void visit_concat(const ConcatInstruction &inst) override;
-    void visit_and(const AndInstruction &inst) override;
-    void visit_nand(const NandInstruction &inst) override;
-    void visit_or(const OrInstruction &inst) override;
-    void visit_nor(const NorInstruction &inst) override;
-    void visit_xor(const XorInstruction &inst) override;
-    void visit_xnor(const XnorInstruction &inst) override;
-    void visit_select(const SelectInstruction &inst) override;
-    void visit_slice(const SliceInstruction &inst) override;
-    void visit_rom(const RomInstruction &inst) override;
-    void visit_ram(const RamInstruction &inst) override;
-  };
-};
-
 /// \brief Utility class to simplify the creation of a Program instance.
 ///
 /// To create an instance of Program representing the following Netlist code:
