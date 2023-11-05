@@ -1,6 +1,7 @@
 #include "command_line_parser.hpp"
 
 #include <charconv>
+#include <sstream>
 
 void assert_args_gt(int argc, int i, const ReportContext &ctx, const std::string &help_str) {
   if (argc <= i) {

@@ -50,5 +50,5 @@ add_executable(netlist
 target_link_libraries(netlist PUBLIC netlistlib)
 target_include_directories(netlistlib PUBLIC src/)
 
-#enable_testing()
-#add_subdirectory(unittest)
+enable_testing()
+add_subdirectory(unittest)
