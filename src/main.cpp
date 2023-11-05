@@ -1,6 +1,7 @@
 #include "dependency_graph.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
+#include "disassembler.hpp"
 #include "simulator/simulator.hpp"
 
 #include <charconv>
@@ -213,7 +214,7 @@ int main(int argc, const char *argv[]) {
         for (const auto input_reg : program->get_inputs()) {
           bool has_error;
           do {
-            fmt::print("  - {} = ", program->get_reg_name(input_reg));
+            fmt::print("  - {} = ", program->get_register_name(input_reg));
             std::string value_string;
             std::cin >> value_string;
 
@@ -241,7 +242,7 @@ int main(int argc, const char *argv[]) {
         // Show the computed outputs.
         fmt::println("Outputs:");
         for (const auto output_reg : program->get_outputs()) {
-          fmt::println("  - {} = {:b}", program->get_reg_name(output_reg), simulator.get_register(output_reg));
+          fmt::println("  - {} = {:b}", program->get_register_name(output_reg), simulator.get_register(output_reg));
         }
 
         if (options.timeit) {

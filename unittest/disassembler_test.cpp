@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "program.hpp"
+#include "disassembler.hpp"
 
 TEST(DisassemblerTest, registers) {
   ProgramBuilder builder;

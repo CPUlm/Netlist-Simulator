@@ -26,6 +26,8 @@ add_library(netlist_lib
         src/dependency_graph.hpp
         src/dependency_graph.cpp
         src/utils.hpp
+        src/disassembler.cpp
+        src/disassembler.hpp
 )
 
 add_subdirectory(fmt)

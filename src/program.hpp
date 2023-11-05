@@ -262,54 +262,6 @@ struct Program {
 
   /// \brief Returns the register's name.
   ///
-/// \brief The Netlist program disassembler.
-///
-/// This class takes a program and then outputs a textual representation
-/// to the given output stream.
-///
-/// The output is intended to contain the maximum information and to be a valid
-/// parseable Netlist program.
-class Disassembler {
-public:
-  /// Disassembles a single instruction and prints it to std::cout.
-  static void disassemble(const Instruction &instruction);
-  /// Disassembles a single instruction and prints to the given output stream.
-  static void disassemble(const Instruction &instruction, std::ostream &out);
-
-  /// Disassembles all the program and prints it to std::cout.
-  static void disassemble(const std::shared_ptr<Program> &program);
-  /// Disassembles all the program and prints it to the given output stream.
-  static void disassemble(const std::shared_ptr<Program> &program, std::ostream &out);
-
-private:
-  /// \internal
-  struct Detail final : ConstInstructionVisitor {
-    std::shared_ptr<Program> program;
-    std::ostream &out;
-
-    explicit Detail(std::ostream &out) : ConstInstructionVisitor(), out(out) {}
-
-    void print_reg(reg_t reg);
-    void print_inst_label(const char *opcode, reg_t output);
-    void print_binary_inst(const char *opcode, const BinaryInstruction &inst);
-
-    void visit_const(const ConstInstruction &inst) override;
-    void visit_load(const LoadInstruction &inst) override;
-    void visit_not(const NotInstruction &inst) override;
-    void visit_reg(const RegInstruction &inst) override;
-    void visit_mux(const MuxInstruction &inst) override;
-    void visit_concat(const ConcatInstruction &inst) override;
-    void visit_and(const AndInstruction &inst) override;
-    void visit_nand(const NandInstruction &inst) override;
-    void visit_or(const OrInstruction &inst) override;
-    void visit_nor(const NorInstruction &inst) override;
-    void visit_xor(const XorInstruction &inst) override;
-    void visit_xnor(const XnorInstruction &inst) override;
-    void visit_select(const SelectInstruction &inst) override;
-    void visit_slice(const SliceInstruction &inst) override;
-    void visit_rom(const RomInstruction &inst) override;
-    void visit_ram(const RamInstruction &inst) override;
-  };
   /// If the register has a name then it is returned, otherwise a dummy but
   /// valid identifier is returned uniquely identifying the register.
   [[nodiscard]] std::string get_register_name(reg_t reg) const;
