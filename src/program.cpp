@@ -46,7 +46,7 @@ BinOpExpression::BinOpExpression(BinOpExpression::BinOpKind binop, const Argumen
   assert_same_bus_size(lhs, rhs);
 }
 
-MuxExpression::MuxExpression(const Argument::ptr &choice, const Argument::ptr &true_arg, const Argument::ptr &false_arg)
+MuxExpression::MuxExpression(const Argument::ptr &choice, const Argument::ptr &false_arg, const Argument::ptr &true_arg)
     : Expression(true_arg->get_bus_size()),
       m_choice(choice),
       m_true(true_arg),

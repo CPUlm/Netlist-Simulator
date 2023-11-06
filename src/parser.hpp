@@ -2,6 +2,7 @@
 #define NETLIST_PARSER_HPP
 
 #include <set>
+#include <optional>
 
 #include "program.hpp"
 #include "report.hpp"
@@ -14,6 +15,8 @@ public:
   /// Parse a program.
   [[nodiscard]] std::unique_ptr<Program> parse_program();
 
+  /// Parse a value given by the user (stdin)
+  [[nodiscard]] static value_t get_input_value(const Variable::ptr &var) noexcept;
 private:
   /// Variable declaration (used in the VAR statement)
   struct VariableDeclaration {

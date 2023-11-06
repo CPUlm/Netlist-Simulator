@@ -3,6 +3,7 @@
 
 #include <variant>
 
+#include "parser.hpp"
 #include "program.hpp"
 #include "scheduler.hpp"
 #include "input_manager.hpp"
@@ -13,9 +14,7 @@ public:
 
   void cycle();
 
-  [[nodiscard]] value_t read_value(const Variable::ptr &var) const {
-    return env.at(var);
-  }
+  void print_outputs(std::ostream &out) const;
 
 private:
   using var_env = std::unordered_map<Variable::ptr, value_t>;
@@ -85,10 +84,13 @@ private:
     const MemoryMapper &mem_map;
 
     value_t current_value;
+    bus_size_t current_value_size;
     Variable::ptr current_var;
   } expr_eval;
 
   [[nodiscard]] value_t eval_arg(const Argument::ptr &arg) const noexcept;
+
+  [[nodiscard]] inline std::string_view get_output_value(const Variable::ptr &var) const noexcept;
 
   const Program::ptr &prog;
   const ReportContext &ctx;
@@ -98,6 +100,8 @@ private:
   std::vector<value_t> memory;
 
   var_env env;
+
+  void print_env() const noexcept;
 };
 
 #endif //NETLIST_SRC_SIMULATOR_HPP

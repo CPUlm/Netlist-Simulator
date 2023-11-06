@@ -15,8 +15,6 @@ public:
 protected:
   friend Simulator;
 
-  static value_t get_input_value(const Variable::ptr &var);
-
   std::unordered_map<ident_t, std::vector<value_t>> memory_blocks;
 };
 

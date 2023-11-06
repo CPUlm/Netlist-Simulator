@@ -9,6 +9,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_subdirectory(fmt)
 
 add_library(netlistlib
+        src/utilities.cpp
+        src/utilities.hpp
+
         src/program.hpp
         src/program.cpp
 
@@ -31,21 +34,19 @@ add_library(netlistlib
 
         src/program_printer.hpp
         src/program_printer.cpp
+
         src/simulator.cpp
         src/simulator.hpp
+
         src/input_manager.cpp
         src/input_manager.hpp
-        src/utils.hpp
-        src/command_line_parser.cpp
-        src/command_line_parser.hpp
 
-)
+        src/command_line_parser.cpp
+        src/command_line_parser.hpp)
 
 target_link_libraries(netlistlib PUBLIC fmt::fmt)
 
-add_executable(netlist
-        src/main.cpp
-)
+add_executable(netlist src/main.cpp)
 
 target_link_libraries(netlist PUBLIC netlistlib)
 target_include_directories(netlistlib PUBLIC src/)

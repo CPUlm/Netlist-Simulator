@@ -1,8 +1,8 @@
 #include <atomic>
 #include <csignal>
+#include <fstream>
 
 #include "command_line_parser.hpp"
-#include "utils.hpp"
 
 #include "lexer.hpp"
 #include "parser.hpp"
@@ -21,6 +21,38 @@ void signal_handler(int signal) {
     std::cin.setstate(std::ios::failbit); // To detect stopping when reading stdin
     stop_flag = true;
   }
+}
+
+std::string read_file(const ReportContext &ctx, std::string_view path) {
+  constexpr std::size_t BUFFER_SIZE = 4096;
+  static char buffer[BUFFER_SIZE] = {0};
+
+  std::ifstream f = std::ifstream(path.data());
+  f.exceptions(std::ios_base::badbit); // To throw error during read
+
+  if (!f.is_open()) {
+    ctx.report(ReportSeverity::ERROR)
+        .with_message("Error opening file {}", path)
+        .with_code(60)
+        .build()
+        .exit();
+  }
+
+  std::string content;
+  try {
+    while (f.read(buffer, BUFFER_SIZE)) {
+      content.append(buffer, 0, f.gcount());
+    }
+  } catch (std::exception &e) {
+    ctx.report(ReportSeverity::ERROR)
+        .with_message("Error occurred when reading file {} : {}", path, e.what())
+        .with_code(61)
+        .build()
+        .exit();
+  }
+  content.append(buffer, 0, f.gcount());
+
+  return content;
 }
 
 int main(int argc, const char *argv[]) {
@@ -52,7 +84,7 @@ int main(int argc, const char *argv[]) {
         }
         s.cycle();
         if (cmd_parser.is_verbose()) {
-          print_output_values(s, program, std::cout);
+          s.print_outputs(std::cout);
           std::cout << "\n";
         }
       }
@@ -63,7 +95,7 @@ int main(int argc, const char *argv[]) {
         }
         s.cycle();
         if (cmd_parser.is_verbose()) {
-          print_output_values(s, program, std::cout);
+          s.print_outputs(std::cout);
           std::cout << "\n";
         }
         cycle_id++;
@@ -71,7 +103,7 @@ int main(int argc, const char *argv[]) {
     }
     if (!cmd_parser.is_verbose()) {
       std::cout << "Step " << cycle_id << ":\n";
-      print_output_values(s, program, std::cout);
+      s.print_outputs(std::cout);
       std::cout << "\n";
     }
     break;

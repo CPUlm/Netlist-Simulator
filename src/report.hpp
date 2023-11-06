@@ -44,7 +44,7 @@ public:
   /// The message is formatted using std::format() and therefore the syntax and
   /// arguments supported by std::format() are also by this function.
   template<typename... T>
-  [[nodiscard]] ReportBuilder &with_message(fmt::format_string<T...> format, T &&...args) {
+  [[nodiscard]] ReportBuilder &with_message(std::string_view format, T &&...args) {
     m_report.message = fmt::vformat(format, fmt::make_format_args(args...));
     return *this;
   }

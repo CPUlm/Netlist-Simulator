@@ -1,4 +1,5 @@
 #include "simulator.hpp"
+#include "utilities.hpp"
 
 Simulator::MemoryMapper::MemoryMapper(const Program::ptr &p) : current_index(0) {
   for (const auto &[var, eq] : p->get_equations()) {
@@ -37,7 +38,7 @@ void Simulator::MemoryMapper::visit_rom_expr(const RomExpression &expr) {
 Simulator::ExpressionEvaluator::ExpressionEvaluator(const Simulator::var_env &env,
                                                     const std::vector<value_t> &mem,
                                                     const Simulator::MemoryMapper &mem_map)
-    : env(env), current_value(0), mem(mem), mem_map(mem_map) {}
+    : env(env), current_value(0), current_value_size(0), mem(mem), mem_map(mem_map) {}
 
 constexpr value_t one = 1;
 
@@ -51,19 +52,22 @@ value_t Simulator::ExpressionEvaluator::eval(const Variable::ptr &var, const Exp
 
 void Simulator::ExpressionEvaluator::visit_constant(const Constant::ptr &cst) {
   current_value = cst->get_value();
+  current_value_size = cst->get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_variable(const Variable::ptr &var) {
   current_value = env.at(var);
+  current_value_size = var->get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_arg_expr(const ArgExpression &expr) {
   visit(expr.get_argument());
-  // this->value contains the correct value
+  // this->value contains the correct value and so this->current_value_size
 }
 
 void Simulator::ExpressionEvaluator::visit_reg_expr(const RegExpression &expr) {
   current_value = mem[mem_map.reg_info.at(expr.get_variable())];
+  current_value_size = expr.get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_not_expr(const NotExpression &expr) {
@@ -71,6 +75,7 @@ void Simulator::ExpressionEvaluator::visit_not_expr(const NotExpression &expr) {
   visit(expr.get_argument());
   // this->value contain the value of o
   current_value = ~current_value; // Not operator applied here.
+  // No need to change current_value_bus_size
 }
 
 void Simulator::ExpressionEvaluator::visit_binop_expr(const BinOpExpression &expr) {
@@ -95,46 +100,55 @@ void Simulator::ExpressionEvaluator::visit_binop_expr(const BinOpExpression &exp
     return;
   }
   }
+  // No need to change current_value_bus_size too
 }
 
 void Simulator::ExpressionEvaluator::visit_mux_expr(const MuxExpression &expr) {
   visit(expr.get_choice_argument());
+  // current_value_size is one here.
   if (current_value) {
     visit(expr.get_true_argument());
   } else {
     visit(expr.get_false_argument());
   }
+
+  current_value_size = expr.get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_rom_expr(const RomExpression &expr) {
   visit(expr.get_read_address());
   size_t mem_addr = mem_map.rom_info.at(current_var->get_name()).block_index + current_value;
   current_value = mem[mem_addr];
+  //  TODO : Test this
+  current_value_size = expr.get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_ram_expr(const RamExpression &expr) {
   visit(expr.get_read_address());
   size_t mem_addr = mem_map.ram_info.at(current_var->get_name()).block_index + current_value;
   current_value = mem[mem_addr];
+  //  TODO : Test this
+  current_value_size = expr.get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_concat_expr(const ConcatExpression &expr) {
   visit(expr.get_beginning_part());
   value_t beg_value = current_value;
   visit(expr.get_last_part());
-  current_value = current_value << expr.get_bus_size() | beg_value;
+  current_value = beg_value << current_value_size | current_value;
 }
 
 void Simulator::ExpressionEvaluator::visit_slice_expr(const SliceExpression &expr) {
   visit(expr.get_argument());
-  const value_t value_shifted = current_value >> expr.get_begin_index();
+  const value_t value_shifted = current_value >> (current_value_size - expr.get_end_index() - 1);
   const value_t mask = (one << (expr.get_end_index() - expr.get_begin_index() + 1)) - 1;
   current_value = value_shifted & mask;
 }
 
 void Simulator::ExpressionEvaluator::visit_select_expr(const SelectExpression &expr) {
   visit(expr.get_argument());
-  current_value = (current_value >> expr.get_index()) & one;
+  current_value = (current_value >> (current_value_size - expr.get_index() - 1)) & one;
+  current_value_size = 1;
 }
 
 Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, const Program::ptr &p)
@@ -210,10 +224,10 @@ Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, c
   }
 }
 
-void print_env(const std::unordered_map<Variable::ptr, value_t> &env) {
+void Simulator::print_env() const noexcept {
   std::cout << "Environment:\n";
   for (const auto &[var, val] : env) {
-    std::cout << var->get_name() << " = " << val << "\n";
+    std::cout << var->get_name() << " = " << get_output_value(var) << "\n";
   }
   std::cout << "\n" << std::flush;
 }
@@ -224,7 +238,8 @@ void print_memory(const std::vector<value_t> &mem) {
     std::cout << "  empty";
   } else {
     for (size_t i = 0; i < mem.size(); ++i) {
-      std::cout << "memory[" << i << "] -> " << mem[i] << "\n";
+
+      std::cout << "memory[" << i << "] -> " << fmt::format("{:064b}", mem[i]) << "\n";
     }
   }
 
@@ -234,11 +249,11 @@ void print_memory(const std::vector<value_t> &mem) {
 void Simulator::cycle() {
   // Set all Input value
   for (const Variable::ptr &in_var : prog->get_inputs()) {
-    env[in_var] = InputManager::get_input_value(in_var);
+    env[in_var] = Parser::get_input_value(in_var);
   }
 
-  print_env(env);
-  print_memory(memory);
+//  print_env(env);
+//  print_memory(memory);
 
   // Iterate over equations
   for (const Variable::ptr &var : dep_list) {
@@ -259,8 +274,8 @@ void Simulator::cycle() {
     }
   }
 
-  print_env(env);
-  print_memory(memory);
+//  print_env(env);
+//  print_memory(memory);
 }
 
 value_t Simulator::eval_arg(const Argument::ptr &arg) const noexcept {
@@ -280,3 +295,14 @@ value_t Simulator::eval_arg(const Argument::ptr &arg) const noexcept {
   }
   }
 }
+
+std::string_view Simulator::get_output_value(const Variable::ptr &var) const noexcept {
+  return Utilities::value_to_str(env.at(var), var->get_bus_size());
+}
+
+void Simulator::print_outputs(std::ostream &out) const {
+  for (const Variable::ptr &out_var : prog->get_outputs()) {
+    out << "=> " << out_var->get_name() << " = " << get_output_value(out_var) << "\n";
+  }
+}
+

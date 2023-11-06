@@ -15,7 +15,7 @@
 #define delete_copy_ctr(class) class(class &) = delete;\
 class(const class &) = delete;
 
-using bus_size_t = int;
+using bus_size_t = unsigned short;
 using value_t = std::uint_least64_t;
 using ident_t = std::string_view;
 
@@ -251,7 +251,7 @@ public:
   /// \param choice Bit used to make a choice. Must have a bus size of 1
   /// \param true_arg Value of the expression if choice bit is 1
   /// \param false_arg Value of the expression if choice bit is 0
-  explicit MuxExpression(const Argument::ptr &choice, const Argument::ptr &true_arg, const Argument::ptr &false_arg);
+  explicit MuxExpression(const Argument::ptr &choice, const Argument::ptr &false_arg, const Argument::ptr &true_arg);
 
   /// MuxExpression Kind : Kind::MUX
   [[nodiscard]] Kind get_kind() const noexcept override { return KIND; }
