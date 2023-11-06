@@ -2,10 +2,17 @@ cmake_minimum_required(VERSION 3.16)
 
 project(netlist)
 
-# C++20
+# Use C++20
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+include(GetGitRevisionDescription)
+get_git_head_revision(NETLIST_GIT_REFSPEC NETLIST_GIT_COMMIT)
+git_describe(NETLIST_VERSION)
+configure_file("src/driver/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp" @ONLY)
 
 add_library(netlist_lib
         src/lexer.hpp
@@ -28,13 +35,17 @@ add_library(netlist_lib
         src/utils.hpp
         src/disassembler.cpp
         src/disassembler.hpp
+        src/driver/version.hpp
+        "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
 )
 
 add_subdirectory(fmt)
 target_link_libraries(netlist_lib PUBLIC fmt::fmt)
 
 add_executable(netlist
-        src/main.cpp
+        src/driver/main.cpp
+        src/driver/command_line_parser.cpp
+        src/driver/command_line_parser.hpp
 )
 
 target_link_libraries(netlist PUBLIC netlist_lib)
