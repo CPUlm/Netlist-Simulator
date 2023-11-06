@@ -11,7 +11,7 @@ CommandLineParser::CommandLineParser(ReportManager &report_manager, int argc, co
 
 CommandLineOptions CommandLineParser::parse() {
   bool should_parse_options = true;
-  for (int i = 0; i < m_argc; ++i) {
+  for (int i = 1; i < m_argc; ++i) {
     const std::string_view argument = m_argv[i];
 
     if (argument == "--") {
@@ -113,7 +113,7 @@ std::string_view CommandLineParser::get_argument(std::string_view option, int in
 }
 
 static void print_help_line(std::string_view option, std::string_view description) {
-  fmt::println("  {:>25}{}", option, description);
+  fmt::println("  {:<25}{}", option, description);
 }
 
 void CommandLineParser::print_help() const {
