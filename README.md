@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/desfreng/netlist/hubert-class-based-insts/logo/logo_light.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/desfreng/netlist/hubert-class-based-insts/logo/logo.svg">
-  <img alt="The Netlist++ logo." src="https://raw.githubusercontent.com/desfreng/netlist/hubert-class-based-insts/logo/logo.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/desfreng/netlist/hubert/logo/logo_light.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/desfreng/netlist/hubert/logo/logo.svg">
+  <img alt="The Netlist++ logo." src="https://raw.githubusercontent.com/desfreng/netlist/hubert/logo/logo.svg">
 </picture>
 
 # [Netlist++](https://github.com/hbens/sysnum-2023)
