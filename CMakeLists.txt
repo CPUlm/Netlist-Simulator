@@ -6,8 +6,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_subdirectory(fmt)
-
 add_library(netlistlib
         src/utilities.cpp
         src/utilities.hpp
@@ -43,8 +41,6 @@ add_library(netlistlib
 
         src/command_line_parser.cpp
         src/command_line_parser.hpp)
-
-target_link_libraries(netlistlib PUBLIC fmt::fmt)
 
 add_executable(netlist src/main.cpp)
 

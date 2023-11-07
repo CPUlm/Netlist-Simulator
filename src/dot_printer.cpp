@@ -1,7 +1,13 @@
 #include "dot_printer.hpp"
-#include "fmt/format.h"
+#include "utilities.hpp"
 
 #include <sstream>
+
+// clang unable see that 'is_hard_deps' variable is REALLY used
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnreachableCode"
+#pragma ide diagnostic ignored "UnusedValue"
+#pragma ide diagnostic ignored "ConstantConditionsOC"
 
 class ExpressionIterator : public Visitor<ExpressionIterator> {
 public:
@@ -23,7 +29,7 @@ public:
   }
 
   void visit_constant(const Constant::ptr &cst) override {
-    m_sstr << fmt::format("{:#b}", cst->get_value());
+    m_sstr << "0b" << Utilities::value_to_str(cst->get_value(), cst->get_bus_size());
   }
 
   void visit_variable(const Variable::ptr &var) override {
@@ -42,9 +48,9 @@ public:
 
   void visit_reg_expr(const RegExpression &expr) override {
     m_sstr << "REG(";
-    disable_hard_deps();
+    is_hard_deps = false;
     visit(expr.get_variable());
-    enable_hard_deps();
+    is_hard_deps = true;
     m_sstr << ")";
   }
 
@@ -95,13 +101,13 @@ public:
     m_sstr << "RAM (" << expr.get_address_size() << ", " << expr.get_bus_size() << ", ";
     visit(expr.get_read_address());
     m_sstr << ", ";
-    disable_hard_deps();
+    is_hard_deps = false;
     visit(expr.get_write_enable());
     m_sstr << ", ";
     visit(expr.get_write_address());
     m_sstr << ", ";
     visit(expr.get_write_data());
-    enable_hard_deps();
+    is_hard_deps = true;
     m_sstr << ")";
   }
 
@@ -138,15 +144,6 @@ public:
   }
 
 private:
-
-  void disable_hard_deps() noexcept {
-    is_hard_deps = false;
-  }
-
-  void enable_hard_deps() noexcept {
-    is_hard_deps = true;
-  }
-
   bool is_hard_deps = true;
   std::stringstream m_sstr;
   std::stringstream m_links;
@@ -193,3 +190,5 @@ void DotPrinter::print() {
 
   out << "}\n";
 }
+
+#pragma clang diagnostic pop

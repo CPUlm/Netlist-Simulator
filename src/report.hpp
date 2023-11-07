@@ -5,11 +5,8 @@
 
 #include <iostream>
 #include <optional>
-#include <string_view>
-
-#include <fmt/format.h>
-#include <filesystem>
-#include <utility>
+#include <sstream>
+#include <iomanip>
 
 class ReportContext;
 
@@ -39,28 +36,24 @@ public:
     return *this;
   }
 
-  /// Sets the main message for the report.
-  ///
-  /// The message is formatted using std::format() and therefore the syntax and
-  /// arguments supported by std::format() are also by this function.
+  /// Sets the main message for the report. All argument are concatenated.
   template<typename... T>
-  [[nodiscard]] ReportBuilder &with_message(std::string_view format, T &&...args) {
-    m_report.message = fmt::vformat(format, fmt::make_format_args(args...));
+  [[nodiscard]] ReportBuilder &with_message(T... args) {
+    std::stringstream sstr;
+    ((sstr << args), ...);
+    m_report.message = sstr.str();
     return *this;
   }
 
   /// Sets a help message for the report that adds additional information to how
   /// to use the command line program.
-  ///
-  /// The message is formatted using std::format() and therefore the syntax and
-  /// arguments supported by std::format() are also by this function.
   [[nodiscard]] ReportBuilder &with_help(const std::string &help) {
     m_report.help = help;
     return *this;
   }
 
   /// Sets a code for the error or the warning.
-  [[nodiscard]] ReportBuilder &with_code(int code) noexcept {
+  [[nodiscard]] ReportBuilder &with_code(unsigned char code) noexcept {
     m_report.code = code;
     return *this;
   }

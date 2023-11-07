@@ -6,6 +6,7 @@
 
 #include "program.hpp"
 #include "report.hpp"
+#include "input_manager.hpp"
 #include "lexer.hpp"
 
 class Parser {
@@ -15,8 +16,11 @@ public:
   /// Parse a program.
   [[nodiscard]] std::unique_ptr<Program> parse_program();
 
+  /// Parse an Input File
+  [[nodiscard]] InputManager::MemoryBlocks parse_input();
+
   /// Parse a value given by the user (stdin)
-  [[nodiscard]] static value_t get_input_value(const Variable::ptr &var) noexcept;
+  [[nodiscard]] static value_t get_input_value(const Variable::ptr &var);
 private:
   /// Variable declaration (used in the VAR statement)
   struct VariableDeclaration {
@@ -69,17 +73,20 @@ private:
   /// Parse a size specifier.
   [[nodiscard]] std::optional<bus_size_t> parse_size_spec();
 
-  /// Parse a Binary Constant
+  /// Parse Binary Digits
   [[nodiscard]] Constant::ptr parse_binary_digits();
 
-  /// Parse Binary Digits
+  /// Parse a Binary Constant
   [[nodiscard]] Constant::ptr parse_binary_constant();
 
-  /// Parse a Decimal Constant with size 'size'
+  /// Parse a Decimal Constant
   [[nodiscard]] Constant::ptr parse_decimal_constant();
 
-  /// Parse a Hexadecimal Constant with size 'size'
+  /// Parse a Hexadecimal Constant
   [[nodiscard]] Constant::ptr parse_hexadecimal_constant();
+
+  /// Parse a Constant
+  [[nodiscard]] Constant::ptr parse_constant();
 
   /// Parse a Variable
   [[nodiscard]] Variable::ptr parse_variable();
@@ -101,6 +108,8 @@ private:
   void assert_same_bus_size(const Argument::ptr &arg1, const Argument::ptr &arg2, const SourcePosition &pos);
 
   void assert_bus_size_eq(const Argument::ptr &arg, bus_size_t size, const SourcePosition &pos);
+
+  void assert_constant_size_eq(const Constant::ptr &arg, bus_size_t size, const SourcePosition &pos);
 
   void assert_bus_size_gt(const Argument::ptr &arg, bus_size_t size, const SourcePosition &pos);
 

@@ -24,6 +24,10 @@ enum class TokenKind {
   COMMA,
   /// A colon ':'.
   COLON,
+  /// A left bracket '['
+  LEFT_BRACKET,
+  /// A left bracket ']'
+  RIGHT_BRACKET,
   /// The keyword 'OUTPUT'.
   KEY_OUTPUT,
   /// The keyword 'INPUT'.

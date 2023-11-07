@@ -38,7 +38,7 @@ void Simulator::MemoryMapper::visit_rom_expr(const RomExpression &expr) {
 Simulator::ExpressionEvaluator::ExpressionEvaluator(const Simulator::var_env &env,
                                                     const std::vector<value_t> &mem,
                                                     const Simulator::MemoryMapper &mem_map)
-    : env(env), current_value(0), current_value_size(0), mem(mem), mem_map(mem_map) {}
+    : env(env), current_value(0), mem(mem), mem_map(mem_map) {}
 
 constexpr value_t one = 1;
 
@@ -52,12 +52,10 @@ value_t Simulator::ExpressionEvaluator::eval(const Variable::ptr &var, const Exp
 
 void Simulator::ExpressionEvaluator::visit_constant(const Constant::ptr &cst) {
   current_value = cst->get_value();
-  current_value_size = cst->get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_variable(const Variable::ptr &var) {
   current_value = env.at(var);
-  current_value_size = var->get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_arg_expr(const ArgExpression &expr) {
@@ -67,7 +65,6 @@ void Simulator::ExpressionEvaluator::visit_arg_expr(const ArgExpression &expr) {
 
 void Simulator::ExpressionEvaluator::visit_reg_expr(const RegExpression &expr) {
   current_value = mem[mem_map.reg_info.at(expr.get_variable())];
-  current_value_size = expr.get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_not_expr(const NotExpression &expr) {
@@ -111,44 +108,37 @@ void Simulator::ExpressionEvaluator::visit_mux_expr(const MuxExpression &expr) {
   } else {
     visit(expr.get_false_argument());
   }
-
-  current_value_size = expr.get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_rom_expr(const RomExpression &expr) {
   visit(expr.get_read_address());
   size_t mem_addr = mem_map.rom_info.at(current_var->get_name()).block_index + current_value;
   current_value = mem[mem_addr];
-  //  TODO : Test this
-  current_value_size = expr.get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_ram_expr(const RamExpression &expr) {
   visit(expr.get_read_address());
   size_t mem_addr = mem_map.ram_info.at(current_var->get_name()).block_index + current_value;
   current_value = mem[mem_addr];
-  //  TODO : Test this
-  current_value_size = expr.get_bus_size();
 }
 
 void Simulator::ExpressionEvaluator::visit_concat_expr(const ConcatExpression &expr) {
   visit(expr.get_beginning_part());
   value_t beg_value = current_value;
   visit(expr.get_last_part());
-  current_value = beg_value << current_value_size | current_value;
+  current_value = beg_value << expr.get_last_part()->get_bus_size() | current_value;
 }
 
 void Simulator::ExpressionEvaluator::visit_slice_expr(const SliceExpression &expr) {
   visit(expr.get_argument());
-  const value_t value_shifted = current_value >> (current_value_size - expr.get_end_index() - 1);
+  const value_t value_shifted = current_value >> (expr.get_argument()->get_bus_size() - expr.get_end_index() - 1);
   const value_t mask = (one << (expr.get_end_index() - expr.get_begin_index() + 1)) - 1;
   current_value = value_shifted & mask;
 }
 
 void Simulator::ExpressionEvaluator::visit_select_expr(const SelectExpression &expr) {
   visit(expr.get_argument());
-  current_value = (current_value >> (current_value_size - expr.get_index() - 1)) & one;
-  current_value_size = 1;
+  current_value = (current_value >> (expr.get_argument()->get_bus_size() - expr.get_index() - 1)) & one;
 }
 
 Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, const Program::ptr &p)
@@ -183,7 +173,7 @@ Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, c
       block_index = mem_map.rom_info.at(chunk_name).block_index;
     } else {
       ctx.report(ReportSeverity::WARNING)
-          .with_message("The memory chunk {} given as input is unused.", chunk_name)
+          .with_message("The memory chunk ", chunk_name, " given as input is unused.")
           .with_code(50)
           .build()
           .print();
@@ -192,8 +182,8 @@ Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, c
 
     if (block_size != memory_chunks.size()) {
       ctx.report(ReportSeverity::ERROR)
-          .with_message("Expected memory chunk size of {} for variable {}. Given chunk size is {}.",
-                        block_size, chunk_name, memory_chunks.size())
+          .with_message("Expected memory chunk size of ", block_size, " for variable ", chunk_name,
+                        ". Given chunk size is ", memory_chunks.size(), ".")
           .with_code(51)
           .build()
           .exit();
@@ -207,30 +197,29 @@ Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, c
     if (mem_map.rom_info.contains(chunk_name)) {
       // The ROM memory block of chunk_name is not initialised -> Error.
       ctx.report(ReportSeverity::ERROR)
-          .with_message("The ROM memory chunk {} is not initialised.", chunk_name)
+          .with_message("The ROM memory chunk ", chunk_name, " is not initialised.")
           .with_code(52)
           .build()
-          .print();
+          .exit();
 
     } else {
       // It's a RAM block -> warning.
       ctx.report(ReportSeverity::WARNING)
-          .with_message("The RAM memory chunk {} is not initialised.", chunk_name)
-          .with_code(52)
+          .with_message("The RAM memory chunk ", chunk_name, " is not initialised.")
+          .with_code(53)
           .build()
           .print();
-
     }
   }
 }
 
-void Simulator::print_env() const noexcept {
-  std::cout << "Environment:\n";
-  for (const auto &[var, val] : env) {
-    std::cout << var->get_name() << " = " << get_output_value(var) << "\n";
-  }
-  std::cout << "\n" << std::flush;
-}
+//void Simulator::print_env() const noexcept {
+//  std::cout << "Environment:\n";
+//  for (const auto &[var, val] : env) {
+//    std::cout << var->get_name() << " = " << get_output_value(var) << "\n";
+//  }
+//  std::cout << "\n" << std::flush;
+//}
 
 void print_memory(const std::vector<value_t> &mem) {
   std::cout << "Memory:\n";
@@ -239,7 +228,7 @@ void print_memory(const std::vector<value_t> &mem) {
   } else {
     for (size_t i = 0; i < mem.size(); ++i) {
 
-      std::cout << "memory[" << i << "] -> " << fmt::format("{:064b}", mem[i]) << "\n";
+      std::cout << "memory[" << i << "] -> " << Utilities::value_to_str(mem[i], 64) << "\n";
     }
   }
 
@@ -253,7 +242,7 @@ void Simulator::cycle() {
   }
 
 //  print_env(env);
-//  print_memory(memory);
+  print_memory(memory);
 
   // Iterate over equations
   for (const Variable::ptr &var : dep_list) {
@@ -275,7 +264,7 @@ void Simulator::cycle() {
   }
 
 //  print_env(env);
-//  print_memory(memory);
+  print_memory(memory);
 }
 
 value_t Simulator::eval_arg(const Argument::ptr &arg) const noexcept {

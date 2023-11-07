@@ -17,19 +17,19 @@ TEST_F(ReportTest, with_message) {
 
   // Error
   ctx.report(ReportSeverity::ERROR)
-      .with_message("foo {1} {0}", "baz", "bar")
+      .with_message("foo ", "baz", " bar")
       .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), "In file file:\nerror: foo bar baz\n");
+  EXPECT_EQ(stream.str(), "In file file:\nerror: foo baz bar\n");
 
   clear_stream(stream);
 
   // Error
   ctx.report(ReportSeverity::WARNING)
-      .with_message("{:04} test", 3)
+      .with_message(3, " test")
       .build()
       .print(stream);
-  EXPECT_EQ(stream.str(), "In file file:\nwarning: 0003 test\n");
+  EXPECT_EQ(stream.str(), "In file file:\nwarning: 3 test\n");
 }
 
 TEST_F(ReportTest, with_code) {

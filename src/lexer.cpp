@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include "utilities.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -101,6 +102,20 @@ void Lexer::tokenize(Token &token) {
       m_buf.next_char(); // eat the character
       return;
 
+    case '[':
+      token.kind = TokenKind::LEFT_BRACKET;
+      token.spelling = std::string_view(m_buf.current_pos(), 1);
+      token.position = {m_buf.current_line(), m_buf.current_column()};
+      m_buf.next_char(); // eat the character
+      return;
+
+    case ']':
+      token.kind = TokenKind::RIGHT_BRACKET;
+      token.spelling = std::string_view(m_buf.current_pos(), 1);
+      token.position = {m_buf.current_line(), m_buf.current_column()};
+      m_buf.next_char(); // eat the character
+      return;
+
     case '#':
       skip_comment();
       continue; // get the next valid token
@@ -143,8 +158,8 @@ void Lexer::tokenize(Token &token) {
       }
       // Bad, we reached an unknown character.
       m_context.report(ReportSeverity::ERROR)
-          .with_message("Unknown character found : '{}' (code : {:#x}).",
-                        m_buf.current_char(), m_buf.current_char())
+          .with_message("Unknown character found : '", m_buf.current_char(),
+                        "' (code : 0x", Utilities::to_hex_string(static_cast<int>(m_buf.current_char())), ").")
           .with_location({m_buf.current_line(), m_buf.current_column()})
           .with_code(2)
           .build()

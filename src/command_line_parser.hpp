@@ -46,7 +46,6 @@ private:
 
   [[nodiscard]] CommandAction parse_flag(std::string_view flag, const std::string &help_str) const;
 
-  void parse_verbose(int argc, const char *argv[], const std::string &help_str);
   void parse_number(int current_argc, int argc, const char *argv[], const std::string &help_str);
   void parse_files(int current_argc, int argc, const char *argv[]);
 

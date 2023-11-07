@@ -1,5 +1,5 @@
 #include "program_printer.hpp"
-#include "fmt/format.h"
+#include "utilities.hpp"
 
 static void print_variable_reference(std::ostream &out, const std::unordered_set<Variable::ptr> &var_list) {
   bool is_first = true;
@@ -72,7 +72,7 @@ void ProgramPrinter::print() const {
 }
 
 void ProgramPrinter::visit_constant(const Constant::ptr &cst) const {
-  out << fmt::format("{:b}", cst->get_value());
+  out << Utilities::value_to_str(cst->get_value(), cst->get_bus_size());
 }
 
 void ProgramPrinter::visit_variable(const Variable::ptr &var) const {
