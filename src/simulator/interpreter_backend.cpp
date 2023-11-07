@@ -14,9 +14,6 @@ struct InterpreterBackend::Detail final : ConstInstructionVisitor {
   std::vector<std::unique_ptr<reg_value_t[]>> memory_blocks;
   std::vector<std::unique_ptr<reg_value_t[]>> saved_memory_blocks;
 
-  /// Checks if the given register is valid.
-  [[nodiscard]] bool check_reg(reg_t reg) const { return reg.index < program->registers.size(); }
-
   /// Returns true if the end of the program was reached.
   [[nodiscard]] bool at_end() const { return pc >= program->instructions.size(); }
 

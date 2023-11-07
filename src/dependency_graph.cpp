@@ -9,7 +9,7 @@
 // struct DependencyGraph::Builder
 // ========================================================
 
-struct DependencyGraph::Builder : ConstInstructionVisitor {
+struct DependencyGraph::Builder final : ConstInstructionVisitor {
   DependencyGraph &graph;
 
   explicit Builder(DependencyGraph &g) : graph(g) {}
