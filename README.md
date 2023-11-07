@@ -4,7 +4,7 @@
   <img alt="The Netlist++ logo." src="https://raw.githubusercontent.com/desfreng/netlist/hubert-class-based-insts/logo/logo.svg">
 </picture>
 
-# [Netlist++](https://github.com/hbens/sysnum-2023)
+# [Netlist++](https://github.com/desfreng/netlist/tree/hubert)
 
 ## How to build
 
