@@ -49,7 +49,7 @@ private:
 private:
   class DataBuffer {
   public:
-    explicit DataBuffer(const char *beginning) noexcept
+    explicit DataBuffer(const char *beginning)
         : m_line(1), m_col(1), m_cur(beginning) {} // At the beginning, line 1 and column 1
 
     void next_char();

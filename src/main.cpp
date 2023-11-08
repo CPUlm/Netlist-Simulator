@@ -42,32 +42,25 @@ int main(int argc, const char *argv[]) {
 
       if (cmd_parser.cycle_amount_defined()) {
         for (; cycle_id < cmd_parser.get_cycle_amount(); ++cycle_id) {
-          if (cmd_parser.is_verbose()) {
-            std::cout << "Step " << cycle_id + 1 << ":\n";
+          std::cout << "Step " << cycle_id + 1 << ":\n";
+          if (std::cout.fail()) {
+            throw ExitProgramNow();
           }
           s.cycle();
-          if (cmd_parser.is_verbose()) {
-            s.print_outputs(std::cout);
-            std::cout << "\n";
-          }
+          s.print_outputs(std::cout);
+          std::cout << "\n";
         }
       } else {
         for (;;) {
-          if (cmd_parser.is_verbose()) {
-            std::cout << "Step " << cycle_id + 1 << ":\n";
+          std::cout << "Step " << cycle_id + 1 << ":\n";
+          if (std::cout.fail()) {
+            throw ExitProgramNow();
           }
           s.cycle();
-          if (cmd_parser.is_verbose()) {
-            s.print_outputs(std::cout);
-            std::cout << "\n";
-          }
+          s.print_outputs(std::cout);
+          std::cout << "\n";
           cycle_id++;
         }
-      }
-      if (!cmd_parser.is_verbose()) {
-        std::cout << "Step " << cycle_id << ":\n";
-        s.print_outputs(std::cout);
-        std::cout << "\n";
       }
     } catch (const ExitProgramNow &ignored) {
       std::cout << std::endl;

@@ -36,7 +36,7 @@ public:
   using iterator = typename std::unordered_map<T, Node<T>>::const_iterator;
   using LabelList = typename std::vector<T>;
 
-  void add_node(const T &label) noexcept {
+  void add_node(const T &label) {
     nodes.emplace(std::piecewise_construct, std::forward_as_tuple(label), std::forward_as_tuple(label));
   }
 
@@ -54,7 +54,7 @@ public:
     n2.linked_by.emplace_back(n1);
   }
 
-  [[nodiscard]] bool has_cycle() noexcept {
+  [[nodiscard]] bool has_cycle() {
     clear_marks();
 
     for (auto &[_, n] : nodes) {
@@ -80,16 +80,16 @@ public:
     return l;
   }
 
-  [[nodiscard]] size_t size() const noexcept {
+  [[nodiscard]] size_t size() const {
     return nodes.size();
   }
 
-  [[nodiscard]] iterator begin() const noexcept { return nodes.begin(); }
+  [[nodiscard]] iterator begin() const { return nodes.begin(); }
 
-  [[nodiscard]] iterator end() const noexcept { return nodes.end(); }
+  [[nodiscard]] iterator end() const { return nodes.end(); }
 
 private:
-  void clear_marks() noexcept {
+  void clear_marks() {
     for (auto &[_, node] : nodes) {
       node.mark = NotVisited;
     }

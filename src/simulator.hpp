@@ -24,8 +24,10 @@ private:
     struct RomInfo {
       const std::ptrdiff_t block_index;
       const size_t block_size;
+      const bus_size_t value_size;
 
-      explicit RomInfo(const std::ptrdiff_t index, const size_t size) : block_index(index), block_size(size) {};
+      explicit RomInfo(const std::ptrdiff_t index, const size_t size, const bus_size_t value_size)
+          : block_index(index), block_size(size), value_size(value_size) {};
     };
 
     struct RamInfo {
@@ -34,13 +36,16 @@ private:
       const Argument::ptr &data;
       const std::ptrdiff_t block_index;
       const size_t block_size;
+      const bus_size_t value_size;
 
       explicit RamInfo(const Argument::ptr &write_enable,
                        const Argument::ptr &write_addr,
                        const Argument::ptr &data,
                        const std::ptrdiff_t index,
-                       const size_t size)
-          : write_enable(write_enable), write_addr(write_addr), data(data), block_index(index), block_size(size) {};
+                       const size_t size,
+                       const bus_size_t value_size)
+          : write_enable(write_enable), write_addr(write_addr), data(data), block_index(index), block_size(size),
+            value_size(value_size) {};
     };
 
     explicit MemoryMapper(const Program::ptr &p);
@@ -63,7 +68,7 @@ private:
   public:
     explicit ExpressionEvaluator(const var_env &env, const std::vector<value_t> &mem, const MemoryMapper &mem_map);
 
-    [[nodiscard]] value_t eval(const Variable::ptr &var, const Expression::ptr &expr) noexcept;
+    [[nodiscard]] value_t eval(const Variable::ptr &var, const Expression::ptr &expr);
 
     void visit_constant(const Constant::ptr &cst) override;
     void visit_variable(const Variable::ptr &var) override;
@@ -87,9 +92,9 @@ private:
     Variable::ptr current_var;
   } expr_eval;
 
-  [[nodiscard]] value_t eval_arg(const Argument::ptr &arg) const noexcept;
+  [[nodiscard]] value_t eval_arg(const Argument::ptr &arg) const;
 
-  [[nodiscard]] inline std::string_view get_output_value(const Variable::ptr &var) const noexcept;
+  [[nodiscard]] inline std::string_view get_output_value(const Variable::ptr &var) const;
 
   const Program::ptr &prog;
   const ReportContext &ctx;

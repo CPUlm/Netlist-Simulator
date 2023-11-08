@@ -13,7 +13,7 @@ class ExpressionIterator : public Visitor<ExpressionIterator> {
 public:
   using var_id = unsigned int;
 
-  [[nodiscard]] std::string get_string() const noexcept {
+  [[nodiscard]] std::string get_string() const {
     return m_sstr.str();
   }
 
@@ -24,7 +24,7 @@ public:
     add_variable(beg);
   }
 
-  [[nodiscard]] std::string end_var() const noexcept {
+  [[nodiscard]] std::string end_var() const {
     return m_links.str();
   }
 
@@ -132,7 +132,7 @@ public:
 
   }
 
-  void add_variable(const Variable::ptr &var) noexcept {
+  void add_variable(const Variable::ptr &var) {
     if (!var_2_id.contains(var)) {
       var_2_id.emplace(var, next_id);
       next_id++;

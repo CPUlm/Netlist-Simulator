@@ -17,28 +17,24 @@ class CommandLineParser {
 public:
   explicit CommandLineParser(int argc, const char *argv[]);
 
-  [[nodiscard]] CommandAction get_action() const noexcept {
+  [[nodiscard]] CommandAction get_action() const {
     return action;
   }
 
-  [[nodiscard]] std::string get_netlist_file() const noexcept {
+  [[nodiscard]] std::string get_netlist_file() const {
     return netlist_file;
   }
 
-  [[nodiscard]] std::vector<std::string_view> get_inputs() const noexcept {
+  [[nodiscard]] std::vector<std::string_view> get_inputs() const {
     return input_files;
   }
 
-  [[nodiscard]] bool cycle_amount_defined() const noexcept {
+  [[nodiscard]] bool cycle_amount_defined() const {
     return cycle.has_value();
   }
 
-  [[nodiscard]] size_t get_cycle_amount() const noexcept {
+  [[nodiscard]] size_t get_cycle_amount() const {
     return cycle.value();
-  }
-
-  [[nodiscard]] bool is_verbose() const noexcept {
-    return verbose;
   }
 
 private:
@@ -53,7 +49,6 @@ private:
   std::string netlist_file;
   std::vector<std::string_view> input_files;
   std::optional<size_t> cycle;
-  bool verbose = false;
   CommandAction action;
 };
 

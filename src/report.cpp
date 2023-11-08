@@ -1,7 +1,6 @@
 #include "report.hpp"
 
-
-std::string ReportContext::get_location(std::optional<SourcePosition> pos) const noexcept {
+std::string ReportContext::get_location(std::optional<SourcePosition> pos) const {
   if (pos.has_value()) {
     std::stringstream sstr;
     sstr << get_file_name() << ":" << pos->line << ":" << pos->begin;

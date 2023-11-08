@@ -32,8 +32,9 @@ Scheduler Errors:
 Simulator Errors:
 - 050: Unused memory chunk
 - 051: Memory chunk size mismatch
-- 052: Uninitialised ROM memory chunk
-- 053: Uninitialised RAM memory chunk
+- 052: Value size mismatch
+- 053: Uninitialised ROM memory chunk
+- 054: Uninitialised RAM memory chunk
 
 IO Errors:
 - 060: Error occurred when opening file

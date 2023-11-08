@@ -1,6 +1,8 @@
 #ifndef NETLIST_SRC_INPUT_MANAGER_HPP
 #define NETLIST_SRC_INPUT_MANAGER_HPP
 
+#include <utility>
+
 #include "program.hpp"
 
 class Simulator;
@@ -11,7 +13,7 @@ class Simulator;
 class InputManager {
 public:
   using BlockValue = std::vector<value_t>;
-  using MemoryBlocks = std::unordered_map<std::string, BlockValue>;
+  using MemoryBlocks = std::unordered_map<std::string, std::pair<bus_size_t, BlockValue>>;
 
   explicit InputManager(const std::vector<std::string_view> &input_files);
 

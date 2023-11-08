@@ -20,7 +20,7 @@ struct Report {
   std::string message;
   std::string help;
 
-  explicit Report(ReportSeverity severity, const ReportContext &context) noexcept
+  explicit Report(ReportSeverity severity, const ReportContext &context)
       : context(context), severity(severity) {}
 
   void print(std::ostream &out = std::cerr) const;
@@ -31,7 +31,7 @@ class ReportBuilder {
 public:
   explicit ReportBuilder(ReportSeverity severity, const ReportContext &context) : m_report(severity, context) {}
 
-  [[nodiscard]] ReportBuilder &with_location(const SourcePosition &position) noexcept {
+  [[nodiscard]] ReportBuilder &with_location(const SourcePosition &position) {
     m_report.position = position;
     return *this;
   }
@@ -53,7 +53,7 @@ public:
   }
 
   /// Sets a code for the error or the warning.
-  [[nodiscard]] ReportBuilder &with_code(unsigned char code) noexcept {
+  [[nodiscard]] ReportBuilder &with_code(unsigned char code) {
     m_report.code = code;
     return *this;
   }
@@ -61,7 +61,7 @@ public:
   /// Builds the report with all information previously given to the builder.
   ///
   /// The report is not yet printed, you must call Report::print() for that.
-  [[nodiscard]] const Report &build() const noexcept { return m_report; }
+  [[nodiscard]] const Report &build() const { return m_report; }
 
 private:
   Report m_report;
@@ -69,10 +69,10 @@ private:
 
 class ReportContext {
 public:
-  explicit ReportContext(std::string filename, bool colored_output) noexcept:
+  explicit ReportContext(std::string filename, bool colored_output) :
       m_file_name(std::move(filename)), m_colored_output(colored_output) {}
 
-  explicit ReportContext(bool colored_output) noexcept: m_file_name(), m_colored_output(colored_output) {}
+  explicit ReportContext(bool colored_output) : m_file_name(), m_colored_output(colored_output) {}
 
   [[nodiscard]] ReportBuilder report(ReportSeverity severity) const {
     return ReportBuilder(severity, *this);
@@ -84,7 +84,7 @@ public:
 
   [[nodiscard]] bool colored_output() const { return m_colored_output; }
 
-  [[nodiscard]] std::string get_location(std::optional<SourcePosition> pos) const noexcept;
+  [[nodiscard]] std::string get_location(std::optional<SourcePosition> pos) const;
 
 private:
   const std::string m_file_name;

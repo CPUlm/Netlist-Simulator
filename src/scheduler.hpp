@@ -9,7 +9,7 @@ class Scheduler {
 public:
   using VariableList = std::vector<Variable::ptr>;
 
-  [[nodiscard]] static VariableList schedule(const ReportContext &ctx, const Program::ptr &p) noexcept {
+  [[nodiscard]] static VariableList schedule(const ReportContext &ctx, const Program::ptr &p) {
     Scheduler s(ctx, p);
     return s.schedule_program();
   }
@@ -17,7 +17,7 @@ public:
 private:
   explicit Scheduler(const ReportContext &ctx, const Program::ptr &p) : m_ctx(ctx), m_prog(p) {};
 
-  [[nodiscard]] VariableList schedule_program() noexcept {
+  [[nodiscard]] VariableList schedule_program() {
     Graph<Variable::ptr> g;
     ExpressionIterator expIt(g, m_prog->get_inputs());
 

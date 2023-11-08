@@ -37,7 +37,7 @@ static const char *char_repr[256] = {
 static char buf[256] = {0};
 static const char *s;
 
-std::string_view Utilities::value_to_str(value_t v, bus_size_t size) noexcept {
+std::string_view Utilities::value_to_str(value_t v, bus_size_t size) {
   s = char_repr[(v) & 0xff];
   std::copy(s, s + 8, buf + 56);
 

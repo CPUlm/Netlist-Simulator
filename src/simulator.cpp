@@ -23,7 +23,8 @@ void Simulator::MemoryMapper::visit_ram_expr(const RamExpression &expr) {
                                          expr.get_write_address(),
                                          expr.get_write_data(),
                                          current_index,
-                                         block_size));
+                                         block_size,
+                                         expr.get_bus_size()));
   current_index += block_size;
 }
 
@@ -31,7 +32,7 @@ void Simulator::MemoryMapper::visit_rom_expr(const RomExpression &expr) {
   const size_t block_size = static_cast<size_t>(1) << expr.get_address_size();
   rom_info.emplace(std::piecewise_construct,
                    std::forward_as_tuple(current_var->get_name()),
-                   std::forward_as_tuple(current_index, block_size));
+                   std::forward_as_tuple(current_index, block_size, expr.get_bus_size()));
   current_index += block_size;
 }
 
@@ -42,12 +43,11 @@ Simulator::ExpressionEvaluator::ExpressionEvaluator(const Simulator::var_env &en
 
 constexpr value_t one = 1;
 
-value_t Simulator::ExpressionEvaluator::eval(const Variable::ptr &var, const Expression::ptr &expr) noexcept {
-  const value_t mask = (one << expr->get_bus_size()) - 1;
+value_t Simulator::ExpressionEvaluator::eval(const Variable::ptr &var, const Expression::ptr &expr) {
   current_value = 0;
   current_var = var;
   visit(expr);
-  return current_value & mask;
+  return current_value;
 }
 
 void Simulator::ExpressionEvaluator::visit_constant(const Constant::ptr &cst) {
@@ -60,7 +60,7 @@ void Simulator::ExpressionEvaluator::visit_variable(const Variable::ptr &var) {
 
 void Simulator::ExpressionEvaluator::visit_arg_expr(const ArgExpression &expr) {
   visit(expr.get_argument());
-  // this->value contains the correct value and so this->current_value_size
+  // this->value contains the correct value
 }
 
 void Simulator::ExpressionEvaluator::visit_reg_expr(const RegExpression &expr) {
@@ -71,8 +71,7 @@ void Simulator::ExpressionEvaluator::visit_not_expr(const NotExpression &expr) {
   // NOT o
   visit(expr.get_argument());
   // this->value contain the value of o
-  current_value = ~current_value; // Not operator applied here.
-  // No need to change current_value_bus_size
+  current_value = (~current_value) & Bus::max_value(expr.get_bus_size()); // Not operator applied here.
 }
 
 void Simulator::ExpressionEvaluator::visit_binop_expr(const BinOpExpression &expr) {
@@ -93,11 +92,10 @@ void Simulator::ExpressionEvaluator::visit_binop_expr(const BinOpExpression &exp
     return;
   }
   case BinOpExpression::BinOpKind::NAND: {
-    current_value = ~(lhs_value & current_value);
+    current_value = (~(lhs_value & current_value)) & Bus::max_value(expr.get_bus_size());
     return;
   }
   }
-  // No need to change current_value_bus_size too
 }
 
 void Simulator::ExpressionEvaluator::visit_mux_expr(const MuxExpression &expr) {
@@ -132,8 +130,7 @@ void Simulator::ExpressionEvaluator::visit_concat_expr(const ConcatExpression &e
 void Simulator::ExpressionEvaluator::visit_slice_expr(const SliceExpression &expr) {
   visit(expr.get_argument());
   const value_t value_shifted = current_value >> (expr.get_argument()->get_bus_size() - expr.get_end_index() - 1);
-  const value_t mask = (one << (expr.get_end_index() - expr.get_begin_index() + 1)) - 1;
-  current_value = value_shifted & mask;
+  current_value = value_shifted & Bus::max_value(expr.get_bus_size());
 }
 
 void Simulator::ExpressionEvaluator::visit_select_expr(const SelectExpression &expr) {
@@ -161,16 +158,19 @@ Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, c
   }
 
   // Iterator over each memory blocs given as input.
-  for (const auto &[chunk_name, memory_chunks] : in_manager.memory_blocks) {
+  for (const auto &[chunk_name, memory_pair] : in_manager.memory_blocks) {
     size_t block_size;
     std::ptrdiff_t block_index;
+    bus_size_t value_size;
 
     if (mem_map.ram_info.contains(chunk_name)) {
       block_size = mem_map.ram_info.at(chunk_name).block_size;
       block_index = mem_map.ram_info.at(chunk_name).block_index;
+      value_size = mem_map.ram_info.at(chunk_name).value_size;
     } else if (mem_map.rom_info.contains(chunk_name)) {
       block_size = mem_map.rom_info.at(chunk_name).block_size;
       block_index = mem_map.rom_info.at(chunk_name).block_index;
+      value_size = mem_map.rom_info.at(chunk_name).value_size;
     } else {
       ctx.report(ReportSeverity::WARNING)
           .with_message("The memory chunk ", chunk_name, " given as input is unused.")
@@ -180,11 +180,23 @@ Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, c
       continue;
     }
 
+    const auto &[input_value_size, memory_chunks] = memory_pair;
+
     if (block_size != memory_chunks.size()) {
       ctx.report(ReportSeverity::ERROR)
           .with_message("Expected memory chunk size of ", block_size, " for variable ", chunk_name,
                         ". Given chunk size is ", memory_chunks.size(), ".")
           .with_code(51)
+          .build()
+          .exit();
+    }
+
+    if (value_size != input_value_size) {
+      ctx.report(ReportSeverity::ERROR)
+          .with_message("Expected value of size ", value_size,
+                        " for memory chunk ", chunk_name, ". Given value size is ",
+                        input_value_size, ".")
+          .with_code(52)
           .build()
           .exit();
     }
@@ -198,7 +210,7 @@ Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, c
       // The ROM memory block of chunk_name is not initialised -> Error.
       ctx.report(ReportSeverity::ERROR)
           .with_message("The ROM memory chunk ", chunk_name, " is not initialised.")
-          .with_code(52)
+          .with_code(53)
           .build()
           .exit();
 
@@ -206,33 +218,11 @@ Simulator::Simulator(const ReportContext &ctx, const InputManager &in_manager, c
       // It's a RAM block -> warning.
       ctx.report(ReportSeverity::WARNING)
           .with_message("The RAM memory chunk ", chunk_name, " is not initialised.")
-          .with_code(53)
+          .with_code(54)
           .build()
           .print();
     }
   }
-}
-
-//void Simulator::print_env() const noexcept {
-//  std::cout << "Environment:\n";
-//  for (const auto &[var, val] : env) {
-//    std::cout << var->get_name() << " = " << get_output_value(var) << "\n";
-//  }
-//  std::cout << "\n" << std::flush;
-//}
-
-void print_memory(const std::vector<value_t> &mem) {
-  std::cout << "Memory:\n";
-  if (mem.empty()) {
-    std::cout << "  empty";
-  } else {
-    for (size_t i = 0; i < mem.size(); ++i) {
-
-      std::cout << "memory[" << i << "] -> " << Utilities::value_to_str(mem[i], 64) << "\n";
-    }
-  }
-
-  std::cout << "\n" << std::flush;
 }
 
 void Simulator::cycle() {
@@ -240,9 +230,6 @@ void Simulator::cycle() {
   for (const Variable::ptr &in_var : prog->get_inputs()) {
     env[in_var] = Parser::get_input_value(in_var);
   }
-
-//  print_env(env);
-  print_memory(memory);
 
   // Iterate over equations
   for (const Variable::ptr &var : dep_list) {
@@ -262,12 +249,9 @@ void Simulator::cycle() {
       memory[offset] = data;
     }
   }
-
-//  print_env(env);
-  print_memory(memory);
 }
 
-value_t Simulator::eval_arg(const Argument::ptr &arg) const noexcept {
+value_t Simulator::eval_arg(const Argument::ptr &arg) const {
   switch (arg->get_kind()) {
   case Argument::Kind::CONSTANT: {
     return std::static_pointer_cast<const Constant>(arg)->get_value();
@@ -285,7 +269,7 @@ value_t Simulator::eval_arg(const Argument::ptr &arg) const noexcept {
   }
 }
 
-std::string_view Simulator::get_output_value(const Variable::ptr &var) const noexcept {
+std::string_view Simulator::get_output_value(const Variable::ptr &var) const {
   return Utilities::value_to_str(env.at(var), var->get_bus_size());
 }
 
@@ -294,4 +278,3 @@ void Simulator::print_outputs(std::ostream &out) const {
     out << "=> " << out_var->get_name() << " = " << get_output_value(out_var) << "\n";
   }
 }
-
