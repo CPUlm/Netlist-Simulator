@@ -1,0 +1,258 @@
+\documentclass[french, 12pt]{article}
+\usepackage[a4paper, top=1cm, bottom=1cm, left=1cm, right=1cm]{geometry}
+
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{grammar}
+
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{graphicx}
+
+\pagenumbering{gobble}
+
+\title{Projet NetList}
+\author{Gabriel Desfrene}
+\date{}
+
+\begin{document}
+\maketitle
+
+Voici mes quelques notes pour la phase 1 du projet ``Microprocessor'' du cours Systèmes numériques.
+Le code associé à ce projet est disponible sur un dépôt GitHub à l'adresse suivante :
+\begin{center}
+      \url{https://github.com/desfreng/netlist/tree/gabriel}
+\end{center}
+
+\section {Langage NetList}\label{sec:langage-netlist}
+Le langage que le simulateur accepte possède quelques extensions par rapport à celui proposé à l'origine.
+Ces extensions comprennent :
+
+\begin{itemize}
+      \item Toutes les opérations sont étendues à des bus.
+      \item Les constantes peuvent être données en base 10 à l'aide de la syntaxe
+            suivante :
+            \[\verb|0d|\langle\text{valeur en base 10}\rangle\verb|:|\langle\text{taille}\rangle\]
+      \item De la même manière, les constantes peuvent être données en base 16 en
+            préfixant leur valeur par \verb|0x|.
+      \item Par commodité, les constantes données en base 2 peuvent être préfixées
+            par \verb|0b|.
+      \item Il est possible d'ajouter des commentaires dans les fichiers d'entrée.
+            Ceux-ci commencent par \verb|#| et s'étalent sur toute la fin de la ligne.
+\end{itemize}
+
+
+Une grammaire du langage accepté est donnée en \autoref{fig:grammar}.
+Des restrictions ont également été posées afin de garantir une consistance sur la taille des bus manipulés.
+Ainsi :
+
+
+\begin{figure}[htp]
+      \begin{grammar}
+            \symb{program} \is \kw{INPUT} \symb{ref-list} \kw{OUTPUT} \symb{ref-list} \kw{VAR} \symb{decl-list} \kw{IN} \symb{eqs} \eoi \si
+
+            \symb{ref-list} \is \symb{ref-list-non-empty} \linealt \eps \si
+
+            \symb{decl-list} \is \symb{decl-list-non-empty} \linealt \eps \si
+
+            \symb{ref-list-non-empty} \is \symb{ident} \kw{,} \symb{ref-list-non-empty} \linealt \symb{ident} \si
+
+            \symb{decl-list-non-empty} \is \symb{ident} \symb{size-spec} \kw{,} \symb{decl-list-non-empty} \linealt \symb{ident} \symb{size-spec} \si
+
+            \symb{eqs} \is \symb{ident} \kw{=} \symb{expr} \symb{eqs} \linealt \eps \si
+
+            \symb{expr} \is \symb{arg}
+            \alt            \kw{NOT}    \symb{arg}
+            \alt            \kw{AND}    \symb{arg}      \symb{arg}
+            \alt            \kw{NAND}   \symb{arg}      \symb{arg}
+            \alt            \kw{OR}     \symb{arg}      \symb{arg}
+            \alt            \kw{XOR}    \symb{arg}      \symb{arg}
+            \alt            \kw{MUX}    \symb{arg}      \symb{arg}      \symb{arg}
+            \alt            \kw{REG}    \symb{ident}
+            \alt            \kw{CONCAT} \symb{arg}      \symb{arg}
+            \alt            \kw{SELECT} \symb{bus-size} \symb{arg}
+            \alt            \kw{SLICE}  \symb{bus-size} \symb{bus-size} \symb{arg}
+            \alt            \kw{ROM}    \symb{bus-size} \symb{bus-size} \symb{arg}
+            \alt            \kw{RAM}    \symb{bus-size} \symb{bus-size} \symb{arg}  \symb{arg}  \symb{arg}  \symb{arg}
+            \si
+
+            \symb{arg}  \is \symb{ident} \linealt \symb{bin-digits} \linealt \symb{bin-const} \linealt \symb{dec-const} \linealt \symb{hex-const} \si
+
+            \symb{ident}        \is [\kw{a}-\kw{z}\kw{A}-\kw{Z}\kw{\_}][\kw{a}-\kw{z}\kw{A}-\kw{Z}\kw{0}-\kw{9}\kw{\_}]$\ast$ \si
+
+            \symb{bin-digits}    \is [\kw{0}\kw{1}][\kw{0}\kw{1}]$\ast$ \si
+
+            \symb{bin-const}    \is \kw{0b}[\kw{0}\kw{1}][\kw{0}\kw{1}]$\ast$ \symb{size-spec} \si
+
+            \symb{dec-const}    \is \kw{0d}[\kw{0}-\kw{9}][\kw{0}-\kw{9}]$\ast$ \kw{:} \symb{bus-size} \si
+
+            \symb{hex-const}    \is \kw{0x}[\kw{0}-\kw{9}\kw{a}-\kw{f}][\kw{0}-\kw{9}\kw{a}-\kw{f}]$\ast$ \symb{size-spec} \si
+
+            \symb{size-spec}    \is \kw{:} \symb{bus-size} \linealt \eps \si
+
+            \symb{bus-size}     \is [\kw{1}-\kw{9}][\kw{0}-\kw{9}]$\ast$ \si
+      \end{grammar}
+      \caption{Grammaire acceptée par le simulateur pour les fichiers NetList. Axiome : \textit{program}.}
+      \label{fig:grammar}
+\end{figure}
+
+\begin{itemize}
+      \item Les opérations logiques binaires \textbf{AND}, \textbf{NAND},
+            \textbf{OR} et \textbf{XOR} doivent avoir des arguments de même taille.
+      \item Les deux derniers arguments de l'opération \textbf{MUX} doivent être
+            de même taille.
+      \item Les opérations \textbf{SLICE} et \textbf{SELECT} doivent avoir des
+            indices de bus cohérents avec la taille de l'argument.
+\end{itemize}
+
+
+Dans le cas où ces contraintes ne seraient pas respectées, le parseur codé refusera l'entrée.
+De plus, le parseur vérifiera que chaque équation est ``bien formée'', c'est-à-dire que les deux membres ont bien la même taille.
+
+
+La taille des arguments est déterminée de la manière suivante :
+
+\begin{itemize}
+      \item La taille d'une variable est celle donnée lors de sa
+            déclaration dans la section \textbf{VAR}.
+      \item La taille d'une suite de chiffres 0 et 1 est la longueur de cette
+            suite.
+      \item Pour une constante donnée en base 10, la taille est nécessairement
+            donnée après sa valeur suivie de ``\verb|:|''.
+      \item Pour les constantes binaires et hexadécimales, la taille peut être
+            indiquée de la même manière que pour la base 10. Si aucune indication
+            n'est fournie, la taille est inférée à partir de la longueur de la
+            suite de chiffres.
+\end{itemize}
+
+
+Si la taille donnée ne permet pas de représenter la valeur associée, le
+parseur générera une erreur.
+
+
+\section {Fonctionnalités}
+
+
+Le simulateur est doté de plusieurs fonctionnalités permettant la manipulation des NetList.
+Celles-ci sont sélectionnées lors de l'exécution via les arguments donnés au programme.
+Une description des combinaisons acceptées est disponible dans l'aide du programme.
+Pour l'obtenir, ajoutez l'argument \verb|--help| en premier.
+Voici les fonctionnalités disponibles :
+
+
+\begin{itemize}
+      \item L'affichage de la NetList parsée sur la sortie standard.
+      \item L'export de la NetList sous la forme d'un graphe.
+      \item L'affichage du résultat de l'ordonnanceur.
+      \item La simulation de la NetList.
+\end{itemize}
+
+\subsection{Export en graphe}
+
+Lors de l'exportation de la NetList sous forme de graphe, le fichier NetList donné en argument est converti en un graphe
+au format \href{https://graphviz.org/}{\textit{Graphviz}} sur la sortie standard.
+Vous pouvez utiliser un outil tel que \verb|dot| pour exporter le graphe au format PDF.
+La \autoref{fig:graphs} donne des exemples de graphes que retourne le programme.
+Les conventions suivantes sont utilisées lors de l'export en graphe :
+\begin{itemize}
+      \item Un n\oe{}ud ayant un nom en \textbf{gras} représente une variable d'entrée.
+      \item Un n\oe{}ud de forme rectangulaire représente une sortie.
+      \item Les arcs pleins représentent les dépendances entre les variables de la
+            NetList. Ces dépendances sont prises en compte par l'ordonnanceur.
+      \item Les arcs en pointillés représentent les dépendances non prises en
+            compte par l'ordonnanceur, telles que les dépendances induites par une
+            opération \textbf{REG} ou \textbf{RAM} lors de l'écriture de la valeur
+            en mémoire.
+\end{itemize}
+
+\begin{figure}[htp]
+      \centering
+      \begin{subfigure}{.62\textwidth}
+            \begin{center}
+                  \includegraphics[height=200px]{./out/ful.dot.pdf}
+            \end{center}
+            \caption{\texttt{fulladder.net}}
+            \label{fig:sub1}
+      \end{subfigure}%
+      \begin{subfigure}{.38\textwidth}
+            \begin{center}
+                  \includegraphics[height=200px]{./out/cm2.dot.pdf}
+            \end{center}
+            \caption{\texttt{cm2.net}}
+            \label{fig:sub2}
+      \end{subfigure}
+      \caption{Quelques graphes produits par le programme.}
+      \label{fig:graphs}
+\end{figure}
+
+\subsection{La simulation}
+
+Pour simuler les NetList, certaines contraintes ont été définies :
+\begin{itemize}
+      \item Les blocs \textbf{ROM}, identifiés par la variable dont ils
+            déterminent la valeur, doivent nécessairement être initialisés avant
+            la simulation. Le programme reportera une erreur dans le cas contraire.
+      \item Les blocs \textbf{RAM}, identifiés par la variable dont ils
+            déterminent la valeur, peuvent être initialisés avant la simulation.
+            Dans le cas où aucune valeur n'est donnée, le programme affichera
+            un avertissement et la mémoire est initialisé à $0$.
+      \item La première valeur des registres est fixée à $0$.
+\end{itemize}
+
+La \autoref{fig:input-grammar} donne le format requis pour les fichiers de l'entrée
+qui initialisent les blocs de mémoire.
+
+\begin{figure}[htp]
+      \begin{grammar}
+            \symb{input-file} \is \symb{block-list} \eoi \si
+
+            \symb{block-list} \is \symb{block-list-non-empty} \linealt \epsilon \si
+
+            \symb{block-list-non-empty} \is \symb{block-def} \symb{block-list-non-empty} \linealt \symb{block-def} \si
+
+            \symb{block-def} \is \symb{ident} \kw{:} \symb{bus-size} \kw{=} \kw{[} \symb{value-list} \kw{]} \si
+
+            \symb{value-list} \is \symb{value} \kw{,} \symb{value-list} \linealt \symb{value} \si
+
+            \symb{value} \is \symb{bin-digits} \linealt \symb{bin-const} \linealt \symb{dec-const} \linealt \symb{hex-const} \si
+      \end{grammar}
+      \caption{Grammaire acceptée par le simulateur pour les fichiers d'entrée. Axiome : \textit{input-file}.}
+      \label{fig:input-grammar}
+\end{figure}
+
+Ainsi, pour le fichier \verb|ram.net|, la structure suivante convient afin
+d'initialiser la mémoire de l'opération \textbf{RAM} :
+\begin{verbatim}
+o : 4 = [ 0xf, 0b1001, 0d3:4, 0110 ]
+\end{verbatim}
+
+
+Si aucune limite de cycles n'est spécifiée, le programme s'arrête lorsqu'il
+reçoit un \textit{SIGTERM} ou un \textit{SIGINT}.
+
+
+\section{Difficultés}
+
+Lors de la réalisation de ce projet, quelques difficultés ont été rencontrées :
+
+\begin{itemize}
+      \item L'apprentissage des versions de C++ récentes ne s'est pas
+            fait en douceur. Ce projet a permis d'apprendre et de manipuler des
+            constructions en C++ plus récentes telles que les \textit{templates}%
+            \footnote{Je n'avais pas fait de C++ depuis \textbf{très} longtemps\dots}.
+      \item La mise au propre de la grammaire du langage NetList parsée a
+            également posé quelques soucis. Puisque le parseur a été
+            réimplémenté en faisant attention à la cohérence du fichier donné en
+            entrée, des problèmes sont apparus pour certaines opérations telles que
+            \textbf{CONCAT} ou \textbf{SLICE} lorsqu'elles prennent des
+            constantes comme argument.
+      \item Il a été difficile\footnote{Voir la liste des commits.} de faire en
+            sorte que MSVC accepte de compiler ce projet.
+            La mise en place de builds automatiques a beaucoup aidé à
+            vérifier que ce projet compile dans de bonnes conditions.
+\end{itemize}
+
+\end{document}
