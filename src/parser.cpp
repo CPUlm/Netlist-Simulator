@@ -868,7 +868,9 @@ InputManager::MemoryBlocks Parser::parse_input() {
     } while (m_token.kind != TokenKind::RIGHT_BRACKET);
     consume(); // eat ']'
 
-    mem_blocks.emplace(block_name, block_v);
+    mem_blocks.emplace(std::piecewise_construct,
+                       std::forward_as_tuple(block_name),
+                       std::forward_as_tuple(value_size, block_v));
   }
 
   return mem_blocks;

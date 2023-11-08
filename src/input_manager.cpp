@@ -13,7 +13,9 @@ InputManager::InputManager(const std::vector<std::string_view> &input_files) {
     Parser p(ctx, l);
 
     for (auto const &[block_name, data] : p.parse_input()) {
-      memory_blocks.emplace(std::string(block_name), data);
+      memory_blocks.emplace(std::piecewise_construct,
+                            std::forward_as_tuple(block_name),
+                            std::forward_as_tuple(data));
     }
   }
 }
