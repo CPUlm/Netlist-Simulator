@@ -36,3 +36,7 @@ No libraries are used except the C++ Standard Library.
 
 Many thanks to [Hubert Gruniaux](https://github.com/hgruniaux) for laying the foundations
 of the project : lexer, parser and errors messages.
+
+<p align="center">
+  <img src="https://github.com/desfreng/netlist/assets/125741538/7d4473a0-a21d-407c-87c8-1ed4e4308624" width="200"/>
+</p>
