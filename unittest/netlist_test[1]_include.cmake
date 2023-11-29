@@ -1,0 +1,5 @@
+if(EXISTS "/home/clement/Documents/Ulm/L3/Projets/SysNum2/netlist/unittest/netlist_test[1]_tests.cmake")
+  include("/home/clement/Documents/Ulm/L3/Projets/SysNum2/netlist/unittest/netlist_test[1]_tests.cmake")
+else()
+  add_test(netlist_test_NOT_BUILT netlist_test_NOT_BUILT)
+endif()
