@@ -1,252 +1,337 @@
 #ifndef NETLIST_PROGRAM_HPP
 #define NETLIST_PROGRAM_HPP
 
-#include <cassert>
+#include <cstdint>
 #include <memory>
-#include <string_view>
+#include <string>
 #include <vector>
 
-class Expression;
+using reg_index_t = std::uint_least32_t;
+using reg_value_t = std::uint_least64_t;
+using bus_size_t = std::uint_least32_t;
 
-/// The base class for values.
+/// \brief A register name to be used in a Netlist program.
 ///
-/// There is three kinds of value: constants, inputs and equations.
-class Value {
+/// This is just a wrapper around a register's index that provides type safety.
+struct reg_t {
+  reg_index_t index = UINT_LEAST32_MAX;
+  [[nodiscard]] auto operator<=>(const reg_t &) const = default;
+};
+
+struct ConstInstruction;
+struct LoadInstruction;
+struct NotInstruction;
+struct RegInstruction;
+struct MuxInstruction;
+struct ConcatInstruction;
+struct AndInstruction;
+struct NandInstruction;
+struct OrInstruction;
+struct NorInstruction;
+struct XorInstruction;
+struct XnorInstruction;
+struct SelectInstruction;
+struct SliceInstruction;
+struct RomInstruction;
+struct RamInstruction;
+
+/// Utility class implementing the visitor pattern for instructions.
+struct ConstInstructionVisitor {
+  virtual ~ConstInstructionVisitor() = default;
+
+  virtual void visit_const(const ConstInstruction &inst) = 0;
+  virtual void visit_load(const LoadInstruction &inst) = 0;
+  virtual void visit_not(const NotInstruction &inst) = 0;
+  virtual void visit_reg(const RegInstruction &inst) = 0;
+  virtual void visit_mux(const MuxInstruction &inst) = 0;
+  virtual void visit_concat(const ConcatInstruction &inst) = 0;
+  virtual void visit_and(const AndInstruction &inst) = 0;
+  virtual void visit_nand(const NandInstruction &inst) = 0;
+  virtual void visit_or(const OrInstruction &inst) = 0;
+  virtual void visit_nor(const NorInstruction &inst) = 0;
+  virtual void visit_xor(const XorInstruction &inst) = 0;
+  virtual void visit_xnor(const XnorInstruction &inst) = 0;
+  virtual void visit_select(const SelectInstruction &inst) = 0;
+  virtual void visit_slice(const SliceInstruction &inst) = 0;
+  virtual void visit_rom(const RomInstruction &inst) = 0;
+  virtual void visit_ram(const RamInstruction &inst) = 0;
+};
+
+/// \addtogroup instruction The supported instructions
+/// The list of all supported instructions by the Netlist parser and simulator.
+/// @{
+
+/// \brief Base class for all instructions.
+struct Instruction {
+  reg_t output = {};
+
+  Instruction() = default;
+  virtual ~Instruction() = default;
+
+  virtual void visit(ConstInstructionVisitor &visitor) const = 0;
+};
+
+/// \brief The `output = constant` instruction.
+struct ConstInstruction : Instruction {
+  reg_value_t value = 0;
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_const(*this); }
+};
+
+/// \brief The `output = input` instruction.
+struct LoadInstruction : Instruction {
+  reg_t input = {};
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_load(*this); }
+};
+
+/// \brief The `output = NOT input` instruction.
+struct NotInstruction : Instruction {
+  reg_t input = {};
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_not(*this); }
+};
+
+/// \brief The `output = REG input` instruction.
+struct RegInstruction : Instruction {
+  reg_t input = {};
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_reg(*this); }
+};
+
+/// \brief The `output = MUX choice first second` instruction.
+struct MuxInstruction : Instruction {
+  reg_t choice = {};
+  reg_t first = {};
+  reg_t second = {};
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_mux(*this); }
+};
+
+/// \brief The `output = CONCAT lhs rhs` instruction.
+struct ConcatInstruction : Instruction {
+  reg_t lhs = {};
+  reg_t rhs = {};
+  // How many bits should RHS be shifted? This corresponds to the bus size of LHS.
+  bus_size_t offset = 0;
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_concat(*this); }
+};
+
+/// \brief Base class for all binary instructions such as `AND` or `XOR`.
+struct BinaryInstruction : Instruction {
+  reg_t lhs = {};
+  reg_t rhs = {};
+};
+
+/// \brief The `output = AND lhs rhs` instruction.
+struct AndInstruction : BinaryInstruction {
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_and(*this); }
+};
+
+/// \brief The `output = NAND lhs rhs` instruction.
+struct NandInstruction : BinaryInstruction {
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_nand(*this); }
+};
+
+/// \brief The `output = OR lhs rhs` instruction.
+struct OrInstruction : BinaryInstruction {
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_or(*this); }
+};
+
+/// \brief The `output = NOR lhs rhs` instruction.
+struct NorInstruction : BinaryInstruction {
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_nor(*this); }
+};
+
+/// \brief The `output = XOR lhs rhs` instruction.
+struct XorInstruction : BinaryInstruction {
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_xor(*this); }
+};
+
+/// \brief The `output = XNOR lhs rhs` instruction.
+struct XnorInstruction : BinaryInstruction {
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_xnor(*this); }
+};
+
+/// \brief The `output = SELECT i input` instruction.
+struct SelectInstruction : Instruction {
+  reg_t input = {};
+  bus_size_t i = 0;
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_select(*this); }
+};
+
+/// \brief The `output = SLICE first end input` instruction.
+struct SliceInstruction : Instruction {
+  reg_t input = {};
+  bus_size_t start = 0;
+  bus_size_t end = 0;
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_slice(*this); }
+};
+
+/// \brief Base class for `ROM` and `RAM` instructions.
+struct MemoryInstruction : Instruction {
+  /// An index inside Program::memories array.
+  std::uint_least32_t memory_block = 0;
+};
+
+/// \brief The `output = ROM read_addr` instruction.
+struct RomInstruction : MemoryInstruction {
+  reg_t read_addr = {};
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_rom(*this); }
+};
+
+/// \brief The `output = RAM addr_size word_size read_addr write_enable write_addr write_data` instruction.
+struct RamInstruction : MemoryInstruction {
+  reg_t read_addr = {};
+  reg_t write_enable = {};
+  reg_t write_addr = {};
+  reg_t write_data = {};
+
+  void visit(ConstInstructionVisitor &visitor) const override { visitor.visit_ram(*this); }
+};
+
+/// @}
+
+/// Meta information about a RAM or ROM memory block.
+struct MemoryInfo {
+  /// The parent instruction (RAM or ROM) to who belongs this memory block.
+  Instruction *parent = nullptr;
+  bus_size_t addr_size = 0;
+  bus_size_t word_size = 0;
+
+  /// Returns the memory total size in count of words.
+  [[nodiscard]] size_t get_size() const { return 1 << addr_size; }
+};
+
+/// Possible flags for a register.
+/// \see RegisterInfo
+enum RegisterInfoFlag {
+  RIF_NONE = 0x0,
+  /// The register represents an input.
+  RIF_INPUT = 0x1,
+  /// The register represents an output.
+  RIF_OUTPUT = 0x2,
+  /// The register is an internal register used by the parser to implement
+  /// some functionalities. It doesn't correspond to a variable declared
+  /// in the `VAR` statement.
+  RIF_INTERNAL = 0x4,
+};
+
+/// Meta information about a program's register.
+struct RegisterInfo {
+  /// The register's name (for debugging purposes). If the name is unknown,
+  /// an empty string can be used.
+  std::string name = {};
+  /// The size of the register. Must be in the range [1,64].
+  bus_size_t bus_size = 1;
+  /// \see RegisterInfoFlag
+  unsigned flags = RIF_NONE;
+};
+
+/// A Netlist program represented by a sequence of instructions to be simulated and a set of registers.
+struct Program {
+  std::vector<RegisterInfo> registers;
+  std::vector<MemoryInfo> memories;
+  std::vector<Instruction *> instructions;
+
+  ~Program() {
+    for (auto *instruction : instructions)
+      delete instruction;
+  }
+
+  Program() = default;
+  Program(const Program &) = delete;
+  Program(Program &&) noexcept = default;
+
+  /// \brief Returns \c true if the program is empty, that is if it doesn't have any instruction.
+  [[nodiscard]] bool is_empty() const { return instructions.empty(); }
+
+  /// \brief Returns \c true if the program has at least one input.
+  [[nodiscard]] bool has_inputs() const;
+  /// \brief Returns the inputs of the program.
+  [[nodiscard]] std::vector<reg_t> get_inputs() const;
+
+  /// \brief Returns \c true if the program has at least one output.
+  [[nodiscard]] bool has_outputs() const;
+  /// \brief Returns the outputs of the program.
+  [[nodiscard]] std::vector<reg_t> get_outputs() const;
+
+  /// \brief Returns the register's name.
+  ///
+  /// If the register has a name then it is returned, otherwise a dummy but
+  /// valid identifier is returned uniquely identifying the register.
+  [[nodiscard]] std::string get_register_name(reg_t reg) const;
+};
+
+/// \brief Utility class to simplify the creation of a Program instance.
+///
+/// To create an instance of Program representing the following Netlist code:
+/// ```
+/// INPUT a, b
+/// OUTPUT c, s
+/// VAR a, b, c, s
+/// c = AND a b
+/// s = XOR a b
+/// ```
+/// You can use the following C++ code:
+/// ```
+/// ProgramBuilder builder;
+/// const reg_t a = builder.add_register(1, "a", RIF_INPUT);
+/// const reg_t b = builder.add_register(1, "b", RIF_INPUT);
+/// const reg_t c = builder.add_register(1, "c", RIF_OUTPUT);
+/// const reg_t s = builder.add_register(1, "d", RIF_OUTPUT);
+/// builder.add_and(c, a, b);
+/// builder.add_xor(s, a, b);
+/// std::shared_ptr<Program> program = builder.build();
+/// ```
+class ProgramBuilder {
 public:
-  enum class Kind {
-    /// An instance of the class Constant.
-    CONSTANT,
-    /// An instance of the class Input.
-    INPUT,
-    /// An instance of the class Equation.
-    EQUATION
-  };
+  /// \brief Adds a new register to the program.
+  ///
+  /// \param bus_size The bus size of the register, must be included in the range [1,64].
+  /// \param name The register's name for debugging purposes. Can be empty.
+  /// \param flags Meta flags for the registers. See RegisterInfoFlag.
+  /// \return The newly added register.
+  [[nodiscard]] reg_t add_register(bus_size_t bus_size = 1, const std::string &name = {}, unsigned flags = 0);
+  /// \brief Returns the given register's bus size.
+  ///
+  /// It is undefined if \a reg was not created by add_register() in the same instance
+  /// of ProgramBuilder.
+  [[nodiscard]] bus_size_t get_register_bus_size(reg_t reg) const;
 
-  [[nodiscard]] virtual Kind get_kind() const = 0;
+  ConstInstruction &add_const(reg_t output, reg_value_t value);
+  LoadInstruction &add_load(reg_t output, reg_t input);
+  NotInstruction &add_not(reg_t output, reg_t input);
+  AndInstruction &add_and(reg_t output, reg_t lhs, reg_t rhs);
+  NandInstruction &add_nand(reg_t output, reg_t lhs, reg_t rhs);
+  OrInstruction &add_or(reg_t output, reg_t lhs, reg_t rhs);
+  NorInstruction &add_nor(reg_t output, reg_t lhs, reg_t rhs);
+  XorInstruction &add_xor(reg_t output, reg_t lhs, reg_t rhs);
+  XnorInstruction &add_xnor(reg_t output, reg_t lhs, reg_t rhs);
+  ConcatInstruction &add_concat(reg_t output, reg_t lhs, reg_t rhs);
+  RegInstruction &add_reg(reg_t output, reg_t input);
+  MuxInstruction &add_mux(reg_t output, reg_t choice, reg_t first, reg_t second);
+  SelectInstruction &add_select(reg_t output, bus_size_t i, reg_t input);
+  SliceInstruction &add_slice(reg_t output, bus_size_t start, bus_size_t end, reg_t input);
+  RomInstruction &add_rom(reg_t output, bus_size_t addr_size, bus_size_t word_size, reg_t read_addr);
+  RamInstruction &add_ram(reg_t output, bus_size_t addr_size, bus_size_t word_size, reg_t read_addr, reg_t write_enable,
+                          reg_t write_addr, reg_t write_data);
 
-  /// Returns true if it is an instance of Input.
-  [[nodiscard]] bool is_input() const { return get_kind() == Kind::INPUT; }
-  /// Returns true if it is an instance of Constant.
-  [[nodiscard]] bool is_constant() const {
-    return get_kind() == Kind::CONSTANT;
-  }
-  /// Returns true if it is an instance of Equation.
-  [[nodiscard]] bool is_equation() const {
-    return get_kind() == Kind::EQUATION;
-  }
-
-  /// Returns true if this value is named, that is its name is non empty.
-  [[nodiscard]] bool is_named() const { return !m_name.empty(); }
-  /// Returns the name either of the input or the equation. If the value
-  /// is a constant then it doesn't have any name and therefore an empty
-  /// string is returned.
-  [[nodiscard]] std::string_view get_name() const { return m_name; }
-
-  /// Returns the size, in bits, of the underlying bus.
-  [[nodiscard]] size_t get_size_in_bits() const { return m_size_in_bits; }
-
-protected:
-  explicit Value(std::string_view name = {}) : m_name(name) {}
+  /// \brief Builds the final Netlist program.
+  ///
+  /// After that, the builder should not be used anymore. Moreover, the returned program
+  /// is not really finished, scheduling is still needed. See DependencyGraph.
+  [[nodiscard]] std::shared_ptr<Program> build();
 
 private:
-  std::string_view m_name;
-  size_t m_size_in_bits = 1;
-};
-
-/// Represents a constant in the source code such as `t` or `42`.
-class Constant : public Value {
-public:
-  static constexpr Kind KIND = Kind::CONSTANT;
-  [[nodiscard]] Kind get_kind() const override { return KIND; }
-
-  explicit Constant(size_t value) noexcept : Value(), m_value(value) {}
-
-  /// Returns true if this constant represents the false constant.
-  [[nodiscard]] bool is_false() const { return m_value == 0; }
-  /// Returns true if this constant represents the true constant.
-  /// Note that unlike in C we only consider constant value equal to 1
-  /// to meaning true.
-  [[nodiscard]] bool is_true() const { return m_value == 1; }
-
-  /// Returns the value of the constant.
-  [[nodiscard]] size_t get_value() const { return m_value; }
+  [[nodiscard]] bool check_reg(reg_t reg) const;
 
 private:
-  // TODO(hgruniaux): For now, integer values are represented using size_t
-  //                  which is either 32-bits or 64-bits. If we want to work
-  //                  with buses spanning more than 64-bits then we will have
-  //                  a problem. Maybe use an arbitrary-precision integer
-  //                  library (GMP for example) to encode values.
-  size_t m_value = 0;
+  std::shared_ptr<Program> m_program = std::make_shared<Program>();
 };
 
-/// Represents an input variable as specified in the `INPUT` statement.
-class Input : public Value {
-public:
-  static constexpr Kind KIND = Kind::INPUT;
-  [[nodiscard]] Kind get_kind() const override { return KIND; }
-
-  explicit Input(std::string_view name) noexcept : Value(name) {}
-};
-
-/// Represents an equation linking a variable and an expression.
-class Equation : public Value {
-public:
-  static constexpr Kind KIND = Kind::EQUATION;
-  [[nodiscard]] Kind get_kind() const override { return KIND; }
-
-  explicit Equation(std::string_view name, Expression *expr = nullptr) noexcept
-      : Value(name), m_expr(expr) {}
-
-  /// Returns true if this equation is marked as an output (variable name
-  /// declared inside the `OUTPUT` statement).
-  [[nodiscard]] bool is_output() const { return m_is_output; }
-  /// Marks this equation as assigning a value to an output.
-  void mark_as_output() { m_is_output = true; }
-
-  /// The right-hand-side expression of the equation.
-  [[nodiscard]] Expression *get_expression() { return m_expr; }
-  [[nodiscard]] const Expression *get_expression() const { return m_expr; }
-  void set_expression(Expression *expr) { m_expr = expr; }
-
-private:
-  Expression *m_expr = nullptr;
-  bool m_is_output = false;
-};
-
-/// The base class to all expressions.
-class Expression {
-public:
-  enum class Kind { NOT, BINARY };
-
-  [[nodiscard]] virtual Kind get_kind() const = 0;
-};
-
-/// The `NOT value` expression.
-class NotExpression : public Expression {
-public:
-  static constexpr Kind KIND = Kind::NOT;
-  [[nodiscard]] Kind get_kind() const override { return KIND; }
-
-  explicit NotExpression(Value *value) noexcept
-      : Expression(), m_value(value) {}
-
-  /// Returns the value to to which the operator applies.
-  [[nodiscard]] Value *get_value() { return m_value; }
-  [[nodiscard]] const Value *get_value() const { return m_value; }
-
-private:
-  Value *m_value = nullptr;
-};
-
-/// The different supported binary operators.
-enum class BinaryOp { AND, OR, NAND, XOR };
-
-/// A binary expression such as `AND lhs rhs`.
-class BinaryExpression : public Expression {
-public:
-  static constexpr Kind KIND = Kind::BINARY;
-  [[nodiscard]] Kind get_kind() const override { return KIND; }
-
-  BinaryExpression(BinaryOp op, Value *lhs, Value *rhs) noexcept
-      : Expression(), m_binop(op), m_lhs(lhs), m_rhs(rhs) {}
-
-  /// Returns the binary operator of this expression.
-  [[nodiscard]] BinaryOp get_operator() const { return m_binop; }
-
-  /// Returns the left-hand-side of the expression.
-  [[nodiscard]] Value *get_lhs() { return m_lhs; }
-  [[nodiscard]] const Value *get_lhs() const { return m_lhs; }
-
-  /// Returns the right-hand-side of the expression.
-  [[nodiscard]] Value *get_rhs() { return m_rhs; }
-  [[nodiscard]] const Value *get_rhs() const { return m_rhs; }
-
-private:
-  BinaryOp m_binop = BinaryOp::AND;
-  Value *m_lhs = nullptr;
-  Value *m_rhs = nullptr;
-};
-
-
-
-class Program {
-public:
-  /// Returns the name of all registered inputs.
-  [[nodiscard]] std::vector<std::string_view> get_input_names() const;
-  /// Returns the name of all registered outputs.
-  [[nodiscard]] std::vector<std::string_view> get_output_names() const;
-
-  /// Returns all the values of the program, including the inputs,
-  /// the constants and the equations (which also include the outputs).
-  [[nodiscard]] const std::vector<std::unique_ptr<Value>> &get_values() const {
-    return m_values;
-  }
-
-  /// Returns the program's equations.
-  [[nodiscard]] const std::vector<Equation *> &get_equations() const {
-    return m_equations;
-  }
-
-  // The different factory functions to build the parts of the program.
-  // They are mainly called by the parser.
-
-  [[nodiscard]] Constant *create_constant(size_t value);
-  [[nodiscard]] Input *create_input(std::string_view name);
-  [[nodiscard]] Equation *create_output(std::string_view name);
-  [[nodiscard]] Equation *create_equation(std::string_view name);
-
-  [[nodiscard]] NotExpression *create_not_expr(Value *value);
-  [[nodiscard]] BinaryExpression *create_binary_expr(BinaryOp op, Value *lhs,
-                                                     Value *rhs);
-
-private:
-  std::vector<std::unique_ptr<Value>> m_values;
-  std::vector<std::unique_ptr<Expression>> m_expressions;
-  std::vector<Input *> m_inputs;
-  std::vector<Equation *> m_equations;
-};
-
-template <typename Derived> class Visitor {
-public:
-#define DISPATCH(call) (static_cast<Derived *>(this)->call)
-
-  void visit(Value *value) {
-    assert(value != nullptr);
-
-    switch (value->get_kind()) {
-    case Value::Kind::CONSTANT:
-      return DISPATCH(visit_constant(static_cast<Constant *>(value)));
-    case Value::Kind::INPUT:
-      return DISPATCH(visit_input(static_cast<Input *>(value)));
-    case Value::Kind::EQUATION:
-      return DISPATCH(visit_equation(static_cast<Equation *>(value)));
-    }
-  }
-
-  void visit_value(Value *value) {}
-  void visit_constant(Constant *value) { return DISPATCH(visit_value(value)); }
-  void visit_input(Input *value) { return DISPATCH(visit_value(value)); }
-  void visit_equation(Equation *value) { return DISPATCH(visit_value(value)); }
-
-  void visit(Expression *expr) {
-    assert(expr != nullptr);
-
-    switch (expr->get_kind()) {
-    case Expression::Kind::NOT:
-      return DISPATCH(visit_not_expr(static_cast<NotExpression *>(expr)));
-    case Expression::Kind::BINARY:
-      return DISPATCH(visit_binary_expr(static_cast<BinaryExpression *>(expr)));
-    }
-  }
-
-  void visit_expr(Expression *expr) {}
-  void visit_not_expr(NotExpression *expr) {
-    return DISPATCH(visit_expr(expr));
-  }
-  void visit_binary_expr(BinaryExpression *expr) {
-    return DISPATCH(visit_expr(expr));
-  }
-};
-
-#endif // NETLIST_PROGRAM_HPP
+#endif

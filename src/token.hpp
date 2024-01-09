@@ -3,6 +3,12 @@
 
 #include <string_view>
 
+/// \ingroup report parser
+/// \brief Represents a character location in the source code.
+///
+/// Internally, this is represented as a byte offset from the start of the source
+/// code file. The mapping from the byte offset to more human-friendly line and
+/// column number is done by the LineMap class and the ReportManager.
 struct SourceLocation {
   uint32_t offset;
 
@@ -15,6 +21,8 @@ struct SourceLocation {
   }
 };
 
+/// \ingroup report parser
+/// \brief Represents a range of characters in the source code.
 struct SourceRange {
   SourceLocation location;
   uint32_t length;
@@ -22,6 +30,8 @@ struct SourceRange {
 
 static constexpr SourceLocation INVALID_LOCATION = { UINT32_MAX };
 
+/// \ingroup parser
+/// \brief The different supported token kinds.
 enum class TokenKind {
   /// End-Of-Input, the last token returned by the lexer.
   EOI,
@@ -47,12 +57,16 @@ enum class TokenKind {
   KEY_NOT,
   /// The keyword `AND`.
   KEY_AND,
-  /// The keyword `NAND`.
-  KEY_NAND,
   /// The keyword `OR`.
   KEY_OR,
+  /// The keyword `NAND`.
+  KEY_NAND,
+  /// The keyword `NOR`.
+  KEY_NOR,
   /// The keyword `XOR`.
   KEY_XOR,
+  /// The keyword `XNOR`.
+  KEY_XNOR,
   /// The keyword `MUX`.
   KEY_MUX,
   /// The keyword `REG`.
@@ -69,8 +83,8 @@ enum class TokenKind {
   KEY_RAM,
 };
 
-/// A lexical unit of the source code such as an IDENTIFIER, a CONSTANT, a
-/// COMMA, etc.
+/// \ingroup parser
+/// \brief A lexical unit of the source code.
 struct Token {
   /// The token's kind as classified by the lexer.
   TokenKind kind = TokenKind::EOI;

@@ -1,0 +1,5 @@
+INPUT a, _a, FO_OO, f12_5_A
+OUTPUT abcdefghijklmnopqrstuvwxyz
+VAR a, _a, FO_OO, f12_5_A, abcdefghijklmnopqrstuvwxyz, ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_
+IN
+abcdefghijklmnopqrstuvwxyz = 0

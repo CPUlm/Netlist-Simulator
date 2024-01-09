@@ -1,0 +1,5 @@
+INPUT
+OUTPUT a
+VAR a: 2
+IN
+a = NOT 0

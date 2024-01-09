@@ -5,17 +5,21 @@
 #include <string_view>
 #include <vector>
 
-/// PLineMap provides functions to convert between character positions and line
-/// numbers for a compilation unit.
+/// \ingroup report
+/// \brief The LineMap class provides functions to convert between character positions and line numbers.
 ///
-/// Character m_positions are a 0-based byte offset in the source file.
-/// Line and column numbers are 1-based like many code editors for convenience.
+/// Character positions are a 0-based byte offset in the source file.
+/// Whereas, line and column numbers are 1-based like many code editors for convenience.
 ///
-/// The line map is populated by the lexer calling the PLineMap::add_newline()
-/// function. This one takes as a parameter the position of the beginning of a
-/// new line with the constraint that the new position MUST BE greater than
-/// the previous reported position (that way the internal line map m_positions
-/// are guaranteed to be sorted).
+/// The line map is populated either by calling the LineMap::add_newline()
+/// function or directly using the helper method LineMap::prefill(). Once that done, you
+/// can convert from a byte offset in the source file to a line and column number using
+/// the LineMap::get_line_and_column_numbers() function.
+///
+/// Internally, the line map is implemented as a sorted array of newline positions. Therefore,
+/// all query functions should have a complexity of O(log n) with n the count of lines. Moreover,
+/// because new line positions are added in order, the internal list is always sorted without
+/// any post processing.
 class LineMap {
 public:
   /// Adds a new line position (the position of the first byte of the newline,

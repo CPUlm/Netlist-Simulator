@@ -1,6 +1,6 @@
 /* C++ code produced by gperf version 3.1 */
 /* Command-line: 'C:\\dev\\vcpkg\\installed\\x64-windows\\tools\\gperf\\gperf.exe' -t --output-file=src/keywords.hpp src/keywords.def  */
-/* Computed positions: -k'1-2' */
+/* Computed positions: -k'1-3' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \
       && ('%' == 37) && ('&' == 38) && ('\'' == 39) && ('(' == 40) \
@@ -35,7 +35,7 @@
 #line 14 "src/keywords.def"
 struct KeywordInfo { const char* name; TokenKind token_kind; };
 #include <string.h>
-/* maximum key range = 35, duplicates = 0 */
+/* maximum key range = 46, duplicates = 0 */
 
 class KeywordHashTable
 {
@@ -50,34 +50,48 @@ KeywordHashTable::hash (const char *str, size_t len)
 {
   static const unsigned char asso_values[] =
     {
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 10, 37, 10, 37, 30,
-      37, 37, 37,  0, 37, 37,  0,  8,  5,  0,
-      37, 37,  0,  0, 37,  0, 15, 37, 20, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37, 37, 37, 37, 37,
-      37, 37, 37, 37, 37, 37
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 25, 49,  0, 15,  0,
+      49,  0, 49,  0, 49, 49,  0, 10,  5, 15,
+       0, 49,  0,  0, 10,  0, 15, 49,  0, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
+      49, 49, 49, 49, 49, 49
     };
-  return len + asso_values[static_cast<unsigned char>(str[1])] + asso_values[static_cast<unsigned char>(str[0])];
+  unsigned int hval = len;
+
+  switch (hval)
+    {
+      default:
+        hval += asso_values[static_cast<unsigned char>(str[2])];
+      /*FALLTHROUGH*/
+      case 2:
+        hval += asso_values[static_cast<unsigned char>(str[1])];
+      /*FALLTHROUGH*/
+      case 1:
+        hval += asso_values[static_cast<unsigned char>(str[0])];
+        break;
+    }
+  return hval;
 }
 
 const struct KeywordInfo *
@@ -85,57 +99,64 @@ KeywordHashTable::lookup (const char *str, size_t len)
 {
   enum
     {
-      TOTAL_KEYWORDS = 16,
+      TOTAL_KEYWORDS = 18,
       MIN_WORD_LENGTH = 2,
       MAX_WORD_LENGTH = 6,
-      MIN_HASH_VALUE = 2,
-      MAX_HASH_VALUE = 36
+      MIN_HASH_VALUE = 3,
+      MAX_HASH_VALUE = 48
     };
 
   static const struct KeywordInfo wordlist[] =
     {
-      {""}, {""},
-#line 23 "src/keywords.def"
-      {"OR",      TokenKind::KEY_OR},
-#line 30 "src/keywords.def"
-      {"ROM",     TokenKind::KEY_ROM},
-      {""},
-#line 29 "src/keywords.def"
-      {"SLICE",   TokenKind::KEY_SLICE},
-#line 16 "src/keywords.def"
-      {"OUTPUT",  TokenKind::KEY_OUTPUT},
-#line 19 "src/keywords.def"
-      {"IN",      TokenKind::KEY_IN},
-#line 20 "src/keywords.def"
-      {"NOT",     TokenKind::KEY_NOT},
-      {""},
-#line 17 "src/keywords.def"
-      {"INPUT",   TokenKind::KEY_INPUT},
-#line 25 "src/keywords.def"
-      {"MUX",     TokenKind::KEY_MUX},
+      {""}, {""}, {""},
+#line 28 "src/keywords.def"
+      {"REG",     TokenKind::KEY_REG},
       {""},
 #line 31 "src/keywords.def"
-      {"RAM",     TokenKind::KEY_RAM},
+      {"SLICE",   TokenKind::KEY_SLICE},
+#line 30 "src/keywords.def"
+      {"SELECT",  TokenKind::KEY_SELECT},
+#line 19 "src/keywords.def"
+      {"IN",      TokenKind::KEY_IN},
+      {""}, {""},
+#line 17 "src/keywords.def"
+      {"INPUT",   TokenKind::KEY_INPUT},
       {""}, {""},
 #line 27 "src/keywords.def"
+      {"MUX",     TokenKind::KEY_MUX},
+      {""}, {""}, {""},
+#line 23 "src/keywords.def"
+      {"OR",      TokenKind::KEY_OR},
+#line 25 "src/keywords.def"
+      {"XOR",     TokenKind::KEY_XOR},
+      {""}, {""}, {""}, {""},
+#line 24 "src/keywords.def"
+      {"NOR",     TokenKind::KEY_NOR},
+#line 26 "src/keywords.def"
+      {"XNOR",    TokenKind::KEY_XNOR},
+      {""},
+#line 29 "src/keywords.def"
       {"CONCAT",  TokenKind::KEY_CONCAT},
       {""},
-#line 21 "src/keywords.def"
-      {"AND",     TokenKind::KEY_AND},
+#line 32 "src/keywords.def"
+      {"ROM",     TokenKind::KEY_ROM},
+      {""}, {""},
+#line 16 "src/keywords.def"
+      {"OUTPUT",  TokenKind::KEY_OUTPUT},
+      {""},
+#line 20 "src/keywords.def"
+      {"NOT",     TokenKind::KEY_NOT},
+      {""}, {""}, {""}, {""},
+#line 33 "src/keywords.def"
+      {"RAM",     TokenKind::KEY_RAM},
 #line 22 "src/keywords.def"
       {"NAND",    TokenKind::KEY_NAND},
       {""}, {""}, {""},
-#line 24 "src/keywords.def"
-      {"XOR",     TokenKind::KEY_XOR},
-      {""}, {""}, {""}, {""},
 #line 18 "src/keywords.def"
       {"VAR",     TokenKind::KEY_VAR},
       {""}, {""}, {""}, {""},
-#line 26 "src/keywords.def"
-      {"REG",     TokenKind::KEY_REG},
-      {""}, {""},
-#line 28 "src/keywords.def"
-      {"SELECT",  TokenKind::KEY_SELECT}
+#line 21 "src/keywords.def"
+      {"AND",     TokenKind::KEY_AND}
     };
 
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
@@ -152,5 +173,5 @@ KeywordHashTable::lookup (const char *str, size_t len)
     }
   return 0;
 }
-#line 32 "src/keywords.def"
+#line 34 "src/keywords.def"
 

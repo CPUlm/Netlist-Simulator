@@ -1,0 +1,7 @@
+INPUT
+OUTPUT a, b, c
+VAR a: 8, b: 64, c: 3
+IN
+a = 0xaf
+b = 0X0123456789abcdef
+c = 0xAEF : 3

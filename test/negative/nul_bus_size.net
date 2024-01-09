@@ -1,0 +1,5 @@
+INPUT
+OUTPUT b
+VAR b: 0
+IN
+b = 0

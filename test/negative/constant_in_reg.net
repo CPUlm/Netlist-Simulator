@@ -1,0 +1,5 @@
+INPUT
+OUTPUT b
+VAR b
+IN
+b = REG 0

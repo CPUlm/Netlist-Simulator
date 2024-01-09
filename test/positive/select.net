@@ -1,0 +1,8 @@
+INPUT a
+OUTPUT o1, o2, o3, o4
+VAR a: 8, o1, o2, o3, o4
+IN
+o1 = SELECT 1 a
+o2 = SELECT 5 a
+o3 = SELECT 3 1001
+o4 = SELECT 5 0xf : 5

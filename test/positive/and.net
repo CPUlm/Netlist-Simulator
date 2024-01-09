@@ -1,0 +1,8 @@
+INPUT a, b
+OUTPUT o1, o2, o3, o4
+VAR a, b: 8, o1, o2: 8, o3: 8, o4: 5
+IN
+o1 = AND a a
+o2 = AND b 0x0f
+o3 = AND 0x0f b
+o4 = AND 01101 0d42 : 5
