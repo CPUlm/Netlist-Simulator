@@ -131,8 +131,9 @@ void Simulator::ExpressionEvaluator::visit_concat_expr(
   visit(expr.get_beginning_part());
   value_t beg_value = current_value;
   visit(expr.get_last_part());
+  value_t end_value = current_value;
   current_value =
-      beg_value << expr.get_last_part()->get_bus_size() | current_value;
+      end_value << expr.get_beginning_part()->get_bus_size() | beg_value;
 }
 
 void Simulator::ExpressionEvaluator::visit_slice_expr(
@@ -285,13 +286,22 @@ value_t Simulator::eval_arg(const Argument::ptr &arg) const {
   }
 }
 
-std::string_view Simulator::get_output_value(const Variable::ptr &var) const {
-  return Utilities::value_to_str(env.at(var), var->get_bus_size());
-}
-
 void Simulator::print_outputs(std::ostream &out) const {
   for (const Variable::ptr &out_var : prog->get_outputs()) {
-    out << "=> " << out_var->get_name() << " = " << get_output_value(out_var)
-        << "\n";
+    value_t var_v = env.at(out_var);
+    bool sign = var_v >> (out_var->get_bus_size() - 1) & 0x1;
+    value_t sign_extended = var_v;
+
+    if (sign) {
+      sign_extended = (value_t)(-1) << out_var->get_bus_size() | var_v;
+    }
+
+    out << "=> " << out_var->get_name() << " : ";
+    out << "binary: 0b"
+        << Utilities::value_to_str(var_v, out_var->get_bus_size());
+    out << ", hex: 0x" << std::hex
+        << std::setw((out_var->get_bus_size() + 3) / 4) << std::setfill('0')
+        << var_v << ", unsigned decimal: " << std::dec << var_v
+        << ", signed decimal: " << (long)sign_extended << "\n";
   }
 }

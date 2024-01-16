@@ -94,7 +94,7 @@ private:
 
   [[nodiscard]] value_t eval_arg(const Argument::ptr &arg) const;
 
-  [[nodiscard]] inline std::string_view get_output_value(const Variable::ptr &var) const;
+//  [[nodiscard]] inline std::string_view get_output_value(const Variable::ptr &var) const;
 
   const Program::ptr &prog;
   const ReportContext &ctx;
